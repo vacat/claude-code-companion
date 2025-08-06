@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/admin/">
+                <i class="fas fa-server"></i> Claude Proxy Admin
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/admin/">Dashboard</a>
+                <a class="nav-link" href="/admin/endpoints">Endpoints</a>
+                <a class="nav-link" href="/admin/logs">Logs</a>
+                <a class="nav-link active" href="/admin/settings">Settings</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Server Configuration</h5>
+                        <small class="text-muted">Current configuration (read-only)</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Server Settings</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <th>Proxy Port:</th>
+                                        <td><code>{{.Config.Server.Port}}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Auth Token:</th>
+                                        <td><code>{{.Config.Server.AuthToken}}</code></td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Web Admin Settings</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <th>Enabled:</th>
+                                        <td>
+                                            {{if .Config.WebAdmin.Enabled}}
+                                                <span class="badge bg-success">Yes</span>
+                                            {{else}}
+                                                <span class="badge bg-secondary">No</span>
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Host:</th>
+                                        <td><code>{{.Config.WebAdmin.Host}}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Port:</th>
+                                        <td><code>{{.Config.WebAdmin.Port}}</code></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <h6>Logging Configuration</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <th>Level:</th>
+                                        <td><code>{{.Config.Logging.Level}}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Log Failed Requests:</th>
+                                        <td>
+                                            {{if .Config.Logging.LogFailedRequests}}
+                                                <span class="badge bg-success">Yes</span>
+                                            {{else}}
+                                                <span class="badge bg-secondary">No</span>
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Log Request Body:</th>
+                                        <td>
+                                            {{if .Config.Logging.LogRequestBody}}
+                                                <span class="badge bg-success">Yes</span>
+                                            {{else}}
+                                                <span class="badge bg-secondary">No</span>
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Log Response Body:</th>
+                                        <td>
+                                            {{if .Config.Logging.LogResponseBody}}
+                                                <span class="badge bg-success">Yes</span>
+                                            {{else}}
+                                                <span class="badge bg-secondary">No</span>
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Persist to Disk:</th>
+                                        <td>
+                                            {{if .Config.Logging.PersistToDisk}}
+                                                <span class="badge bg-success">Yes</span>
+                                            {{else}}
+                                                <span class="badge bg-secondary">No</span>
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Log Directory:</th>
+                                        <td><code>{{.Config.Logging.LogDirectory}}</code></td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Validation Configuration</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <th>Strict Anthropic Format:</th>
+                                        <td>
+                                            {{if .Config.Validation.StrictAnthropicFormat}}
+                                                <span class="badge bg-success">Enabled</span>
+                                            {{else}}
+                                                <span class="badge bg-secondary">Disabled</span>
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Validate Streaming:</th>
+                                        <td>
+                                            {{if .Config.Validation.ValidateStreaming}}
+                                                <span class="badge bg-success">Enabled</span>
+                                            {{else}}
+                                                <span class="badge bg-secondary">Disabled</span>
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Disconnect on Invalid:</th>
+                                        <td>
+                                            {{if .Config.Validation.DisconnectOnInvalid}}
+                                                <span class="badge bg-warning">Yes</span>
+                                            {{else}}
+                                                <span class="badge bg-secondary">No</span>
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <h6>Endpoints Summary</h6>
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>URL</th>
+                                            <th>Auth Type</th>
+                                            <th>Timeout</th>
+                                            <th>Priority</th>
+                                            <th>Enabled</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{range .Config.Endpoints}}
+                                        <tr>
+                                            <td>{{.Name}}</td>
+                                            <td><code>{{.URL}}</code></td>
+                                            <td>{{.AuthType}}</td>
+                                            <td>{{.TimeoutSeconds}}s</td>
+                                            <td>{{.Priority}}</td>
+                                            <td>
+                                                {{if .Enabled}}
+                                                    <span class="badge bg-success">Yes</span>
+                                                {{else}}
+                                                    <span class="badge bg-secondary">No</span>
+                                                {{end}}
+                                            </td>
+                                        </tr>
+                                        {{end}}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <div class="alert alert-warning">
+                                <h6><i class="fas fa-exclamation-triangle"></i> Configuration Notes:</h6>
+                                <ul class="mb-0">
+                                    <li>Configuration changes require editing the <code>config.yaml</code> file and restarting the server</li>
+                                    <li>This interface is read-only for security reasons</li>
+                                    <li>Always backup your configuration before making changes</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

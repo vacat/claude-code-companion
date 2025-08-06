@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/admin/">
+                <i class="fas fa-server"></i> Claude Proxy Admin
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/admin/">Dashboard</a>
+                <a class="nav-link" href="/admin/endpoints">Endpoints</a>
+                <a class="nav-link" href="/admin/logs">Logs</a>
+                <a class="nav-link" href="/admin/settings">Settings</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Endpoints</h5>
+                        <h2>{{.TotalEndpoints}}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Active Endpoints</h5>
+                        <h2>{{.ActiveEndpoints}}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Requests</h5>
+                        <h2>{{.TotalRequests}}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Success Rate</h5>
+                        <h2>{{.OverallSuccessRate}}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Endpoint Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>URL</th>
+                                        <th>Status</th>
+                                        <th>Priority</th>
+                                        <th>Total Requests</th>
+                                        <th>Success Rate</th>
+                                        <th>Last Failure</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{range .Endpoints}}
+                                    <tr>
+                                        <td>{{.Name}}</td>
+                                        <td>{{.URL}}</td>
+                                        <td>
+                                            {{if eq .Status "active"}}
+                                                <span class="badge bg-success">Active</span>
+                                            {{else if eq .Status "inactive"}}
+                                                <span class="badge bg-danger">Inactive</span>
+                                            {{else}}
+                                                <span class="badge bg-warning">Checking</span>
+                                            {{end}}
+                                        </td>
+                                        <td>{{.Priority}}</td>
+                                        <td>{{.TotalRequests}}</td>
+                                        <td>{{.SuccessRate}}</td>
+                                        <td>
+                                            {{if not .LastFailure.IsZero}}
+                                                {{.LastFailure.Format "2006-01-02 15:04:05"}}
+                                            {{else}}
+                                                Never
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        setInterval(function() {
+            location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>
