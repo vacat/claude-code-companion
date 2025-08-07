@@ -1,0 +1,39 @@
+server:
+    port: 8080
+    auth_token: your-proxy-secret-token
+
+# Endpoint failure detection: An endpoint is marked as inactive if within 140 seconds
+# there are more than 1 failed requests AND all requests in that window failed
+endpoints:
+    - name: anthropic-primary
+      url: https://api.anthropic.com
+      path_prefix: /v1
+      auth_type: api_key
+      auth_value: sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      enabled: true
+      priority: 1
+
+    - name: anthropic-backup
+      url: https://backup-api.example.com
+      path_prefix: /v1
+      auth_type: auth_token
+      auth_value: your-bearer-token-here
+      enabled: true
+      priority: 2
+
+logging:
+    level: info                    # debug | info | warn | error
+    log_request_types: failed      # failed | success | all
+    log_request_body: truncated    # none | truncated | full
+    log_response_body: truncated   # none | truncated | full
+    log_directory: ./logs
+
+validation:
+    strict_anthropic_format: true  # Validate response format compatibility
+    validate_streaming: true       # Validate SSE streaming format
+    disconnect_on_invalid: true    # Disconnect on invalid responses
+
+web_admin:
+    enabled: true
+    host: 127.0.0.1               # Only allow local access
+    port: 8081
