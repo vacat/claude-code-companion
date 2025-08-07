@@ -66,7 +66,7 @@ func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
 	}
 
 	// 构造HTTP请求
-	targetURL := ep.GetFullURL("/v1/messages")
+	targetURL := ep.GetFullURL("/messages")
 	req, err := http.NewRequest("POST", targetURL, bytes.NewReader(requestBody))
 	if err != nil {
 		return fmt.Errorf("failed to create health check request: %v", err)

@@ -73,7 +73,7 @@ func (e *Endpoint) GetAuthHeader() string {
 func (e *Endpoint) GetFullURL(path string) string {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	return e.URL + "/v1" + path
+	return e.URL + e.PathPrefix + path
 }
 
 func (e *Endpoint) IsAvailable() bool {
