@@ -1,7 +1,6 @@
 package endpoint
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -96,23 +95,18 @@ func (m *Manager) SetHealthChecker(checker HealthChecker) {
 func (m *Manager) startHealthChecks() {
 	// 如果没有健康检查器，不启动
 	if m.healthChecker == nil {
-		fmt.Println("[DEBUG] No health checker available, skipping health checks")
 		return
 	}
 
-	fmt.Println("[DEBUG] Starting health checks for all enabled endpoints")
 	// 每30秒进行一次健康检查（仅对不可用的端点）
 	interval := 30 * time.Second
 	
 	for _, endpoint := range m.endpoints {
 		if endpoint.Enabled {
-			fmt.Printf("[DEBUG] Starting health check ticker for endpoint %s (status: %s)\n", endpoint.Name, endpoint.Status)
 			ticker := time.NewTicker(interval)
 			m.healthTickers[endpoint.ID] = ticker
 			
 			go m.runHealthCheck(endpoint, ticker)
-		} else {
-			fmt.Printf("[DEBUG] Endpoint %s is disabled, skipping health check\n", endpoint.Name)
 		}
 	}
 }
@@ -131,15 +125,10 @@ func (m *Manager) runHealthCheck(endpoint *Endpoint, ticker *time.Ticker) {
 			continue
 		}
 		
-		// 记录健康检查开始
-		fmt.Printf("[DEBUG] Starting health check for endpoint %s (status: %s)\n", endpoint.Name, endpoint.Status)
-		
 		if err := m.healthChecker.CheckEndpoint(endpoint); err != nil {
 			// 健康检查失败，保持不可用状态
-			fmt.Printf("[DEBUG] Health check failed for endpoint %s: %v\n", endpoint.Name, err)
 		} else {
 			// 健康检查成功，恢复为可用状态
-			fmt.Printf("[DEBUG] Health check succeeded for endpoint %s, marking as active\n", endpoint.Name)
 			endpoint.MarkActive()
 		}
 	}

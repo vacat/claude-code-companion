@@ -50,12 +50,15 @@ func (v *ResponseValidator) ValidateStandardResponse(body []byte) error {
 			}
 		}
 	} else {
+		// 非严格模式：只要是有效JSON且包含content或error字段之一即可
 		if _, hasContent := response["content"]; hasContent {
 			return nil
 		}
 		if _, hasError := response["error"]; hasError {
 			return nil
 		}
+		// 如果既没有content也没有error，认为是无效响应
+		return fmt.Errorf("response missing both 'content' and 'error' fields")
 	}
 
 	return nil

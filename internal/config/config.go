@@ -50,18 +50,6 @@ type WebAdminConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-func (e *EndpointConfig) GetAuthHeader() string {
-	switch e.AuthType {
-	case "api_key":
-		return "Bearer " + e.AuthValue
-	case "auth_token":
-		return e.AuthValue
-	default:
-		return e.AuthValue
-	}
-}
-
-
 func LoadConfig(filename string) (*Config, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {

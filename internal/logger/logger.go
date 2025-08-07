@@ -227,8 +227,8 @@ func (l *Logger) UpdateRequestLog(log *RequestLog, req *http.Request, resp *http
 	}
 }
 
-// extractModelFromRequestBody extracts the model name from request body JSON
-func extractModelFromRequestBody(body string) string {
+// ExtractModelFromRequestBody extracts the model name from request body JSON
+func ExtractModelFromRequestBody(body string) string {
 	if body == "" {
 		return ""
 	}

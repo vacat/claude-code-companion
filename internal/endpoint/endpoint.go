@@ -114,9 +114,9 @@ func (e *Endpoint) RecordRequest(success bool) {
 	}
 }
 
-// 清理140秒前的历史记录
+// 清理150秒前的历史记录（比状态检查窗口多10秒，避免边界条件竞争）
 func (e *Endpoint) cleanOldHistory(now time.Time) {
-	cutoff := now.Add(-140 * time.Second)
+	cutoff := now.Add(-150 * time.Second)
 	validIndex := 0
 	
 	for i, record := range e.RequestHistory {

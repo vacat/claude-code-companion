@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"claude-proxy/internal/endpoint"
+	"claude-proxy/internal/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,7 +25,7 @@ func (s *Server) handleProxy(c *gin.Context) {
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			s.logger.Error("Failed to read request body", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
+			s.sendProxyError(c, http.StatusBadRequest, "request_body_error", "Failed to read request body", requestID)
 			return
 		}
 		requestBody = body
@@ -43,7 +43,7 @@ func (s *Server) handleProxy(c *gin.Context) {
 
 	if len(enabledEndpoints) == 0 {
 		s.logger.Error("No enabled endpoints", nil)
-		c.JSON(http.StatusBadGateway, gin.H{"error": "No enabled endpoints available"})
+		s.sendProxyError(c, http.StatusBadGateway, "no_endpoints", "No enabled endpoints available", requestID)
 		return
 	}
 
@@ -99,19 +99,19 @@ func (s *Server) handleProxy(c *gin.Context) {
 	requestLog := s.logger.CreateRequestLog(requestID, "failed", c.Request.Method, path)
 	requestLog.DurationMs = duration.Nanoseconds() / 1000000
 	if len(requestBody) > 0 {
-		requestLog.Model = extractModelFromRequestBody(string(requestBody))
+		requestLog.Model = logger.ExtractModelFromRequestBody(string(requestBody))
 	}
 	
 	if attemptedCount == 0 {
 		requestLog.Error = "No available endpoints found"
 		s.logger.LogRequest(requestLog)
 		s.logger.Error("No available endpoints", nil)
-		c.JSON(http.StatusBadGateway, gin.H{"error": "No available endpoints"})
+		s.sendProxyError(c, http.StatusBadGateway, "no_available_endpoints", "No available endpoints found", requestID)
 	} else {
 		requestLog.Error = fmt.Sprintf("All %d available endpoints failed", attemptedCount)
 		s.logger.LogRequest(requestLog)
 		s.logger.Error(fmt.Sprintf("All %d available endpoints failed", attemptedCount), nil)
-		c.JSON(http.StatusBadGateway, gin.H{"error": "All endpoints failed"})
+		s.sendProxyError(c, http.StatusBadGateway, "all_endpoints_failed", fmt.Sprintf("All %d available endpoints failed", attemptedCount), requestID)
 	}
 }
 
@@ -156,20 +156,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	resp, err := client.Do(req)
 	if err != nil {
 		duration := time.Since(startTime)
-		requestLog := s.logger.CreateRequestLog(requestID, ep.URL, c.Request.Method, path)
-		requestLog.RequestBodySize = len(requestBody)
-		if s.config.Logging.LogRequestBody != "none" && len(requestBody) > 0 {
-			if s.config.Logging.LogRequestBody == "truncated" {
-				requestLog.RequestBody = truncateBody(string(requestBody), 1024)
-			} else {
-				requestLog.RequestBody = string(requestBody)
-			}
-		}
-		if len(requestBody) > 0 {
-			requestLog.Model = extractModelFromRequestBody(string(requestBody))
-		}
-		s.logger.UpdateRequestLog(requestLog, req, nil, nil, duration, err)
-		s.logger.LogRequest(requestLog)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, nil, nil, duration, err)
 		return false, true
 	}
 	defer resp.Body.Close()
@@ -186,20 +173,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			decompressedBody = body // 如果解压失败，使用原始数据
 		}
 		
-		requestLog := s.logger.CreateRequestLog(requestID, ep.URL, c.Request.Method, path)
-		requestLog.RequestBodySize = len(requestBody)
-		if s.config.Logging.LogRequestBody != "none" && len(requestBody) > 0 {
-			if s.config.Logging.LogRequestBody == "truncated" {
-				requestLog.RequestBody = truncateBody(string(requestBody), 1024)
-			} else {
-				requestLog.RequestBody = string(requestBody)
-			}
-		}
-		if len(requestBody) > 0 {
-			requestLog.Model = extractModelFromRequestBody(string(requestBody))
-		}
-		s.logger.UpdateRequestLog(requestLog, req, resp, decompressedBody, duration, nil)
-		s.logger.LogRequest(requestLog)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil)
 		s.logger.Debug(fmt.Sprintf("HTTP error %d from endpoint %s, trying next endpoint", resp.StatusCode, ep.Name))
 		return false, true
 	}
@@ -262,40 +236,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	c.Writer.Write(decompressedBody)
 
 	duration := time.Since(startTime)
-	requestLog := s.logger.CreateRequestLog(requestID, ep.URL, c.Request.Method, path)
-	requestLog.RequestBodySize = len(requestBody)
-	if s.config.Logging.LogRequestBody != "none" && len(requestBody) > 0 {
-		if s.config.Logging.LogRequestBody == "truncated" {
-			requestLog.RequestBody = truncateBody(string(requestBody), 1024)
-		} else {
-			requestLog.RequestBody = string(requestBody)
-		}
-	}
-	if len(requestBody) > 0 {
-		requestLog.Model = extractModelFromRequestBody(string(requestBody))
-	}
-	s.logger.UpdateRequestLog(requestLog, req, resp, decompressedBody, duration, nil)
-	s.logger.LogRequest(requestLog)
+	s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil)
 
 	return true, false
-}
-
-// extractModelFromRequestBody extracts the model name from request body JSON
-func extractModelFromRequestBody(body string) string {
-	if body == "" {
-		return ""
-	}
-	
-	var requestData map[string]interface{}
-	if err := json.Unmarshal([]byte(body), &requestData); err != nil {
-		return ""
-	}
-	
-	if model, ok := requestData["model"].(string); ok {
-		return model
-	}
-	
-	return ""
 }
 
 // truncateBody truncates body content to specified length
@@ -304,4 +247,39 @@ func truncateBody(body string, maxLen int) string {
 		return body
 	}
 	return body[:maxLen] + "... [truncated]"
+}
+
+// sendProxyError sends a standardized error response for proxy failures
+func (s *Server) sendProxyError(c *gin.Context, statusCode int, errorType, message string, requestID string) {
+	c.JSON(statusCode, gin.H{
+		"error": gin.H{
+			"type":       errorType,
+			"message":    message,
+			"request_id": requestID,
+		},
+	})
+}
+
+// createAndLogRequest creates a request log entry, populates common fields, and logs it
+func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, requestBody []byte, req *http.Request, resp *http.Response, responseBody []byte, duration time.Duration, err error) {
+	requestLog := s.logger.CreateRequestLog(requestID, endpoint, method, path)
+	requestLog.RequestBodySize = len(requestBody)
+	
+	// 设置请求体日志
+	if s.config.Logging.LogRequestBody != "none" && len(requestBody) > 0 {
+		if s.config.Logging.LogRequestBody == "truncated" {
+			requestLog.RequestBody = truncateBody(string(requestBody), 1024)
+		} else {
+			requestLog.RequestBody = string(requestBody)
+		}
+	}
+	
+	// 提取模型信息
+	if len(requestBody) > 0 {
+		requestLog.Model = logger.ExtractModelFromRequestBody(string(requestBody))
+	}
+	
+	// 更新并记录日志
+	s.logger.UpdateRequestLog(requestLog, req, resp, responseBody, duration, err)
+	s.logger.LogRequest(requestLog)
 }

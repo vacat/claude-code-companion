@@ -28,12 +28,6 @@ func (c *Checker) GetExtractor() *RequestExtractor {
 func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
 	requestInfo := c.extractor.GetRequestInfo()
 	
-	if requestInfo.Extracted {
-		fmt.Printf("[DEBUG] Health check for %s: Using extracted request info (model: %s, user: %s)\n", ep.Name, requestInfo.Model, requestInfo.UserID)
-	} else {
-		fmt.Printf("[DEBUG] Health check for %s: Using default request info (model: %s, user: %s)\n", ep.Name, requestInfo.Model, requestInfo.UserID)
-	}
-	
 	// 构造健康检查请求
 	healthCheckRequest := map[string]interface{}{
 		"model":       requestInfo.Model,
@@ -87,16 +81,12 @@ func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
 		Timeout: 30 * time.Second,
 	}
 
-	fmt.Printf("[DEBUG] Health check for %s: Sending request to %s\n", ep.Name, targetURL)
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("[DEBUG] Health check for %s: Request failed: %v\n", ep.Name, err)
 		return fmt.Errorf("health check request failed: %v", err)
 	}
 	defer resp.Body.Close()
 	
-	fmt.Printf("[DEBUG] Health check for %s: Got response with status %d\n", ep.Name, resp.StatusCode)
-
 	// 检查状态码
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
@@ -125,6 +115,5 @@ func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
 		}
 	}
 
-	fmt.Printf("[DEBUG] Health check for %s: Check completed successfully\n", ep.Name)
 	return nil
 }
