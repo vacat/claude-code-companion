@@ -8,6 +8,7 @@ import (
 	"claude-proxy/internal/health"
 	"claude-proxy/internal/logger"
 	"claude-proxy/internal/validator"
+	"claude-proxy/internal/web"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,10 +19,12 @@ type Server struct {
 	logger          *logger.Logger
 	validator       *validator.ResponseValidator
 	healthChecker   *health.Checker
+	adminServer     *web.AdminServer
 	router          *gin.Engine
+	configFilePath  string
 }
 
-func NewServer(cfg *config.Config) (*Server, error) {
+func NewServer(cfg *config.Config, configFilePath string) (*Server, error) {
 	logConfig := logger.LogConfig{
 		Level:           cfg.Logging.Level,
 		LogRequestTypes: cfg.Logging.LogRequestTypes,
@@ -39,12 +42,20 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	responseValidator := validator.NewResponseValidator(cfg.Validation.StrictAnthropicFormat)
 	healthChecker := health.NewChecker()
 
+	// 创建管理界面服务器（如果启用）
+	var adminServer *web.AdminServer
+	if cfg.WebAdmin.Enabled {
+		adminServer = web.NewAdminServer(cfg, endpointManager, log, configFilePath)
+	}
+
 	server := &Server{
 		config:          cfg,
 		endpointManager: endpointManager,
 		logger:          log,
 		validator:       responseValidator,
 		healthChecker:   healthChecker,
+		adminServer:     adminServer,
+		configFilePath:  configFilePath,
 	}
 	
 	// 让端点管理器使用同一个健康检查器
@@ -63,18 +74,24 @@ func (s *Server) setupRoutes() {
 
 	s.router = gin.New()
 	s.router.Use(gin.Recovery())
-	s.router.Use(s.authMiddleware())
-	s.router.Use(s.loggingMiddleware())
 
-	v1 := s.router.Group("/v1")
+	// 注册管理界面路由（不需要认证）
+	if s.adminServer != nil {
+		s.adminServer.RegisterRoutes(s.router)
+	}
+
+	// 为 API 端点添加认证和日志中间件
+	apiGroup := s.router.Group("/v1")
+	apiGroup.Use(s.authMiddleware())
+	apiGroup.Use(s.loggingMiddleware())
 	{
-		v1.Any("/*path", s.handleProxy)
+		apiGroup.Any("/*path", s.handleProxy)
 	}
 }
 
 func (s *Server) Start() error {
-	addr := fmt.Sprintf(":%d", s.config.Server.Port)
-	s.logger.Info(fmt.Sprintf("Starting proxy server on port %d", s.config.Server.Port))
+	addr := fmt.Sprintf("%s:%d", s.config.Server.Host, s.config.Server.Port)
+	s.logger.Info(fmt.Sprintf("Starting proxy server on %s:%d", s.config.Server.Host, s.config.Server.Port))
 	return s.router.Run(addr)
 }
 

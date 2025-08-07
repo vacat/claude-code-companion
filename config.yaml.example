@@ -1,4 +1,5 @@
 server:
+    host: 127.0.0.1                # Bind address (127.0.0.1 for local only, 0.0.0.0 for all interfaces)
     port: 8080
     auth_token: your-proxy-secret-token
 
@@ -34,6 +35,4 @@ validation:
     disconnect_on_invalid: true    # Disconnect on invalid responses
 
 web_admin:
-    enabled: true
-    host: 127.0.0.1               # Only allow local access
-    port: 8081
+    enabled: true                 # Admin interface runs on same host:port as proxy server

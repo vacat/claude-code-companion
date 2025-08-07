@@ -17,6 +17,7 @@ type Config struct {
 }
 
 type ServerConfig struct {
+	Host      string `yaml:"host"`
 	Port      int    `yaml:"port"`
 	AuthToken string `yaml:"auth_token"`
 }
@@ -46,9 +47,7 @@ type ValidationConfig struct {
 }
 
 type WebAdminConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Host    string `yaml:"host"`
-	Port    int    `yaml:"port"`
+	Enabled bool `yaml:"enabled"`
 }
 
 func (e *EndpointConfig) GetAuthHeader() string {
@@ -82,6 +81,11 @@ func LoadConfig(filename string) (*Config, error) {
 }
 
 func validateConfig(config *Config) error {
+	// 设置服务器主机默认值
+	if config.Server.Host == "" {
+		config.Server.Host = "127.0.0.1"
+	}
+
 	if config.Server.Port <= 0 || config.Server.Port > 65535 {
 		return fmt.Errorf("invalid server port: %d", config.Server.Port)
 	}
@@ -109,14 +113,7 @@ func validateConfig(config *Config) error {
 		}
 	}
 
-	if config.WebAdmin.Enabled {
-		if config.WebAdmin.Port <= 0 || config.WebAdmin.Port > 65535 {
-			return fmt.Errorf("invalid web admin port: %d", config.WebAdmin.Port)
-		}
-		if config.WebAdmin.Host == "" {
-			config.WebAdmin.Host = "127.0.0.1"
-		}
-	}
+	// WebAdmin 现在合并到主服务器端口，无需单独验证
 
 	if config.Logging.LogDirectory == "" {
 		config.Logging.LogDirectory = "./logs"

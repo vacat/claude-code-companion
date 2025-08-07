@@ -15,7 +15,6 @@ import (
 type Storage struct {
 	logDir string
 	mutex  sync.RWMutex
-	logs   []*RequestLog
 }
 
 func NewStorage(logDir string) (*Storage, error) {
@@ -25,11 +24,6 @@ func NewStorage(logDir string) (*Storage, error) {
 
 	storage := &Storage{
 		logDir: logDir,
-		logs:   make([]*RequestLog, 0),
-	}
-
-	if err := storage.loadExistingLogs(); err != nil {
-		return nil, fmt.Errorf("failed to load existing logs: %v", err)
 	}
 
 	return storage, nil
@@ -38,8 +32,6 @@ func NewStorage(logDir string) (*Storage, error) {
 func (s *Storage) SaveLog(log *RequestLog) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
-	s.logs = append(s.logs, log)
 
 	logFile := filepath.Join(s.logDir, s.getLogFileName(log.Timestamp))
 	
@@ -62,19 +54,28 @@ func (s *Storage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestLog, in
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
+	// 从磁盘读取日志文件
+	allLogs, err := s.readAllLogsFromDisk()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 过滤日志
 	filteredLogs := make([]*RequestLog, 0)
-	for _, log := range s.logs {
+	for _, log := range allLogs {
 		if !failedOnly || log.StatusCode >= 400 || log.Error != "" {
 			filteredLogs = append(filteredLogs, log)
 		}
 	}
 
+	// 按时间戳倒序排序（最新的在前）
 	sort.Slice(filteredLogs, func(i, j int) bool {
 		return filteredLogs[i].Timestamp.After(filteredLogs[j].Timestamp)
 	})
 
 	total := len(filteredLogs)
 
+	// 分页处理
 	start := offset
 	if start > total {
 		start = total
@@ -97,8 +98,15 @@ func (s *Storage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, error)
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
+	// 从磁盘读取日志文件
+	allLogs, err := s.readAllLogsFromDisk()
+	if err != nil {
+		return nil, err
+	}
+
+	// 查找匹配的日志
 	var matchingLogs []*RequestLog
-	for _, log := range s.logs {
+	for _, log := range allLogs {
 		if log.RequestID == requestID {
 			matchingLogs = append(matchingLogs, log)
 		}
@@ -112,10 +120,13 @@ func (s *Storage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, error)
 	return matchingLogs, nil
 }
 
-func (s *Storage) loadExistingLogs() error {
+// readAllLogsFromDisk 从磁盘读取所有日志文件
+func (s *Storage) readAllLogsFromDisk() ([]*RequestLog, error) {
+	var allLogs []*RequestLog
+
 	files, err := ioutil.ReadDir(s.logDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, file := range files {
@@ -126,7 +137,7 @@ func (s *Storage) loadExistingLogs() error {
 		filePath := filepath.Join(s.logDir, file.Name())
 		content, err := ioutil.ReadFile(filePath)
 		if err != nil {
-			continue
+			continue // 跳过无法读取的文件
 		}
 
 		lines := strings.Split(string(content), "\n")
@@ -138,14 +149,14 @@ func (s *Storage) loadExistingLogs() error {
 
 			var log RequestLog
 			if err := json.Unmarshal([]byte(line), &log); err != nil {
-				continue
+				continue // 跳过无法解析的行
 			}
 
-			s.logs = append(s.logs, &log)
+			allLogs = append(allLogs, &log)
 		}
 	}
 
-	return nil
+	return allLogs, nil
 }
 
 func (s *Storage) getLogFileName(timestamp time.Time) string {
