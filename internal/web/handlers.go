@@ -137,7 +137,32 @@ func (s *AdminServer) handleUpdateEndpoints(c *gin.Context) {
 		return
 	}
 
-	s.endpointManager.UpdateEndpoints(request.Endpoints)
+	// 创建新配置，只更新端点部分
+	newConfig := *s.config
+	newConfig.Endpoints = request.Endpoints
+
+	// 使用热更新机制
+	if s.hotUpdateHandler != nil {
+		if err := s.hotUpdateHandler.HotUpdateConfig(&newConfig); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to update endpoints: " + err.Error(),
+			})
+			return
+		}
+
+		// 保存配置到文件
+		if err := config.SaveConfig(&newConfig, s.configFilePath); err != nil {
+			s.logger.Error("Failed to save configuration file after endpoint update", err)
+			// 不返回错误，因为内存更新已成功
+		}
+
+		// 更新本地配置引用
+		s.config = &newConfig
+	} else {
+		// 回退到旧的更新方式（如果没有热更新处理器）
+		s.endpointManager.UpdateEndpoints(request.Endpoints)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Endpoints updated successfully"})
 }
 
@@ -237,10 +262,33 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 		request.Enabled, maxPriority+1)
 	currentEndpoints = append(currentEndpoints, newEndpoint)
 
-	// 保存到配置文件
-	if err := s.saveEndpointsToConfig(currentEndpoints); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration: " + err.Error()})
-		return
+	// 使用热更新机制
+	if s.hotUpdateHandler != nil {
+		// 创建新配置，只更新端点部分
+		newConfig := *s.config
+		newConfig.Endpoints = currentEndpoints
+
+		if err := s.hotUpdateHandler.HotUpdateConfig(&newConfig); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to create endpoint: " + err.Error(),
+			})
+			return
+		}
+
+		// 保存配置到文件
+		if err := config.SaveConfig(&newConfig, s.configFilePath); err != nil {
+			s.logger.Error("Failed to save configuration file after endpoint creation", err)
+			// 不返回错误，因为内存更新已成功
+		}
+
+		// 更新本地配置引用
+		s.config = &newConfig
+	} else {
+		// 回退到旧方式
+		if err := s.saveEndpointsToConfig(currentEndpoints); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration: " + err.Error()})
+			return
+		}
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
@@ -305,10 +353,33 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 		return
 	}
 
-	// 保存到配置文件
-	if err := s.saveEndpointsToConfig(currentEndpoints); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration: " + err.Error()})
-		return
+	// 使用热更新机制
+	if s.hotUpdateHandler != nil {
+		// 创建新配置，只更新端点部分
+		newConfig := *s.config
+		newConfig.Endpoints = currentEndpoints
+
+		if err := s.hotUpdateHandler.HotUpdateConfig(&newConfig); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to update endpoint: " + err.Error(),
+			})
+			return
+		}
+
+		// 保存配置到文件
+		if err := config.SaveConfig(&newConfig, s.configFilePath); err != nil {
+			s.logger.Error("Failed to save configuration file after endpoint update", err)
+			// 不返回错误，因为内存更新已成功
+		}
+
+		// 更新本地配置引用
+		s.config = &newConfig
+	} else {
+		// 回退到旧方式
+		if err := s.saveEndpointsToConfig(currentEndpoints); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration: " + err.Error()})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Endpoint updated successfully"})
@@ -341,10 +412,33 @@ func (s *AdminServer) handleDeleteEndpoint(c *gin.Context) {
 		newEndpoints[i].Priority = i + 1
 	}
 
-	// 保存到配置文件
-	if err := s.saveEndpointsToConfig(newEndpoints); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration: " + err.Error()})
-		return
+	// 使用热更新机制
+	if s.hotUpdateHandler != nil {
+		// 创建新配置，只更新端点部分
+		newConfig := *s.config
+		newConfig.Endpoints = newEndpoints
+
+		if err := s.hotUpdateHandler.HotUpdateConfig(&newConfig); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to delete endpoint: " + err.Error(),
+			})
+			return
+		}
+
+		// 保存配置到文件
+		if err := config.SaveConfig(&newConfig, s.configFilePath); err != nil {
+			s.logger.Error("Failed to save configuration file after endpoint deletion", err)
+			// 不返回错误，因为内存更新已成功
+		}
+
+		// 更新本地配置引用
+		s.config = &newConfig
+	} else {
+		// 回退到旧方式
+		if err := s.saveEndpointsToConfig(newEndpoints); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration: " + err.Error()})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Endpoint deleted successfully"})
@@ -385,11 +479,151 @@ func (s *AdminServer) handleReorderEndpoints(c *gin.Context) {
 		return
 	}
 
-	// 保存到配置文件
-	if err := s.saveEndpointsToConfig(newEndpoints); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration: " + err.Error()})
-		return
+	// 使用热更新机制
+	if s.hotUpdateHandler != nil {
+		// 创建新配置，只更新端点部分
+		newConfig := *s.config
+		newConfig.Endpoints = newEndpoints
+
+		if err := s.hotUpdateHandler.HotUpdateConfig(&newConfig); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to reorder endpoints: " + err.Error(),
+			})
+			return
+		}
+
+		// 保存配置到文件
+		if err := config.SaveConfig(&newConfig, s.configFilePath); err != nil {
+			s.logger.Error("Failed to save configuration file after endpoint reorder", err)
+			// 不返回错误，因为内存更新已成功
+		}
+
+		// 更新本地配置引用
+		s.config = &newConfig
+	} else {
+		// 回退到旧方式
+		if err := s.saveEndpointsToConfig(newEndpoints); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration: " + err.Error()})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Endpoints reordered successfully"})
+}
+
+// handleGetConfig 获取当前配置
+func (s *AdminServer) handleGetConfig(c *gin.Context) {
+	// 返回当前配置，但隐藏敏感信息
+	configCopy := *s.config
+	
+	// 隐藏认证信息的敏感部分
+	for i := range configCopy.Endpoints {
+		if configCopy.Endpoints[i].AuthValue != "" {
+			// 只显示前4个和后4个字符
+			authValue := configCopy.Endpoints[i].AuthValue
+			if len(authValue) > 8 {
+				configCopy.Endpoints[i].AuthValue = authValue[:4] + "****" + authValue[len(authValue)-4:]
+			} else {
+				configCopy.Endpoints[i].AuthValue = "****"
+			}
+		}
+	}
+	
+	// 隐藏服务器认证token
+	if configCopy.Server.AuthToken != "" {
+		token := configCopy.Server.AuthToken
+		if len(token) > 8 {
+			configCopy.Server.AuthToken = token[:4] + "****" + token[len(token)-4:]
+		} else {
+			configCopy.Server.AuthToken = "****"
+		}
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"config": configCopy,
+	})
+}
+
+// handleHotUpdateConfig 热更新配置
+func (s *AdminServer) handleHotUpdateConfig(c *gin.Context) {
+	var request struct {
+		Config config.Config `json:"config"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request format: " + err.Error(),
+		})
+		return
+	}
+
+	// 验证新配置
+	newConfig := request.Config
+	if err := s.validateConfigUpdate(&newConfig); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Configuration validation failed: " + err.Error(),
+		})
+		return
+	}
+
+	// 保存配置到文件
+	if err := config.SaveConfig(&newConfig, s.configFilePath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to save configuration file: " + err.Error(),
+		})
+		return
+	}
+
+	// 如果有热更新处理器，执行热更新
+	if s.hotUpdateHandler != nil {
+		if err := s.hotUpdateHandler.HotUpdateConfig(&newConfig); err != nil {
+			// 热更新失败，记录错误但不回滚文件（文件已保存成功）
+			s.logger.Error("Hot update failed, configuration file saved but runtime not updated", err)
+			c.JSON(http.StatusPartialContent, gin.H{
+				"warning": "Configuration file saved successfully, but hot update failed: " + err.Error(),
+				"message": "Server restart may be required for some changes to take effect",
+			})
+			return
+		}
+	}
+
+	// 更新本地配置引用
+	s.config = &newConfig
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Configuration updated successfully via hot update",
+	})
+}
+
+// validateConfigUpdate validates the configuration update
+func (s *AdminServer) validateConfigUpdate(newConfig *config.Config) error {
+	// 基本验证
+	if newConfig.Server.Port <= 0 || newConfig.Server.Port > 65535 {
+		return fmt.Errorf("invalid server port: %d", newConfig.Server.Port)
+	}
+
+	if newConfig.Server.AuthToken == "" {
+		return fmt.Errorf("server auth_token cannot be empty")
+	}
+
+	if len(newConfig.Endpoints) == 0 {
+		return fmt.Errorf("at least one endpoint must be configured")
+	}
+
+	for i, endpoint := range newConfig.Endpoints {
+		if endpoint.Name == "" {
+			return fmt.Errorf("endpoint %d: name cannot be empty", i)
+		}
+		if endpoint.URL == "" {
+			return fmt.Errorf("endpoint %d: url cannot be empty", i)
+		}
+		if endpoint.AuthType != "api_key" && endpoint.AuthType != "auth_token" {
+			return fmt.Errorf("endpoint %d: invalid auth_type '%s', must be 'api_key' or 'auth_token'", i, endpoint.AuthType)
+		}
+		if endpoint.AuthValue == "" {
+			return fmt.Errorf("endpoint %d: auth_value cannot be empty", i)
+		}
+	}
+
+	return nil
 }

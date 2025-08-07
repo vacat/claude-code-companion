@@ -58,6 +58,11 @@ func NewServer(cfg *config.Config, configFilePath string) (*Server, error) {
 		configFilePath:  configFilePath,
 	}
 	
+	// 设置热更新处理器
+	if adminServer != nil {
+		adminServer.SetHotUpdateHandler(server)
+	}
+	
 	// 让端点管理器使用同一个健康检查器
 	endpointManager.SetHealthChecker(healthChecker)
 
@@ -109,4 +114,82 @@ func (s *Server) GetLogger() *logger.Logger {
 
 func (s *Server) GetHealthChecker() *health.Checker {
 	return s.healthChecker
+}
+
+// HotUpdateConfig safely updates configuration without restarting the server
+func (s *Server) HotUpdateConfig(newConfig *config.Config) error {
+	// 验证新配置
+	if err := s.validateConfigForHotUpdate(newConfig); err != nil {
+		return fmt.Errorf("invalid configuration: %v", err)
+	}
+
+	s.logger.Info("Starting configuration hot update")
+
+	// 更新端点配置
+	if err := s.updateEndpoints(newConfig.Endpoints); err != nil {
+		return fmt.Errorf("failed to update endpoints: %v", err)
+	}
+
+	// 更新日志配置（如果可能）
+	if err := s.updateLoggingConfig(newConfig.Logging); err != nil {
+		s.logger.Error("Failed to update logging config, continuing with endpoint updates", err)
+	}
+
+	// 更新验证器配置
+	s.updateValidatorConfig(newConfig.Validation)
+
+	// 更新内存中的配置
+	s.config = newConfig
+
+	s.logger.Info("Configuration hot update completed successfully")
+	return nil
+}
+
+// validateConfigForHotUpdate validates the new configuration
+func (s *Server) validateConfigForHotUpdate(newConfig *config.Config) error {
+	// 检查是否尝试修改不可热更新的配置
+	if newConfig.Server.Host != s.config.Server.Host {
+		return fmt.Errorf("server host cannot be changed via hot update")
+	}
+	if newConfig.Server.Port != s.config.Server.Port {
+		return fmt.Errorf("server port cannot be changed via hot update")
+	}
+	if newConfig.Server.AuthToken != s.config.Server.AuthToken {
+		return fmt.Errorf("auth token cannot be changed via hot update")
+	}
+
+	// 验证端点配置
+	if len(newConfig.Endpoints) == 0 {
+		return fmt.Errorf("at least one endpoint must be configured")
+	}
+
+	return nil
+}
+
+// updateEndpoints updates endpoint configuration
+func (s *Server) updateEndpoints(newEndpoints []config.EndpointConfig) error {
+	s.endpointManager.UpdateEndpoints(newEndpoints)
+	return nil
+}
+
+// updateLoggingConfig updates logging configuration if possible
+func (s *Server) updateLoggingConfig(newLogging config.LoggingConfig) error {
+	// 目前只能更新日志级别和记录策略，不能更换日志目录
+	if newLogging.LogDirectory != s.config.Logging.LogDirectory {
+		return fmt.Errorf("log directory cannot be changed via hot update")
+	}
+
+	// 可以安全更新的日志配置
+	s.config.Logging.Level = newLogging.Level
+	s.config.Logging.LogRequestTypes = newLogging.LogRequestTypes
+	s.config.Logging.LogRequestBody = newLogging.LogRequestBody
+	s.config.Logging.LogResponseBody = newLogging.LogResponseBody
+
+	return nil
+}
+
+// updateValidatorConfig updates response validator configuration
+func (s *Server) updateValidatorConfig(newValidation config.ValidationConfig) {
+	s.validator = validator.NewResponseValidator(newValidation.StrictAnthropicFormat)
+	s.config.Validation = newValidation
 }

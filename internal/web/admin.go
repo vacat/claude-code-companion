@@ -8,11 +8,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// HotUpdateHandler defines the interface for hot config updates
+type HotUpdateHandler interface {
+	HotUpdateConfig(newConfig *config.Config) error
+}
+
 type AdminServer struct {
-	config          *config.Config
-	endpointManager *endpoint.Manager
-	logger          *logger.Logger
-	configFilePath  string
+	config            *config.Config
+	endpointManager   *endpoint.Manager
+	logger            *logger.Logger
+	configFilePath    string
+	hotUpdateHandler  HotUpdateHandler
 }
 
 func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, log *logger.Logger, configFilePath string) *AdminServer {
@@ -22,6 +28,11 @@ func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, log *
 		logger:          log,
 		configFilePath:  configFilePath,
 	}
+}
+
+// SetHotUpdateHandler sets the hot update handler
+func (s *AdminServer) SetHotUpdateHandler(handler HotUpdateHandler) {
+	s.hotUpdateHandler = handler
 }
 
 // RegisterRoutes 注册管理界面路由到指定的 router
@@ -46,6 +57,8 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 		api.DELETE("/endpoints/:id", s.handleDeleteEndpoint)
 		api.POST("/endpoints/reorder", s.handleReorderEndpoints)
 		api.GET("/logs", s.handleGetLogs)
+		api.PUT("/config", s.handleHotUpdateConfig)
+		api.GET("/config", s.handleGetConfig)
 	}
 }
 
