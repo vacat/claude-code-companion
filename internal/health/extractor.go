@@ -20,9 +20,36 @@ type RequestExtractor struct {
 }
 
 func NewRequestExtractor() *RequestExtractor {
+	// 默认请求头，不包含认证信息
+	defaultHeaders := map[string]string{
+		"Accept":                                      "application/json",
+		"Accept-Encoding":                             "gzip, deflate",
+		"Accept-Language":                             "*",
+		"Anthropic-Beta":                              "fine-grained-tool-streaming-2025-05-14",
+		"Anthropic-Dangerous-Direct-Browser-Access":   "true",
+		"Anthropic-Version":                           "2023-06-01",
+		"Connection":                                  "keep-alive",
+		"Content-Type":                                "application/json",
+		"Sec-Fetch-Mode":                              "cors",
+		"User-Agent":                                  "claude-cli/1.0.56 (external, cli)",
+		"X-App":                                       "cli",
+		"X-Stainless-Arch":                            "x64",
+		"X-Stainless-Helper-Method":                   "stream",
+		"X-Stainless-Lang":                            "js",
+		"X-Stainless-Os":                              "Windows",
+		"X-Stainless-Package-Version":                 "0.55.1",
+		"X-Stainless-Retry-Count":                     "0",
+		"X-Stainless-Runtime":                         "node",
+		"X-Stainless-Runtime-Version":                 "v22.17.0",
+		"X-Stainless-Timeout":                         "600",
+	}
+
 	return &RequestExtractor{
 		requestInfo: &RequestInfo{
-			Extracted: false,
+			Model:     "claude-3-5-haiku-20241022",
+			UserID:    "user_test_account__session_test",
+			Headers:   defaultHeaders,
+			Extracted: false, // false表示使用默认值，true表示已从实际请求中提取
 		},
 	}
 }
@@ -31,35 +58,39 @@ func (re *RequestExtractor) ExtractFromRequest(body []byte, headers http.Header)
 	re.mutex.Lock()
 	defer re.mutex.Unlock()
 
-	// 如果已经提取过了，不再提取
-	if re.requestInfo.Extracted {
-		return false
-	}
+	// 总是尝试从请求中提取信息来覆盖默认值
+	extracted := false
 
 	// 提取模型信息
 	model := re.extractModel(body)
-	if model == "" || !strings.HasPrefix(model, "claude-3-5") {
-		return false
+	if model != "" && strings.HasPrefix(model, "claude-3-5") {
+		re.requestInfo.Model = model
+		extracted = true
 	}
 
 	// 提取用户ID
 	userID := re.extractUserID(body)
-	if userID == "" {
-		return false
+	if userID != "" {
+		re.requestInfo.UserID = userID
+		extracted = true
 	}
 
 	// 提取请求头
 	requestHeaders := re.extractHeaders(headers)
-
-	// 保存提取的信息
-	re.requestInfo = &RequestInfo{
-		Model:     model,
-		UserID:    userID,
-		Headers:   requestHeaders,
-		Extracted: true,
+	if len(requestHeaders) > 0 {
+		// 合并请求头，新的头部会覆盖旧的
+		for k, v := range requestHeaders {
+			re.requestInfo.Headers[k] = v
+		}
+		extracted = true
 	}
 
-	return true
+	// 如果成功提取了任何信息，标记为已提取
+	if extracted {
+		re.requestInfo.Extracted = true
+	}
+
+	return extracted
 }
 
 func (re *RequestExtractor) extractModel(body []byte) string {

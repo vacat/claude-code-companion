@@ -68,11 +68,11 @@ func (s *Server) handleProxy(c *gin.Context) {
 		if success {
 			s.endpointManager.RecordRequest(ep.ID, true)
 			
-			// 尝试提取基准信息（只在第一次成功时提取）
+			// 尝试提取基准信息用于健康检查
 			if len(requestBody) > 0 {
 				extracted := s.healthChecker.GetExtractor().ExtractFromRequest(requestBody, c.Request.Header)
 				if extracted {
-					s.logger.Info("Successfully extracted baseline request info for health checks")
+					s.logger.Info("Successfully updated health check baseline info from request")
 				}
 			}
 			

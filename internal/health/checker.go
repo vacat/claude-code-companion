@@ -26,15 +26,13 @@ func (c *Checker) GetExtractor() *RequestExtractor {
 }
 
 func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
-	// 如果还没有提取到基准信息，总是返回健康
-	if !c.extractor.HasExtracted() {
-		fmt.Printf("[DEBUG] Health check for %s: No baseline info extracted yet, returning healthy\n", ep.Name)
-		return nil
-	}
-	
-	fmt.Printf("[DEBUG] Health check for %s: Has baseline info, performing real check\n", ep.Name)
-
 	requestInfo := c.extractor.GetRequestInfo()
+	
+	if requestInfo.Extracted {
+		fmt.Printf("[DEBUG] Health check for %s: Using extracted request info (model: %s, user: %s)\n", ep.Name, requestInfo.Model, requestInfo.UserID)
+	} else {
+		fmt.Printf("[DEBUG] Health check for %s: Using default request info (model: %s, user: %s)\n", ep.Name, requestInfo.Model, requestInfo.UserID)
+	}
 	
 	// 构造健康检查请求
 	healthCheckRequest := map[string]interface{}{
@@ -72,16 +70,12 @@ func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
 		return fmt.Errorf("failed to create health check request: %v", err)
 	}
 
-	// 设置请求头
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("anthropic-version", "2023-06-01")
-	
-	// 复制从实际请求中提取的头部
+	// 复制从实际请求中提取的头部（包含默认值）
 	for key, value := range requestInfo.Headers {
 		req.Header.Set(key, value)
 	}
 
-	// 设置认证头
+	// 单独设置认证头部（不包含在默认headers中）
 	if ep.AuthType == "api_key" {
 		req.Header.Set("x-api-key", ep.GetAuthHeader())
 	} else {
