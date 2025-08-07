@@ -7,12 +7,17 @@ import (
 	"claude-proxy/internal/config"
 )
 
+type HealthChecker interface {
+	CheckEndpoint(ep *Endpoint) error
+}
+
 type Manager struct {
-	selector     *Selector
-	endpoints    []*Endpoint
-	config       *config.Config
-	mutex        sync.RWMutex
-	retryTimers  map[string]*time.Timer
+	selector        *Selector
+	endpoints       []*Endpoint
+	config          *config.Config
+	mutex           sync.RWMutex
+	healthChecker   HealthChecker
+	healthTickers   map[string]*time.Ticker
 }
 
 func NewManager(cfg *config.Config) *Manager {
@@ -22,12 +27,15 @@ func NewManager(cfg *config.Config) *Manager {
 		endpoints = append(endpoints, endpoint)
 	}
 
-	return &Manager{
-		selector:    NewSelector(endpoints),
-		endpoints:   endpoints,
-		config:      cfg,
-		retryTimers: make(map[string]*time.Timer),
+	manager := &Manager{
+		selector:        NewSelector(endpoints),
+		endpoints:       endpoints,
+		config:          cfg,
+		healthChecker:   nil, // 稍后设置
+		healthTickers:   make(map[string]*time.Ticker),
 	}
+
+	return manager
 }
 
 func (m *Manager) GetEndpoint() (*Endpoint, error) {
@@ -45,29 +53,9 @@ func (m *Manager) RecordRequest(endpointID string, success bool) {
 	for _, endpoint := range m.endpoints {
 		if endpoint.ID == endpointID {
 			endpoint.RecordRequest(success)
-			
-			if !success && endpoint.Status == StatusInactive {
-				m.scheduleRetry(endpoint)
-			}
 			break
 		}
 	}
-}
-
-func (m *Manager) scheduleRetry(endpoint *Endpoint) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
-	if timer, exists := m.retryTimers[endpoint.ID]; exists {
-		timer.Stop()
-	}
-
-	m.retryTimers[endpoint.ID] = time.AfterFunc(60*time.Second, func() {
-		endpoint.MarkActive()
-		m.mutex.Lock()
-		delete(m.retryTimers, endpoint.ID)
-		m.mutex.Unlock()
-	})
 }
 
 func (m *Manager) UpdateEndpoints(endpointConfigs []config.EndpointConfig) {
@@ -80,11 +68,69 @@ func (m *Manager) UpdateEndpoints(endpointConfigs []config.EndpointConfig) {
 		newEndpoints = append(newEndpoints, endpoint)
 	}
 
-	for _, timer := range m.retryTimers {
-		timer.Stop()
-	}
-	m.retryTimers = make(map[string]*time.Timer)
+	// 停止旧的健康检查
+	m.stopHealthChecks()
 
 	m.endpoints = newEndpoints
 	m.selector.UpdateEndpoints(newEndpoints)
+	
+	// 重新启动健康检查
+	m.startHealthChecks()
+}
+
+func (m *Manager) GetHealthChecker() HealthChecker {
+	return m.healthChecker
+}
+
+func (m *Manager) SetHealthChecker(checker HealthChecker) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	
+	m.healthChecker = checker
+	
+	// 启动健康检查
+	m.startHealthChecks()
+}
+
+func (m *Manager) startHealthChecks() {
+	// 如果没有健康检查器，不启动
+	if m.healthChecker == nil {
+		return
+	}
+
+	// 每30秒进行一次健康检查（仅对不可用的端点）
+	interval := 30 * time.Second
+	
+	for _, endpoint := range m.endpoints {
+		if endpoint.Enabled {
+			ticker := time.NewTicker(interval)
+			m.healthTickers[endpoint.ID] = ticker
+			
+			go m.runHealthCheck(endpoint, ticker)
+		}
+	}
+}
+
+func (m *Manager) stopHealthChecks() {
+	for _, ticker := range m.healthTickers {
+		ticker.Stop()
+	}
+	m.healthTickers = make(map[string]*time.Ticker)
+}
+
+func (m *Manager) runHealthCheck(endpoint *Endpoint, ticker *time.Ticker) {
+	for range ticker.C {
+		// 只对不可用的端点进行健康检查
+		if endpoint.Status != StatusInactive {
+			continue
+		}
+		
+		if err := m.healthChecker.CheckEndpoint(endpoint); err != nil {
+			// 健康检查失败，保持不可用状态
+			// 不需要额外操作，因为状态已经是不可用
+		} else {
+			// 健康检查成功，恢复为可用状态
+			endpoint.MarkActive()
+		}
+	}
 }

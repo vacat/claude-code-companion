@@ -5,6 +5,7 @@ import (
 
 	"claude-proxy/internal/config"
 	"claude-proxy/internal/endpoint"
+	"claude-proxy/internal/health"
 	"claude-proxy/internal/logger"
 	"claude-proxy/internal/validator"
 
@@ -16,17 +17,17 @@ type Server struct {
 	endpointManager *endpoint.Manager
 	logger          *logger.Logger
 	validator       *validator.ResponseValidator
+	healthChecker   *health.Checker
 	router          *gin.Engine
 }
 
 func NewServer(cfg *config.Config) (*Server, error) {
 	logConfig := logger.LogConfig{
-		Level:              cfg.Logging.Level,
-		LogFailedRequests:  cfg.Logging.LogFailedRequests,
-		LogRequestBody:     cfg.Logging.LogRequestBody,
-		LogResponseBody:    cfg.Logging.LogResponseBody,
-		PersistToDisk:      cfg.Logging.PersistToDisk,
-		LogDirectory:       cfg.Logging.LogDirectory,
+		Level:           cfg.Logging.Level,
+		LogRequestTypes: cfg.Logging.LogRequestTypes,
+		LogRequestBody:  cfg.Logging.LogRequestBody,
+		LogResponseBody: cfg.Logging.LogResponseBody,
+		LogDirectory:    cfg.Logging.LogDirectory,
 	}
 
 	log, err := logger.NewLogger(logConfig)
@@ -36,13 +37,18 @@ func NewServer(cfg *config.Config) (*Server, error) {
 
 	endpointManager := endpoint.NewManager(cfg)
 	responseValidator := validator.NewResponseValidator(cfg.Validation.StrictAnthropicFormat)
+	healthChecker := health.NewChecker()
 
 	server := &Server{
 		config:          cfg,
 		endpointManager: endpointManager,
 		logger:          log,
 		validator:       responseValidator,
+		healthChecker:   healthChecker,
 	}
+	
+	// 让端点管理器使用同一个健康检查器
+	endpointManager.SetHealthChecker(healthChecker)
 
 	server.setupRoutes()
 	return server, nil
@@ -82,4 +88,8 @@ func (s *Server) GetEndpointManager() *endpoint.Manager {
 
 func (s *Server) GetLogger() *logger.Logger {
 	return s.logger
+}
+
+func (s *Server) GetHealthChecker() *health.Checker {
+	return s.healthChecker
 }

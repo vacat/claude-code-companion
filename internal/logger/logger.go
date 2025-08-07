@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -25,6 +26,7 @@ type RequestLog struct {
 	RequestBodySize int               `json:"request_body_size"`
 	ResponseBodySize int              `json:"response_body_size"`
 	IsStreaming     bool              `json:"is_streaming"`
+	Model           string            `json:"model,omitempty"`
 }
 
 type Logger struct {
@@ -34,12 +36,11 @@ type Logger struct {
 }
 
 type LogConfig struct {
-	Level              string
-	LogFailedRequests  bool
-	LogRequestBody     bool
-	LogResponseBody    bool
-	PersistToDisk      bool
-	LogDirectory       string
+	Level           string
+	LogRequestTypes string
+	LogRequestBody  string
+	LogResponseBody string
+	LogDirectory    string
 }
 
 func NewLogger(config LogConfig) (*Logger, error) {
@@ -55,12 +56,9 @@ func NewLogger(config LogConfig) (*Logger, error) {
 		TimestampFormat: time.RFC3339,
 	})
 
-	var storage *Storage
-	if config.PersistToDisk {
-		storage, err = NewStorage(config.LogDirectory)
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize log storage: %v", err)
-		}
+	storage, err := NewStorage(config.LogDirectory)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize log storage: %v", err)
 	}
 
 	return &Logger{
@@ -72,15 +70,10 @@ func NewLogger(config LogConfig) (*Logger, error) {
 
 func (l *Logger) LogRequest(log *RequestLog) {
 	// 总是记录到存储，方便Web界面查看
-	if l.storage != nil {
-		l.storage.SaveLog(log)
-	}
+	l.storage.SaveLog(log)
 
 	// 根据配置决定是否输出到控制台
-	shouldLog := true
-	if l.config.LogFailedRequests && log.StatusCode < 400 {
-		shouldLog = false
-	}
+	shouldLog := l.shouldLogRequest(log.StatusCode)
 
 	if shouldLog {
 		fields := logrus.Fields{
@@ -96,13 +89,12 @@ func (l *Logger) LogRequest(log *RequestLog) {
 			fields["error"] = log.Error
 		}
 
-		if l.config.LogRequestBody && log.RequestBody != "" {
-			fields["request_body"] = log.RequestBody
+		if log.Model != "" {
+			fields["model"] = log.Model
 		}
 
-		if l.config.LogResponseBody && log.ResponseBody != "" {
-			fields["response_body"] = log.ResponseBody
-		}
+		// Note: Request and response bodies are not logged to console
+		// They are available in the web admin interface
 
 		if log.StatusCode >= 400 {
 			l.logger.WithFields(fields).Error("Request failed")
@@ -110,6 +102,28 @@ func (l *Logger) LogRequest(log *RequestLog) {
 			l.logger.WithFields(fields).Info("Request completed")
 		}
 	}
+}
+
+// shouldLogRequest determines if a request should be logged to console based on configuration
+func (l *Logger) shouldLogRequest(statusCode int) bool {
+	switch l.config.LogRequestTypes {
+	case "failed":
+		return statusCode >= 400
+	case "success":
+		return statusCode < 400
+	case "all":
+		return true
+	default:
+		return true
+	}
+}
+
+// truncateBody truncates body content to specified length
+func (l *Logger) truncateBody(body string, maxLen int) string {
+	if len(body) <= maxLen {
+		return body
+	}
+	return body[:maxLen] + "... [truncated]"
 }
 
 func (l *Logger) Info(msg string, fields ...logrus.Fields) {
@@ -200,11 +214,33 @@ func (l *Logger) UpdateRequestLog(log *RequestLog, req *http.Request, resp *http
 	}
 	
 	log.ResponseBodySize = len(body)
-	if l.config.LogResponseBody && len(body) > 0 {
-		log.ResponseBody = string(body)
+	if l.config.LogResponseBody != "none" && len(body) > 0 {
+		if l.config.LogResponseBody == "truncated" {
+			log.ResponseBody = l.truncateBody(string(body), 1024)
+		} else {
+			log.ResponseBody = string(body)
+		}
 	}
 	
 	if err != nil {
 		log.Error = err.Error()
 	}
+}
+
+// extractModelFromRequestBody extracts the model name from request body JSON
+func extractModelFromRequestBody(body string) string {
+	if body == "" {
+		return ""
+	}
+	
+	var requestData map[string]interface{}
+	if err := json.Unmarshal([]byte(body), &requestData); err != nil {
+		return ""
+	}
+	
+	if model, ok := requestData["model"].(string); ok {
+		return model
+	}
+	
+	return ""
 }

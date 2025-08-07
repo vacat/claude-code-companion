@@ -49,7 +49,7 @@ func main() {
 
 	var adminServer *web.AdminServer
 	if cfg.WebAdmin.Enabled {
-		adminServer = web.NewAdminServer(cfg, proxyServer.GetEndpointManager(), proxyServer.GetLogger())
+		adminServer = web.NewAdminServer(cfg, proxyServer.GetEndpointManager(), proxyServer.GetLogger(), *configFile)
 		
 		go func() {
 			log.Printf("Starting admin server on %s:%d", cfg.WebAdmin.Host, cfg.WebAdmin.Port)

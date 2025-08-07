@@ -15,13 +15,15 @@ type AdminServer struct {
 	endpointManager *endpoint.Manager
 	logger          *logger.Logger
 	router          *gin.Engine
+	configFilePath  string
 }
 
-func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, log *logger.Logger) *AdminServer {
+func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, log *logger.Logger, configFilePath string) *AdminServer {
 	server := &AdminServer{
 		config:          cfg,
 		endpointManager: endpointManager,
 		logger:          log,
+		configFilePath:  configFilePath,
 	}
 
 	server.setupRoutes()
@@ -45,6 +47,10 @@ func (s *AdminServer) setupRoutes() {
 	{
 		api.GET("/endpoints", s.handleGetEndpoints)
 		api.PUT("/endpoints", s.handleUpdateEndpoints)
+		api.POST("/endpoints", s.handleCreateEndpoint)
+		api.PUT("/endpoints/:id", s.handleUpdateEndpoint)
+		api.DELETE("/endpoints/:id", s.handleDeleteEndpoint)
+		api.POST("/endpoints/reorder", s.handleReorderEndpoints)
 		api.GET("/logs", s.handleGetLogs)
 	}
 }

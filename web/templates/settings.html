@@ -11,13 +11,13 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="/admin/">
-                <i class="fas fa-server"></i> Claude Proxy Admin
+                <i class="fas fa-server"></i> Claude 代理管理后台
             </a>
             <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/admin/">Dashboard</a>
-                <a class="nav-link" href="/admin/endpoints">Endpoints</a>
-                <a class="nav-link" href="/admin/logs">Logs</a>
-                <a class="nav-link active" href="/admin/settings">Settings</a>
+                <a class="nav-link" href="/admin/">控制台</a>
+                <a class="nav-link" href="/admin/endpoints">端点配置</a>
+                <a class="nav-link" href="/admin/logs">请求日志</a>
+                <a class="nav-link active" href="/admin/settings">系统设置</a>
             </div>
         </div>
     </nav>
@@ -27,43 +27,43 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="mb-0">Server Configuration</h5>
-                        <small class="text-muted">Current configuration (read-only)</small>
+                        <h5 class="mb-0">服务器配置</h5>
+                        <small class="text-muted">当前配置（只读）</small>
                     </div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6">
-                                <h6>Server Settings</h6>
+                                <h6>服务器设置</h6>
                                 <table class="table table-sm">
                                     <tr>
-                                        <th>Proxy Port:</th>
+                                        <th>代理端口:</th>
                                         <td><code>{{.Config.Server.Port}}</code></td>
                                     </tr>
                                     <tr>
-                                        <th>Auth Token:</th>
+                                        <th>认证令牌:</th>
                                         <td><code>{{.Config.Server.AuthToken}}</code></td>
                                     </tr>
                                 </table>
                             </div>
                             <div class="col-md-6">
-                                <h6>Web Admin Settings</h6>
+                                <h6>网页管理设置</h6>
                                 <table class="table table-sm">
                                     <tr>
-                                        <th>Enabled:</th>
+                                        <th>启用:</th>
                                         <td>
                                             {{if .Config.WebAdmin.Enabled}}
-                                                <span class="badge bg-success">Yes</span>
+                                                <span class="badge bg-success">是</span>
                                             {{else}}
-                                                <span class="badge bg-secondary">No</span>
+                                                <span class="badge bg-secondary">否</span>
                                             {{end}}
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th>Host:</th>
+                                        <th>主机:</th>
                                         <td><code>{{.Config.WebAdmin.Host}}</code></td>
                                     </tr>
                                     <tr>
-                                        <th>Port:</th>
+                                        <th>端口:</th>
                                         <td><code>{{.Config.WebAdmin.Port}}</code></td>
                                     </tr>
                                 </table>
@@ -72,88 +72,72 @@
 
                         <div class="row mt-4">
                             <div class="col-md-6">
-                                <h6>Logging Configuration</h6>
+                                <h6>日志配置</h6>
                                 <table class="table table-sm">
                                     <tr>
-                                        <th>Level:</th>
+                                        <th>日志级别:</th>
                                         <td><code>{{.Config.Logging.Level}}</code></td>
                                     </tr>
                                     <tr>
-                                        <th>Log Failed Requests:</th>
+                                        <th>记录请求类型:</th>
                                         <td>
-                                            {{if .Config.Logging.LogFailedRequests}}
-                                                <span class="badge bg-success">Yes</span>
-                                            {{else}}
-                                                <span class="badge bg-secondary">No</span>
-                                            {{end}}
+                                            <span class="badge {{if eq .Config.Logging.LogRequestTypes "all"}}bg-info{{else if eq .Config.Logging.LogRequestTypes "failed"}}bg-warning{{else}}bg-success{{end}}">
+                                                {{.Config.Logging.LogRequestTypes}}
+                                            </span>
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th>Log Request Body:</th>
+                                        <th>记录请求体:</th>
                                         <td>
-                                            {{if .Config.Logging.LogRequestBody}}
-                                                <span class="badge bg-success">Yes</span>
-                                            {{else}}
-                                                <span class="badge bg-secondary">No</span>
-                                            {{end}}
+                                            <span class="badge {{if eq .Config.Logging.LogRequestBody "full"}}bg-success{{else if eq .Config.Logging.LogRequestBody "truncated"}}bg-warning{{else}}bg-secondary{{end}}">
+                                                {{.Config.Logging.LogRequestBody}}
+                                            </span>
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th>Log Response Body:</th>
+                                        <th>记录响应体:</th>
                                         <td>
-                                            {{if .Config.Logging.LogResponseBody}}
-                                                <span class="badge bg-success">Yes</span>
-                                            {{else}}
-                                                <span class="badge bg-secondary">No</span>
-                                            {{end}}
+                                            <span class="badge {{if eq .Config.Logging.LogResponseBody "full"}}bg-success{{else if eq .Config.Logging.LogResponseBody "truncated"}}bg-warning{{else}}bg-secondary{{end}}">
+                                                {{.Config.Logging.LogResponseBody}}
+                                            </span>
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th>Persist to Disk:</th>
-                                        <td>
-                                            {{if .Config.Logging.PersistToDisk}}
-                                                <span class="badge bg-success">Yes</span>
-                                            {{else}}
-                                                <span class="badge bg-secondary">No</span>
-                                            {{end}}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>Log Directory:</th>
+                                        <th>日志目录:</th>
                                         <td><code>{{.Config.Logging.LogDirectory}}</code></td>
                                     </tr>
                                 </table>
                             </div>
                             <div class="col-md-6">
-                                <h6>Validation Configuration</h6>
+                                <h6>校验配置</h6>
                                 <table class="table table-sm">
                                     <tr>
-                                        <th>Strict Anthropic Format:</th>
+                                        <th>严格 Anthropic 格式:</th>
                                         <td>
                                             {{if .Config.Validation.StrictAnthropicFormat}}
-                                                <span class="badge bg-success">Enabled</span>
+                                                <span class="badge bg-success">已启用</span>
                                             {{else}}
-                                                <span class="badge bg-secondary">Disabled</span>
+                                                <span class="badge bg-secondary">已禁用</span>
                                             {{end}}
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th>Validate Streaming:</th>
+                                        <th>校验流式响应:</th>
                                         <td>
                                             {{if .Config.Validation.ValidateStreaming}}
-                                                <span class="badge bg-success">Enabled</span>
+                                                <span class="badge bg-success">已启用</span>
                                             {{else}}
-                                                <span class="badge bg-secondary">Disabled</span>
+                                                <span class="badge bg-secondary">已禁用</span>
                                             {{end}}
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th>Disconnect on Invalid:</th>
+                                        <th>无效时断开连接:</th>
                                         <td>
                                             {{if .Config.Validation.DisconnectOnInvalid}}
-                                                <span class="badge bg-warning">Yes</span>
+                                                <span class="badge bg-warning">是</span>
                                             {{else}}
-                                                <span class="badge bg-secondary">No</span>
+                                                <span class="badge bg-secondary">否</span>
                                             {{end}}
                                         </td>
                                     </tr>
@@ -163,31 +147,77 @@
 
                         <div class="row mt-4">
                             <div class="col-12">
-                                <h6>Endpoints Summary</h6>
+                                <h6>运行状态</h6>
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="card bg-light">
+                                            <div class="card-body text-center">
+                                                <h5 class="text-primary">{{len .Config.Endpoints}}</h5>
+                                                <small class="text-muted">端点总数</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-light">
+                                            <div class="card-body text-center">
+                                                <h5 class="text-success">{{.EnabledCount}}</h5>
+                                                <small class="text-muted">已启用端点</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-light">
+                                            <div class="card-body text-center">
+                                                <h5 class="text-info text-uppercase">{{.Config.Logging.Level}}</h5>
+                                                <small class="text-muted">日志级别</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-light">
+                                            <div class="card-body text-center">
+                                                <h5 class="{{if .Config.Validation.StrictAnthropicFormat}}text-success{{else}}text-secondary{{end}}">
+                                                    {{if .Config.Validation.StrictAnthropicFormat}}<i class="fas fa-shield-alt"></i>{{else}}<i class="fas fa-shield"></i>{{end}}
+                                                </h5>
+                                                <small class="text-muted">校验</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <h6>端点概览</h6>
                                 <table class="table table-sm">
                                     <thead>
                                         <tr>
-                                            <th>Name</th>
+                                            <th>优先级</th>
+                                            <th>名称</th>
                                             <th>URL</th>
-                                            <th>Auth Type</th>
-                                            <th>Timeout</th>
-                                            <th>Priority</th>
-                                            <th>Enabled</th>
+                                            <th>路径前缀</th>
+                                            <th>认证类型</th>
+                                            <th>启用</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {{range .Config.Endpoints}}
                                         <tr>
-                                            <td>{{.Name}}</td>
+                                            <td><span class="badge bg-info">{{.Priority}}</span></td>
+                                            <td><strong>{{.Name}}</strong></td>
                                             <td><code>{{.URL}}</code></td>
-                                            <td>{{.AuthType}}</td>
-                                            <td>{{.TimeoutSeconds}}s</td>
-                                            <td>{{.Priority}}</td>
+                                            <td><code>{{.PathPrefix}}</code></td>
+                                            <td>
+                                                <span class="badge {{if eq .AuthType "api_key"}}bg-primary{{else}}bg-secondary{{end}}">
+                                                    {{.AuthType}}
+                                                </span>
+                                            </td>
                                             <td>
                                                 {{if .Enabled}}
-                                                    <span class="badge bg-success">Yes</span>
+                                                    <span class="badge bg-success"><i class="fas fa-check"></i> 是</span>
                                                 {{else}}
-                                                    <span class="badge bg-secondary">No</span>
+                                                    <span class="badge bg-secondary"><i class="fas fa-times"></i> 否</span>
                                                 {{end}}
                                             </td>
                                         </tr>
@@ -198,12 +228,22 @@
                         </div>
 
                         <div class="mt-4">
-                            <div class="alert alert-warning">
-                                <h6><i class="fas fa-exclamation-triangle"></i> Configuration Notes:</h6>
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-info-circle"></i> 配置信息:</h6>
                                 <ul class="mb-0">
-                                    <li>Configuration changes require editing the <code>config.yaml</code> file and restarting the server</li>
-                                    <li>This interface is read-only for security reasons</li>
-                                    <li>Always backup your configuration before making changes</li>
+                                    <li><strong>服务器:</strong> 代理服务器监听端口 {{.Config.Server.Port}}</li>
+                                    <li><strong>网页管理:</strong> 管理界面在 {{.Config.WebAdmin.Host}}:{{.Config.WebAdmin.Port}}</li>
+                                    <li><strong>端点:</strong> 可通过 <a href="/admin/endpoints">端点配置</a> 页面管理已配置的端点</li>
+                                    <li><strong>日志:</strong> 请求日志存储在 <code>{{.Config.Logging.LogDirectory}}</code> 目录中</li>
+                                </ul>
+                            </div>
+                            <div class="alert alert-warning">
+                                <h6><i class="fas fa-exclamation-triangle"></i> 配置说明:</h6>
+                                <ul class="mb-0">
+                                    <li>服务器和日志配置更改需要编辑 <code>config.yaml</code> 文件并重启服务器</li>
+                                    <li>端点配置可通过网页界面管理并自动保存</li>
+                                    <li>此界面仅供查看，出于安全考虑 - 在此处做的配置更改不会持久化</li>
+                                    <li>在手动修改 <code>config.yaml</code> 之前请始终备份您的配置</li>
                                 </ul>
                             </div>
                         </div>

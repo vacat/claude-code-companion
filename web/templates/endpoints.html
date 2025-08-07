@@ -6,18 +6,78 @@
     <title>{{.Title}}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.css" rel="stylesheet">
+    <style>
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: #e3f2fd !important;
+        }
+        .sortable-drag {
+            opacity: 0.8;
+            background-color: #f5f5f5 !important;
+        }
+        .drag-handle {
+            cursor: grab;
+            user-select: none;
+        }
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+        .endpoint-row {
+            transition: background-color 0.2s ease;
+            cursor: move;
+            user-select: none;
+        }
+        .endpoint-row:hover {
+            background-color: #f8f9fa;
+        }
+        .endpoint-row.sortable-chosen {
+            background-color: #e3f2fd;
+        }
+        .auth-value {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .priority-badge {
+            width: 30px;
+            text-align: center;
+        }
+        /* 防止拖拽时选中文字 */
+        .endpoint-row * {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+        /* 只有表单输入框可以选中文字 */
+        input, textarea, select {
+            user-select: auto !important;
+            -webkit-user-select: auto !important;
+            -moz-user-select: auto !important;
+            -ms-user-select: auto !important;
+        }
+        /* 按钮列不参与拖拽 */
+        .action-buttons {
+            cursor: default;
+        }
+        .action-buttons button {
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="/admin/">
-                <i class="fas fa-server"></i> Claude Proxy Admin
+                <i class="fas fa-server"></i> Claude 代理管理后台
             </a>
             <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/admin/">Dashboard</a>
-                <a class="nav-link active" href="/admin/endpoints">Endpoints</a>
-                <a class="nav-link" href="/admin/logs">Logs</a>
-                <a class="nav-link" href="/admin/settings">Settings</a>
+                <a class="nav-link" href="/admin/">控制台</a>
+                <a class="nav-link active" href="/admin/endpoints">端点配置</a>
+                <a class="nav-link" href="/admin/logs">请求日志</a>
+                <a class="nav-link" href="/admin/settings">系统设置</a>
             </div>
         </div>
     </nav>
@@ -26,72 +86,93 @@
         <div class="row">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">Endpoint Configuration</h5>
-                        <small class="text-muted">Note: Changes require server restart to take effect</small>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-1">端点配置</h5>
+                            <small class="text-muted">配置变更自动保存，需重启服务器生效</small>
+                        </div>
+                        <button class="btn btn-primary" onclick="showAddEndpointModal()">
+                            <i class="fas fa-plus"></i> 添加端点
+                        </button>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>Name</th>
+                                        <th width="40"><i class="fas fa-arrows-alt" title="拖拽行来重新排序"></i></th>
+                                        <th>优先级</th>
+                                        <th>名称</th>
                                         <th>URL</th>
-                                        <th>Path Prefix</th>
-                                        <th>Auth Type</th>
-                                        <th>Timeout</th>
-                                        <th>Priority</th>
-                                        <th>Status</th>
-                                        <th>Enabled</th>
-                                        <th>Statistics</th>
+                                        <th>认证方式</th>
+                                        <th>状态</th>
+                                        <th>启用</th>
+                                        <th>统计</th>
+                                        <th width="120">操作</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="endpoint-list">
                                     {{range .Endpoints}}
-                                    <tr>
+                                    <tr class="endpoint-row" data-endpoint-name="{{.Name}}">
+                                        <td class="drag-handle text-center">
+                                            <i class="fas fa-arrows-alt text-muted"></i>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info priority-badge">{{.Priority}}</span>
+                                        </td>
                                         <td><strong>{{.Name}}</strong></td>
                                         <td><code>{{.URL}}</code></td>
-                                        <td><code>{{.PathPrefix}}</code></td>
                                         <td>
                                             <span class="badge {{if eq .AuthType "api_key"}}bg-primary{{else}}bg-secondary{{end}}">
                                                 {{.AuthType}}
                                             </span>
                                         </td>
-                                        <td>{{printf "%.0fs" .Timeout.Seconds}}</td>
-                                        <td><span class="badge bg-info">{{.Priority}}</span></td>
                                         <td>
                                             {{if eq .Status "active"}}
                                                 <span class="badge bg-success">
-                                                    <i class="fas fa-check-circle"></i> Active
+                                                    <i class="fas fa-check-circle"></i> 活跃
                                                 </span>
                                             {{else if eq .Status "inactive"}}
                                                 <span class="badge bg-danger">
-                                                    <i class="fas fa-times-circle"></i> Inactive
+                                                    <i class="fas fa-times-circle"></i> 不可用
                                                 </span>
                                             {{else}}
                                                 <span class="badge bg-warning">
-                                                    <i class="fas fa-clock"></i> Checking
+                                                    <i class="fas fa-clock"></i> 检测中
                                                 </span>
                                             {{end}}
                                         </td>
                                         <td>
                                             {{if .Enabled}}
                                                 <span class="badge bg-success">
-                                                    <i class="fas fa-toggle-on"></i> Enabled
+                                                    <i class="fas fa-toggle-on"></i> 已启用
                                                 </span>
                                             {{else}}
                                                 <span class="badge bg-secondary">
-                                                    <i class="fas fa-toggle-off"></i> Disabled
+                                                    <i class="fas fa-toggle-off"></i> 已禁用
                                                 </span>
                                             {{end}}
                                         </td>
                                         <td>
                                             <small>
-                                                <div><strong>Total:</strong> {{.TotalRequests}}</div>
-                                                <div><strong>Success:</strong> {{.SuccessRequests}}</div>
-                                                <div><strong>Failed:</strong> {{.FailureCount}}</div>
-                                                <div><strong>Success Rate:</strong> {{.SuccessRate}}</div>
+                                                <div><strong>总请求:</strong> {{.TotalRequests}}</div>
+                                                <div><strong>成功:</strong> {{.SuccessRequests}}</div>
+                                                <div><strong>成功率:</strong> {{.SuccessRate}}</div>
                                             </small>
+                                        </td>
+                                        <td class="action-buttons">
+                                            <div class="btn-group-vertical btn-group-sm">
+                                                <button class="btn btn-outline-primary btn-sm" 
+                                                        onclick="event.stopPropagation(); showEditEndpointModal('{{.Name}}')"
+                                                        title="编辑">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger btn-sm" 
+                                                        onclick="event.stopPropagation(); deleteEndpoint('{{.Name}}')"
+                                                        title="删除">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                     {{end}}
@@ -101,13 +182,14 @@
                         
                         <div class="mt-4">
                             <div class="alert alert-info">
-                                <h6><i class="fas fa-info-circle"></i> Configuration Notes:</h6>
+                                <h6><i class="fas fa-info-circle"></i> 配置说明：</h6>
                                 <ul class="mb-0">
-                                    <li><strong>Priority:</strong> Lower numbers have higher priority (1 = highest priority)</li>
-                                    <li><strong>Auth Type:</strong> 'api_key' uses Bearer token format, 'auth_token' uses raw token</li>
-                                    <li><strong>Status:</strong> Real-time endpoint availability status</li>
-                                    <li><strong>Enabled:</strong> Whether the endpoint is configured to be used</li>
-                                    <li><strong>Path Prefix:</strong> Added to the endpoint URL for API calls (usually /v1)</li>
+                                    <li><strong>优先级：</strong> 根据行序自动设置</li>
+                                    <li><strong>认证方式：</strong> 'api_key' 使用 x-api-key 请求头，'auth_token' 使用 Authorization Bearer</li>
+                                    <li><strong>状态：</strong> 实时端点可用性状态</li>
+                                    <li><strong>路径前缀：</strong> 所有端点自动设置为 /v1</li>
+                                    <li><strong>拖拽排序：</strong> 点击并拖拽任意行来重新排序端点</li>
+                                    <li><strong>认证值：</strong> 默认隐藏，点击眼睛图标切换显示</li>
                                 </ul>
                             </div>
                         </div>
@@ -117,12 +199,446 @@
         </div>
     </div>
 
+    <!-- 添加/编辑端点模态框 -->
+    <div class="modal fade" id="endpointModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="endpointModalTitle">添加端点</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="endpointForm">
+                        <input type="hidden" id="endpoint-id" />
+                        
+                        <div class="mb-3">
+                            <label for="endpoint-name" class="form-label">名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="endpoint-name" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="endpoint-url" class="form-label">URL <span class="text-danger">*</span></label>
+                            <input type="url" class="form-control" id="endpoint-url" required
+                                   placeholder="https://api.example.com">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="endpoint-auth-type" class="form-label">认证方式 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="endpoint-auth-type" required>
+                                <option value="api_key">API Key (x-api-key 请求头)</option>
+                                <option value="auth_token">Auth Token (Authorization Bearer)</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="endpoint-auth-value" class="form-label">认证值 <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <textarea class="form-control" id="endpoint-auth-value" rows="3" required
+                                          placeholder="输入您的 API Key 或 Token"></textarea>
+                                <button class="btn btn-outline-secondary" type="button" id="toggle-auth-visibility" onclick="toggleAuthVisibility()">
+                                    <i class="fas fa-eye" id="auth-eye-icon"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">认证值默认隐藏以保障安全</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="endpoint-enabled" checked>
+                                <label class="form-check-label" for="endpoint-enabled">
+                                    启用
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEndpoint()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script>
-        // Auto-refresh every 10 seconds
-        setInterval(function() {
-            location.reload();
-        }, 10000);
+        let currentEndpoints = [];
+        let editingEndpointName = null;
+        let endpointModal = null;
+        let originalAuthValue = '';  // 保存原始auth value
+        let isAuthVisible = false;   // auth value是否可见
+
+        document.addEventListener('DOMContentLoaded', function() {
+            endpointModal = new bootstrap.Modal(document.getElementById('endpointModal'));
+            initializeSortable();
+            loadEndpoints();
+            
+            // Auto-refresh every 30 seconds (only status updates)
+            setInterval(refreshEndpointStatus, 30000);
+        });
+
+        let sortableInstance = null;
+
+        function initializeSortable() {
+            const tbody = document.getElementById('endpoint-list');
+            
+            // 如果已经有实例，先销毁
+            if (sortableInstance) {
+                sortableInstance.destroy();
+            }
+            
+            sortableInstance = new Sortable(tbody, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag',
+                onStart: function(evt) {
+                    // 拖拽开始时添加视觉反馈
+                    document.body.style.cursor = 'grabbing';
+                },
+                onEnd: function (evt) {
+                    // 拖拽结束时恢复光标
+                    document.body.style.cursor = '';
+                    reorderEndpoints();
+                }
+            });
+        }
+
+        function loadEndpoints() {
+            fetch('/admin/api/endpoints')
+                .then(response => response.json())
+                .then(data => {
+                    currentEndpoints = data.endpoints;
+                    rebuildTable(currentEndpoints);
+                })
+                .catch(error => {
+                    console.error('Failed to load endpoints:', error);
+                    showAlert('Failed to load endpoints', 'danger');
+                });
+        }
+
+        function refreshEndpointStatus() {
+            fetch('/admin/api/endpoints')
+                .then(response => response.json())
+                .then(data => {
+                    // Only update status and statistics, not the full table
+                    data.endpoints.forEach(endpoint => {
+                        const row = document.querySelector(`tr[data-endpoint-name="${endpoint.name}"]`);
+                        if (row) {
+                            updateEndpointRowStatus(row, endpoint);
+                        }
+                    });
+                })
+                .catch(error => console.error('Failed to refresh endpoint status:', error));
+        }
+
+        function updateEndpointRowStatus(row, endpoint) {
+            const statusCell = row.children[5]; // 调整索引，移除了Timeout列
+            const statsCell = row.children[7];  // 调整索引
+            
+            // Update status
+            let statusBadge = '';
+            if (endpoint.status === 'active') {
+                statusBadge = '<span class="badge bg-success"><i class="fas fa-check-circle"></i> 活跃</span>';
+            } else if (endpoint.status === 'inactive') {
+                statusBadge = '<span class="badge bg-danger"><i class="fas fa-times-circle"></i> 不可用</span>';
+            } else {
+                statusBadge = '<span class="badge bg-warning"><i class="fas fa-clock"></i> 检测中</span>';
+            }
+            statusCell.innerHTML = statusBadge;
+            
+            // Update statistics - 使用正确的字段名
+            const successRate = endpoint.total_requests > 0 
+                ? (endpoint.success_requests / endpoint.total_requests * 100).toFixed(1) + '%' 
+                : 'N/A';
+            
+            statsCell.innerHTML = `
+                <small>
+                    <div><strong>总请求:</strong> ${endpoint.total_requests || 0}</div>
+                    <div><strong>成功:</strong> ${endpoint.success_requests || 0}</div>
+                    <div><strong>成功率:</strong> ${successRate}</div>
+                </small>
+            `;
+        }
+
+        function refreshTable() {
+            // 重新加载端点数据而不是刷新整个页面
+            loadEndpoints();
+        }
+
+        function rebuildTable(endpoints) {
+            const tbody = document.getElementById('endpoint-list');
+            tbody.innerHTML = '';
+            
+            endpoints.forEach((endpoint, index) => {
+                const row = document.createElement('tr');
+                row.className = 'endpoint-row';
+                row.setAttribute('data-endpoint-name', endpoint.name);
+                
+                // 构建状态徽章
+                let statusBadge = '';
+                if (endpoint.status === 'active') {
+                    statusBadge = '<span class="badge bg-success"><i class="fas fa-check-circle"></i> 活跃</span>';
+                } else if (endpoint.status === 'inactive') {
+                    statusBadge = '<span class="badge bg-danger"><i class="fas fa-times-circle"></i> 不可用</span>';
+                } else {
+                    statusBadge = '<span class="badge bg-warning"><i class="fas fa-clock"></i> 检测中</span>';
+                }
+                
+                // 构建启用状态徽章
+                const enabledBadge = endpoint.enabled 
+                    ? '<span class="badge bg-success"><i class="fas fa-toggle-on"></i> 已启用</span>'
+                    : '<span class="badge bg-secondary"><i class="fas fa-toggle-off"></i> 已禁用</span>';
+                
+                // 构建认证类型徽章
+                const authTypeBadge = endpoint.auth_type === 'api_key' 
+                    ? '<span class="badge bg-primary">api_key</span>'
+                    : '<span class="badge bg-secondary">auth_token</span>';
+                
+                // 计算成功率
+                const successRate = endpoint.total_requests > 0 
+                    ? (endpoint.success_requests / endpoint.total_requests * 100).toFixed(1) + '%' 
+                    : 'N/A';
+                
+                row.innerHTML = `
+                    <td class="drag-handle text-center">
+                        <i class="fas fa-arrows-alt text-muted"></i>
+                    </td>
+                    <td>
+                        <span class="badge bg-info priority-badge">${endpoint.priority}</span>
+                    </td>
+                    <td><strong>${endpoint.name}</strong></td>
+                    <td><code>${endpoint.url}</code></td>
+                    <td>${authTypeBadge}</td>
+                    <td>${statusBadge}</td>
+                    <td>${enabledBadge}</td>
+                    <td>
+                        <small>
+                            <div><strong>总请求:</strong> ${endpoint.total_requests || 0}</div>
+                            <div><strong>成功:</strong> ${endpoint.success_requests || 0}</div>
+                            <div><strong>成功率:</strong> ${successRate}</div>
+                        </small>
+                    </td>
+                    <td class="action-buttons">
+                        <div class="btn-group-vertical btn-group-sm">
+                            <button class="btn btn-outline-primary btn-sm" 
+                                    onclick="event.stopPropagation(); showEditEndpointModal('${endpoint.name}')"
+                                    title="编辑">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" 
+                                    onclick="event.stopPropagation(); deleteEndpoint('${endpoint.name}')"
+                                    title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+            
+            // 重新初始化拖拽排序
+            initializeSortable();
+        }
+
+        function showAddEndpointModal() {
+            editingEndpointName = null;
+            originalAuthValue = '';
+            isAuthVisible = false;
+            
+            document.getElementById('endpointModalTitle').textContent = '添加端点';
+            document.getElementById('endpointForm').reset();
+            document.getElementById('endpoint-enabled').checked = true;
+            
+            // 重置auth visibility
+            resetAuthVisibility();
+            
+            endpointModal.show();
+        }
+
+        function showEditEndpointModal(endpointName) {
+            const endpoint = currentEndpoints.find(ep => ep.name === endpointName);
+            if (!endpoint) {
+                showAlert('端点未找到', 'danger');
+                return;
+            }
+
+            editingEndpointName = endpointName;
+            originalAuthValue = endpoint.auth_value;
+            isAuthVisible = false;
+            
+            document.getElementById('endpointModalTitle').textContent = '编辑端点';
+            
+            // Populate form
+            document.getElementById('endpoint-name').value = endpoint.name;
+            document.getElementById('endpoint-url').value = endpoint.url;
+            document.getElementById('endpoint-auth-type').value = endpoint.auth_type;
+            document.getElementById('endpoint-enabled').checked = endpoint.enabled;
+            
+            // 设置auth value为星号
+            document.getElementById('endpoint-auth-value').value = '*'.repeat(Math.min(endpoint.auth_value.length, 50));
+            resetAuthVisibility();
+            
+            endpointModal.show();
+        }
+
+        function toggleAuthVisibility() {
+            const authValueField = document.getElementById('endpoint-auth-value');
+            const eyeIcon = document.getElementById('auth-eye-icon');
+            
+            if (isAuthVisible) {
+                // 隐藏：显示星号
+                if (originalAuthValue) {
+                    authValueField.value = '*'.repeat(Math.min(originalAuthValue.length, 50));
+                }
+                eyeIcon.className = 'fas fa-eye';
+                isAuthVisible = false;
+            } else {
+                // 显示：显示真实值
+                authValueField.value = originalAuthValue;
+                eyeIcon.className = 'fas fa-eye-slash';
+                isAuthVisible = true;
+            }
+        }
+
+        function resetAuthVisibility() {
+            const eyeIcon = document.getElementById('auth-eye-icon');
+            eyeIcon.className = 'fas fa-eye';
+            isAuthVisible = false;
+        }
+
+        function saveEndpoint() {
+            const form = document.getElementById('endpointForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            // 获取auth value的真实值
+            let authValue = document.getElementById('endpoint-auth-value').value;
+            if (!isAuthVisible && originalAuthValue && authValue.startsWith('*')) {
+                // 如果显示的是星号且有原始值，使用原始值
+                authValue = originalAuthValue;
+            }
+
+            const data = {
+                name: document.getElementById('endpoint-name').value,
+                url: document.getElementById('endpoint-url').value,
+                path_prefix: '/v1', // 固定为 /v1
+                auth_type: document.getElementById('endpoint-auth-type').value,
+                auth_value: authValue,
+                enabled: document.getElementById('endpoint-enabled').checked
+            };
+
+            const isEditing = editingEndpointName !== null;
+            const url = isEditing 
+                ? `/admin/api/endpoints/${encodeURIComponent(editingEndpointName)}` 
+                : '/admin/api/endpoints';
+            const method = isEditing ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showAlert(data.error, 'danger');
+                } else {
+                    endpointModal.hide();
+                    showAlert(data.message, 'success');
+                    loadEndpoints(); // 重新加载数据而不是刷新页面
+                }
+            })
+            .catch(error => {
+                console.error('Failed to save endpoint:', error);
+                showAlert('Failed to save endpoint', 'danger');
+            });
+        }
+
+        function deleteEndpoint(endpointName) {
+            if (!confirm(`确定要删除端点 "${endpointName}" 吗？`)) {
+                return;
+            }
+
+            fetch(`/admin/api/endpoints/${encodeURIComponent(endpointName)}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showAlert(data.error, 'danger');
+                } else {
+                    showAlert(data.message, 'success');
+                    loadEndpoints(); // 重新加载数据而不是刷新页面
+                }
+            })
+            .catch(error => {
+                console.error('Failed to delete endpoint:', error);
+                showAlert('Failed to delete endpoint', 'danger');
+            });
+        }
+
+        function reorderEndpoints() {
+            const rows = document.querySelectorAll('#endpoint-list tr');
+            const orderedNames = Array.from(rows).map(row => row.dataset.endpointName);
+            
+            fetch('/admin/api/endpoints/reorder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    ordered_names: orderedNames
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showAlert(data.error, 'danger');
+                    loadEndpoints(); // 重新加载以恢复顺序
+                } else {
+                    showAlert(data.message, 'success');
+                    // 更新优先级显示，不需要重新加载整个表格
+                    const rows = document.querySelectorAll('#endpoint-list tr');
+                    rows.forEach((row, index) => {
+                        const priorityBadge = row.querySelector('.priority-badge');
+                        if (priorityBadge) {
+                            priorityBadge.textContent = index + 1;
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Failed to reorder endpoints:', error);
+                showAlert('Failed to reorder endpoints', 'danger');
+                loadEndpoints(); // 重新加载以恢复顺序
+            });
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // Auto dismiss after 3 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 3000);
+        }
     </script>
 </body>
 </html>

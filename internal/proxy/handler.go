@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,7 +32,7 @@ func (s *Server) handleProxy(c *gin.Context) {
 		c.Request.Body = io.NopCloser(bytes.NewReader(body))
 	}
 
-	// 获取所有启用的端点，按优先级排序
+	// 依次尝试每个端点，从第一个开始按优先级顺序查找可用端点
 	allEndpoints := s.endpointManager.GetAllEndpoints()
 	enabledEndpoints := make([]*endpoint.Endpoint, 0)
 	for _, ep := range allEndpoints {
@@ -46,28 +47,45 @@ func (s *Server) handleProxy(c *gin.Context) {
 		return
 	}
 
-	// 按优先级排序
+	// 按优先级排序（数字越小优先级越高）
 	sort.Slice(enabledEndpoints, func(i, j int) bool {
 		return enabledEndpoints[i].Priority < enabledEndpoints[j].Priority
 	})
 
-	// 依次尝试每个端点，失败后直接尝试下一个
+	// 依次尝试每个可用的端点
+	attemptedCount := 0
 	for i, ep := range enabledEndpoints {
+		// 跳过不可用的端点
+		if !ep.IsAvailable() {
+			s.logger.Debug(fmt.Sprintf("Skipping unavailable endpoint %s", ep.Name))
+			continue
+		}
+		
+		attemptedCount++
 		s.logger.Debug(fmt.Sprintf("Attempting request to endpoint %s (%d/%d)", ep.Name, i+1, len(enabledEndpoints)))
 
 		success, shouldRetry := s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime)
 		if success {
 			s.endpointManager.RecordRequest(ep.ID, true)
+			
+			// 尝试提取基准信息（只在第一次成功时提取）
+			if len(requestBody) > 0 {
+				extracted := s.healthChecker.GetExtractor().ExtractFromRequest(requestBody, c.Request.Header)
+				if extracted {
+					s.logger.Info("Successfully extracted baseline request info for health checks")
+				}
+			}
+			
 			s.logger.Debug(fmt.Sprintf("Request succeeded on endpoint %s", ep.Name))
 			return
 		}
 
-		// 记录失败，但不改变端点状态
+		// 记录失败
 		s.endpointManager.RecordRequest(ep.ID, false)
 		s.logger.Debug(fmt.Sprintf("Request failed on endpoint %s, trying next endpoint", ep.Name))
 
-		// 如果不应该重试，或者这是最后一个端点，则停止
-		if !shouldRetry || i == len(enabledEndpoints)-1 {
+		// 如果不应该重试，则停止尝试其他端点
+		if !shouldRetry {
 			break
 		}
 
@@ -79,11 +97,22 @@ func (s *Server) handleProxy(c *gin.Context) {
 
 	duration := time.Since(startTime)
 	requestLog := s.logger.CreateRequestLog(requestID, "failed", c.Request.Method, path)
-	requestLog.Error = fmt.Sprintf("All %d endpoints failed", len(enabledEndpoints))
 	requestLog.DurationMs = duration.Nanoseconds() / 1000000
-	s.logger.LogRequest(requestLog)
-
-	c.JSON(http.StatusBadGateway, gin.H{"error": "All endpoints failed"})
+	if len(requestBody) > 0 {
+		requestLog.Model = extractModelFromRequestBody(string(requestBody))
+	}
+	
+	if attemptedCount == 0 {
+		requestLog.Error = "No available endpoints found"
+		s.logger.LogRequest(requestLog)
+		s.logger.Error("No available endpoints", nil)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "No available endpoints"})
+	} else {
+		requestLog.Error = fmt.Sprintf("All %d available endpoints failed", attemptedCount)
+		s.logger.LogRequest(requestLog)
+		s.logger.Error(fmt.Sprintf("All %d available endpoints failed", attemptedCount), nil)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "All endpoints failed"})
+	}
 }
 
 func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path string, requestBody []byte, requestID string, startTime time.Time) (bool, bool) {
@@ -129,8 +158,15 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		duration := time.Since(startTime)
 		requestLog := s.logger.CreateRequestLog(requestID, ep.URL, c.Request.Method, path)
 		requestLog.RequestBodySize = len(requestBody)
-		if s.config.Logging.LogRequestBody && len(requestBody) > 0 {
-			requestLog.RequestBody = string(requestBody)
+		if s.config.Logging.LogRequestBody != "none" && len(requestBody) > 0 {
+			if s.config.Logging.LogRequestBody == "truncated" {
+				requestLog.RequestBody = truncateBody(string(requestBody), 1024)
+			} else {
+				requestLog.RequestBody = string(requestBody)
+			}
+		}
+		if len(requestBody) > 0 {
+			requestLog.Model = extractModelFromRequestBody(string(requestBody))
 		}
 		s.logger.UpdateRequestLog(requestLog, req, nil, nil, duration, err)
 		s.logger.LogRequest(requestLog)
@@ -152,8 +188,15 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		
 		requestLog := s.logger.CreateRequestLog(requestID, ep.URL, c.Request.Method, path)
 		requestLog.RequestBodySize = len(requestBody)
-		if s.config.Logging.LogRequestBody && len(requestBody) > 0 {
-			requestLog.RequestBody = string(requestBody)
+		if s.config.Logging.LogRequestBody != "none" && len(requestBody) > 0 {
+			if s.config.Logging.LogRequestBody == "truncated" {
+				requestLog.RequestBody = truncateBody(string(requestBody), 1024)
+			} else {
+				requestLog.RequestBody = string(requestBody)
+			}
+		}
+		if len(requestBody) > 0 {
+			requestLog.Model = extractModelFromRequestBody(string(requestBody))
 		}
 		s.logger.UpdateRequestLog(requestLog, req, resp, decompressedBody, duration, nil)
 		s.logger.LogRequest(requestLog)
@@ -221,11 +264,44 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	duration := time.Since(startTime)
 	requestLog := s.logger.CreateRequestLog(requestID, ep.URL, c.Request.Method, path)
 	requestLog.RequestBodySize = len(requestBody)
-	if s.config.Logging.LogRequestBody && len(requestBody) > 0 {
-		requestLog.RequestBody = string(requestBody)
+	if s.config.Logging.LogRequestBody != "none" && len(requestBody) > 0 {
+		if s.config.Logging.LogRequestBody == "truncated" {
+			requestLog.RequestBody = truncateBody(string(requestBody), 1024)
+		} else {
+			requestLog.RequestBody = string(requestBody)
+		}
+	}
+	if len(requestBody) > 0 {
+		requestLog.Model = extractModelFromRequestBody(string(requestBody))
 	}
 	s.logger.UpdateRequestLog(requestLog, req, resp, decompressedBody, duration, nil)
 	s.logger.LogRequest(requestLog)
 
 	return true, false
+}
+
+// extractModelFromRequestBody extracts the model name from request body JSON
+func extractModelFromRequestBody(body string) string {
+	if body == "" {
+		return ""
+	}
+	
+	var requestData map[string]interface{}
+	if err := json.Unmarshal([]byte(body), &requestData); err != nil {
+		return ""
+	}
+	
+	if model, ok := requestData["model"].(string); ok {
+		return model
+	}
+	
+	return ""
+}
+
+// truncateBody truncates body content to specified length
+func truncateBody(body string, maxLen int) string {
+	if len(body) <= maxLen {
+		return body
+	}
+	return body[:maxLen] + "... [truncated]"
 }

@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
-	"time"
+	"os"
 
 	"gopkg.in/yaml.v3"
 )
@@ -22,23 +22,21 @@ type ServerConfig struct {
 }
 
 type EndpointConfig struct {
-	Name           string `yaml:"name"`
-	URL            string `yaml:"url"`
-	PathPrefix     string `yaml:"path_prefix"`
-	AuthType       string `yaml:"auth_type"`
-	AuthValue      string `yaml:"auth_value"`
-	TimeoutSeconds int    `yaml:"timeout_seconds"`
-	Enabled        bool   `yaml:"enabled"`
-	Priority       int    `yaml:"priority"`
+	Name       string `yaml:"name"`
+	URL        string `yaml:"url"`
+	PathPrefix string `yaml:"path_prefix"`
+	AuthType   string `yaml:"auth_type"`
+	AuthValue  string `yaml:"auth_value"`
+	Enabled    bool   `yaml:"enabled"`
+	Priority   int    `yaml:"priority"`
 }
 
 type LoggingConfig struct {
-	Level              string `yaml:"level"`
-	LogFailedRequests  bool   `yaml:"log_failed_requests"`
-	LogRequestBody     bool   `yaml:"log_request_body"`
-	LogResponseBody    bool   `yaml:"log_response_body"`
-	PersistToDisk      bool   `yaml:"persist_to_disk"`
-	LogDirectory       string `yaml:"log_directory"`
+	Level           string `yaml:"level"`
+	LogRequestTypes string `yaml:"log_request_types"`
+	LogRequestBody  string `yaml:"log_request_body"`
+	LogResponseBody string `yaml:"log_response_body"`
+	LogDirectory    string `yaml:"log_directory"`
 }
 
 type ValidationConfig struct {
@@ -64,9 +62,6 @@ func (e *EndpointConfig) GetAuthHeader() string {
 	}
 }
 
-func (e *EndpointConfig) GetTimeout() time.Duration {
-	return time.Duration(e.TimeoutSeconds) * time.Second
-}
 
 func LoadConfig(filename string) (*Config, error) {
 	data, err := ioutil.ReadFile(filename)
@@ -112,9 +107,6 @@ func validateConfig(config *Config) error {
 		if endpoint.AuthValue == "" {
 			return fmt.Errorf("endpoint %d: auth_value cannot be empty", i)
 		}
-		if endpoint.TimeoutSeconds <= 0 {
-			return fmt.Errorf("endpoint %d: timeout_seconds must be greater than 0", i)
-		}
 	}
 
 	if config.WebAdmin.Enabled {
@@ -128,6 +120,81 @@ func validateConfig(config *Config) error {
 
 	if config.Logging.LogDirectory == "" {
 		config.Logging.LogDirectory = "./logs"
+	}
+
+	// Validate log_request_types
+	if config.Logging.LogRequestTypes == "" {
+		config.Logging.LogRequestTypes = "all"
+	}
+	validRequestTypes := []string{"failed", "success", "all"}
+	validRequestType := false
+	for _, vt := range validRequestTypes {
+		if config.Logging.LogRequestTypes == vt {
+			validRequestType = true
+			break
+		}
+	}
+	if !validRequestType {
+		return fmt.Errorf("invalid log_request_types '%s', must be one of: failed, success, all", config.Logging.LogRequestTypes)
+	}
+
+	// Validate log_request_body
+	if config.Logging.LogRequestBody == "" {
+		config.Logging.LogRequestBody = "full"
+	}
+	validBodyTypes := []string{"none", "truncated", "full"}
+	validRequestBodyType := false
+	for _, vt := range validBodyTypes {
+		if config.Logging.LogRequestBody == vt {
+			validRequestBodyType = true
+			break
+		}
+	}
+	if !validRequestBodyType {
+		return fmt.Errorf("invalid log_request_body '%s', must be one of: none, truncated, full", config.Logging.LogRequestBody)
+	}
+
+	// Validate log_response_body
+	if config.Logging.LogResponseBody == "" {
+		config.Logging.LogResponseBody = "full"
+	}
+	validResponseBodyType := false
+	for _, vt := range validBodyTypes {
+		if config.Logging.LogResponseBody == vt {
+			validResponseBodyType = true
+			break
+		}
+	}
+	if !validResponseBodyType {
+		return fmt.Errorf("invalid log_response_body '%s', must be one of: none, truncated, full", config.Logging.LogResponseBody)
+	}
+
+	return nil
+}
+
+func SaveConfig(config *Config, filename string) error {
+	// 首先验证配置
+	if err := validateConfig(config); err != nil {
+		return fmt.Errorf("invalid configuration: %v", err)
+	}
+
+	// 序列化为YAML
+	data, err := yaml.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %v", err)
+	}
+
+	// 创建备份文件
+	if _, err := os.Stat(filename); err == nil {
+		backupFilename := filename + ".backup"
+		if err := os.Rename(filename, backupFilename); err != nil {
+			return fmt.Errorf("failed to create backup: %v", err)
+		}
+	}
+
+	// 写入新配置
+	if err := ioutil.WriteFile(filename, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %v", err)
 	}
 
 	return nil

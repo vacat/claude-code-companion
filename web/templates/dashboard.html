@@ -11,13 +11,13 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="/admin/">
-                <i class="fas fa-server"></i> Claude Proxy Admin
+                <i class="fas fa-server"></i> Claude 代理管理后台
             </a>
             <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/admin/">Dashboard</a>
-                <a class="nav-link" href="/admin/endpoints">Endpoints</a>
-                <a class="nav-link" href="/admin/logs">Logs</a>
-                <a class="nav-link" href="/admin/settings">Settings</a>
+                <a class="nav-link" href="/admin/">控制台</a>
+                <a class="nav-link" href="/admin/endpoints">端点配置</a>
+                <a class="nav-link" href="/admin/logs">请求日志</a>
+                <a class="nav-link" href="/admin/settings">系统设置</a>
             </div>
         </div>
     </nav>
@@ -27,7 +27,7 @@
             <div class="col-md-3 col-sm-6 mb-3">
                 <div class="card bg-primary text-white">
                     <div class="card-body">
-                        <h5 class="card-title">Total Endpoints</h5>
+                        <h5 class="card-title">端点总数</h5>
                         <h2>{{.TotalEndpoints}}</h2>
                     </div>
                 </div>
@@ -35,7 +35,7 @@
             <div class="col-md-3 col-sm-6 mb-3">
                 <div class="card bg-success text-white">
                     <div class="card-body">
-                        <h5 class="card-title">Active Endpoints</h5>
+                        <h5 class="card-title">活跃端点</h5>
                         <h2>{{.ActiveEndpoints}}</h2>
                     </div>
                 </div>
@@ -43,7 +43,7 @@
             <div class="col-md-3 col-sm-6 mb-3">
                 <div class="card bg-info text-white">
                     <div class="card-body">
-                        <h5 class="card-title">Total Requests</h5>
+                        <h5 class="card-title">请求总数</h5>
                         <h2>{{.TotalRequests}}</h2>
                     </div>
                 </div>
@@ -51,7 +51,7 @@
             <div class="col-md-3 col-sm-6 mb-3">
                 <div class="card bg-warning text-white">
                     <div class="card-body">
-                        <h5 class="card-title">Success Rate</h5>
+                        <h5 class="card-title">成功率</h5>
                         <h2>{{.OverallSuccessRate}}</h2>
                     </div>
                 </div>
@@ -62,20 +62,20 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="mb-0">Endpoint Status</h5>
+                        <h5 class="mb-0">端点状态</h5>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>Name</th>
+                                        <th>名称</th>
                                         <th>URL</th>
-                                        <th>Status</th>
-                                        <th>Priority</th>
-                                        <th>Total Requests</th>
-                                        <th>Success Rate</th>
-                                        <th>Last Failure</th>
+                                        <th>状态</th>
+                                        <th>优先级</th>
+                                        <th>总请求数</th>
+                                        <th>成功率</th>
+                                        <th>最后失败时间</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -85,11 +85,11 @@
                                         <td>{{.URL}}</td>
                                         <td>
                                             {{if eq .Status "active"}}
-                                                <span class="badge bg-success">Active</span>
+                                                <span class="badge bg-success">活跃</span>
                                             {{else if eq .Status "inactive"}}
-                                                <span class="badge bg-danger">Inactive</span>
+                                                <span class="badge bg-danger">不可用</span>
                                             {{else}}
-                                                <span class="badge bg-warning">Checking</span>
+                                                <span class="badge bg-warning">检测中</span>
                                             {{end}}
                                         </td>
                                         <td>{{.Priority}}</td>
@@ -99,7 +99,7 @@
                                             {{if not .LastFailure.IsZero}}
                                                 {{.LastFailure.Format "2006-01-02 15:04:05"}}
                                             {{else}}
-                                                Never
+                                                从未失败
                                             {{end}}
                                         </td>
                                     </tr>
