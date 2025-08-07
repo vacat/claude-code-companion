@@ -94,7 +94,7 @@ func (e *Endpoint) RecordRequest(success bool) {
 		Success:   success,
 	})
 	
-	// 清理30秒前的历史记录
+	// 清理140秒前的历史记录
 	e.cleanOldHistory(now)
 	
 	e.TotalRequests++
@@ -109,14 +109,14 @@ func (e *Endpoint) RecordRequest(success bool) {
 		e.FailureCount++
 		e.LastFailure = now
 		
-		// 检查30秒内的请求情况，判断是否需要标记为不可用
+		// 检查140秒内的请求情况，判断是否需要标记为不可用
 		e.checkAndUpdateStatus(now)
 	}
 }
 
-// 清理30秒前的历史记录
+// 清理140秒前的历史记录
 func (e *Endpoint) cleanOldHistory(now time.Time) {
-	cutoff := now.Add(-30 * time.Second)
+	cutoff := now.Add(-140 * time.Second)
 	validIndex := 0
 	
 	for i, record := range e.RequestHistory {
@@ -129,14 +129,14 @@ func (e *Endpoint) cleanOldHistory(now time.Time) {
 	e.RequestHistory = e.RequestHistory[:validIndex]
 }
 
-// 检查30秒内的请求情况，判断是否需要标记为不可用
+// 检查140秒内的请求情况，判断是否需要标记为不可用
 func (e *Endpoint) checkAndUpdateStatus(now time.Time) {
 	// 只有当前是可用状态时才检查
 	if e.Status != StatusActive {
 		return
 	}
 	
-	cutoff := now.Add(-30 * time.Second)
+	cutoff := now.Add(-140 * time.Second)
 	totalRequests := 0
 	failedRequests := 0
 	
@@ -149,7 +149,7 @@ func (e *Endpoint) checkAndUpdateStatus(now time.Time) {
 		}
 	}
 	
-	// 30秒内请求数超过1且全部失败时，标记为不可用
+	// 140秒内请求数超过1且全部失败时，标记为不可用
 	if totalRequests > 1 && failedRequests == totalRequests {
 		e.Status = StatusInactive
 	}
