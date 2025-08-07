@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"claude-proxy/internal/config"
+	"claude-proxy/internal/utils"
 )
 
 type Status string
@@ -16,10 +17,7 @@ const (
 	StatusChecking Status = "checking"
 )
 
-type RequestRecord struct {
-	Timestamp time.Time
-	Success   bool
-}
+// 删除不再需要的 RequestRecord 定义，因为已经移到 utils 包
 
 type Endpoint struct {
 	ID              string          `json:"id"`
@@ -36,7 +34,7 @@ type Endpoint struct {
 	TotalRequests   int             `json:"total_requests"`
 	SuccessRequests int             `json:"success_requests"`
 	LastFailure     time.Time       `json:"last_failure"`
-	RequestHistory  []RequestRecord `json:"-"` // 请求历史，不导出到JSON
+	RequestHistory  *utils.CircularBuffer `json:"-"` // 使用环形缓冲区，不导出到JSON
 	mutex           sync.RWMutex
 }
 
@@ -52,8 +50,21 @@ func NewEndpoint(config config.EndpointConfig) *Endpoint {
 		Priority:       config.Priority,
 		Status:         StatusActive,
 		LastCheck:      time.Now(),
-		RequestHistory: make([]RequestRecord, 0),
+		RequestHistory: utils.NewCircularBuffer(100, 140*time.Second), // 100个记录，140秒窗口
 	}
+}
+
+// 实现 EndpointSorter 接口
+func (e *Endpoint) GetPriority() int {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	return e.Priority
+}
+
+func (e *Endpoint) IsEnabled() bool {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	return e.Enabled
 }
 
 func (e *Endpoint) GetAuthHeader() string {
@@ -76,10 +87,14 @@ func (e *Endpoint) GetFullURL(path string) string {
 	return e.URL + e.PathPrefix + path
 }
 
+// 优化 IsAvailable 方法，减少锁的持有时间
 func (e *Endpoint) IsAvailable() bool {
 	e.mutex.RLock()
-	defer e.mutex.RUnlock()
-	return e.Enabled && e.Status == StatusActive
+	enabled := e.Enabled
+	status := e.Status
+	e.mutex.RUnlock()
+	
+	return enabled && status == StatusActive
 }
 
 func (e *Endpoint) RecordRequest(success bool) {
@@ -88,14 +103,12 @@ func (e *Endpoint) RecordRequest(success bool) {
 
 	now := time.Now()
 	
-	// 添加到请求历史
-	e.RequestHistory = append(e.RequestHistory, RequestRecord{
+	// 添加到环形缓冲区
+	record := utils.RequestRecord{
 		Timestamp: now,
 		Success:   success,
-	})
-	
-	// 清理140秒前的历史记录
-	e.cleanOldHistory(now)
+	}
+	e.RequestHistory.Add(record)
 	
 	e.TotalRequests++
 	if success {
@@ -109,49 +122,10 @@ func (e *Endpoint) RecordRequest(success bool) {
 		e.FailureCount++
 		e.LastFailure = now
 		
-		// 检查140秒内的请求情况，判断是否需要标记为不可用
-		e.checkAndUpdateStatus(now)
-	}
-}
-
-// 清理150秒前的历史记录（比状态检查窗口多10秒，避免边界条件竞争）
-func (e *Endpoint) cleanOldHistory(now time.Time) {
-	cutoff := now.Add(-150 * time.Second)
-	validIndex := 0
-	
-	for i, record := range e.RequestHistory {
-		if record.Timestamp.After(cutoff) {
-			e.RequestHistory[validIndex] = e.RequestHistory[i]
-			validIndex++
+		// 使用环形缓冲区检查是否应该标记为不可用
+		if e.Status == StatusActive && e.RequestHistory.ShouldMarkInactive(now) {
+			e.Status = StatusInactive
 		}
-	}
-	
-	e.RequestHistory = e.RequestHistory[:validIndex]
-}
-
-// 检查140秒内的请求情况，判断是否需要标记为不可用
-func (e *Endpoint) checkAndUpdateStatus(now time.Time) {
-	// 只有当前是可用状态时才检查
-	if e.Status != StatusActive {
-		return
-	}
-	
-	cutoff := now.Add(-140 * time.Second)
-	totalRequests := 0
-	failedRequests := 0
-	
-	for _, record := range e.RequestHistory {
-		if record.Timestamp.After(cutoff) {
-			totalRequests++
-			if !record.Success {
-				failedRequests++
-			}
-		}
-	}
-	
-	// 140秒内请求数超过1且全部失败时，标记为不可用
-	if totalRequests > 1 && failedRequests == totalRequests {
-		e.Status = StatusInactive
 	}
 }
 
@@ -166,6 +140,8 @@ func (e *Endpoint) MarkActive() {
 	defer e.mutex.Unlock()
 	e.Status = StatusActive
 	e.FailureCount = 0
+	// 可选：清理历史记录
+	e.RequestHistory.Clear()
 }
 
 type requestStats struct {
@@ -173,12 +149,18 @@ type requestStats struct {
 	failed  int
 }
 
+// getRecentRequests returns recent request statistics using the circular buffer
 func (e *Endpoint) getRecentRequests(duration time.Duration) requestStats {
-	// 简化实现，基于当前失败计数
-	// 实际应该维护一个时间窗口内的请求历史
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	
+	now := time.Now()
+	total, failed := e.RequestHistory.GetWindowStats(now)
+	success := total - failed
+	
 	return requestStats{
-		success: e.SuccessRequests,
-		failed:  e.FailureCount,
+		success: success,
+		failed:  failed,
 	}
 }
 

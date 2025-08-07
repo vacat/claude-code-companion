@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"claude-proxy/internal/utils"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -31,6 +33,12 @@ type EndpointConfig struct {
 	Enabled    bool   `yaml:"enabled"`
 	Priority   int    `yaml:"priority"`
 }
+
+// 实现 EndpointConfig 接口，用于统一验证
+func (e EndpointConfig) GetName() string     { return e.Name }
+func (e EndpointConfig) GetURL() string      { return e.URL }
+func (e EndpointConfig) GetAuthType() string { return e.AuthType }
+func (e EndpointConfig) GetAuthValue() string { return e.AuthValue }
 
 type LoggingConfig struct {
 	Level           string `yaml:"level"`
@@ -74,31 +82,20 @@ func validateConfig(config *Config) error {
 		config.Server.Host = "127.0.0.1"
 	}
 
-	if config.Server.Port <= 0 || config.Server.Port > 65535 {
-		return fmt.Errorf("invalid server port: %d", config.Server.Port)
+	// 使用统一的服务器配置验证
+	if err := utils.ValidateServerConfig(config.Server.Host, config.Server.Port, config.Server.AuthToken); err != nil {
+		return err
 	}
 
-	if config.Server.AuthToken == "" {
-		return fmt.Errorf("server auth_token cannot be empty")
+	// 转换为接口类型进行统一验证
+	validator := utils.NewEndpointConfigValidator()
+	endpointInterfaces := make([]utils.EndpointConfig, len(config.Endpoints))
+	for i, ep := range config.Endpoints {
+		endpointInterfaces[i] = ep
 	}
 
-	if len(config.Endpoints) == 0 {
-		return fmt.Errorf("at least one endpoint must be configured")
-	}
-
-	for i, endpoint := range config.Endpoints {
-		if endpoint.Name == "" {
-			return fmt.Errorf("endpoint %d: name cannot be empty", i)
-		}
-		if endpoint.URL == "" {
-			return fmt.Errorf("endpoint %d: url cannot be empty", i)
-		}
-		if endpoint.AuthType != "api_key" && endpoint.AuthType != "auth_token" {
-			return fmt.Errorf("endpoint %d: invalid auth_type '%s', must be 'api_key' or 'auth_token'", i, endpoint.AuthType)
-		}
-		if endpoint.AuthValue == "" {
-			return fmt.Errorf("endpoint %d: auth_value cannot be empty", i)
-		}
+	if err := validator.ValidateEndpoints(endpointInterfaces); err != nil {
+		return err
 	}
 
 	// WebAdmin 现在合并到主服务器端口，无需单独验证

@@ -1,11 +1,12 @@
 package logger
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
+
+	"claude-proxy/internal/utils"
 
 	"github.com/sirupsen/logrus"
 )
@@ -29,10 +30,18 @@ type RequestLog struct {
 	Model           string            `json:"model,omitempty"`
 }
 
+// StorageInterface defines the interface for log storage backends
+type StorageInterface interface {
+	SaveLog(log *RequestLog)
+	GetLogs(limit, offset int, failedOnly bool) ([]*RequestLog, int, error)
+	GetAllLogsByRequestID(requestID string) ([]*RequestLog, error)
+	Close() error
+}
+
 type Logger struct {
-	logger       *logrus.Logger
-	storage      *Storage
-	config       LogConfig
+	logger  *logrus.Logger
+	storage StorageInterface
+	config  LogConfig
 }
 
 type LogConfig struct {
@@ -56,9 +65,10 @@ func NewLogger(config LogConfig) (*Logger, error) {
 		TimestampFormat: time.RFC3339,
 	})
 
-	storage, err := NewStorage(config.LogDirectory)
+	// Use SQLite storage instead of file-based storage
+	storage, err := NewSQLiteStorage(config.LogDirectory)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize log storage: %v", err)
+		return nil, fmt.Errorf("failed to initialize SQLite log storage: %v", err)
 	}
 
 	return &Logger{
@@ -172,13 +182,7 @@ func (l *Logger) GetAllLogsByRequestID(requestID string) ([]*RequestLog, error) 
 }
 
 func headersToMap(headers http.Header) map[string]string {
-	result := make(map[string]string)
-	for k, v := range headers {
-		if len(v) > 0 {
-			result[k] = v[0]
-		}
-	}
-	return result
+	return utils.HeadersToMap(headers)
 }
 
 func (l *Logger) CreateRequestLog(requestID, endpoint, method, path string) *RequestLog {
@@ -227,20 +231,15 @@ func (l *Logger) UpdateRequestLog(log *RequestLog, req *http.Request, resp *http
 	}
 }
 
+// Close closes the logger and its storage backend
+func (l *Logger) Close() error {
+	if l.storage != nil {
+		return l.storage.Close()
+	}
+	return nil
+}
+
 // ExtractModelFromRequestBody extracts the model name from request body JSON
 func ExtractModelFromRequestBody(body string) string {
-	if body == "" {
-		return ""
-	}
-	
-	var requestData map[string]interface{}
-	if err := json.Unmarshal([]byte(body), &requestData); err != nil {
-		return ""
-	}
-	
-	if model, ok := requestData["model"].(string); ok {
-		return model
-	}
-	
-	return ""
+	return utils.ExtractModelFromRequestBody(body)
 }

@@ -57,6 +57,7 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 		api.DELETE("/endpoints/:id", s.handleDeleteEndpoint)
 		api.POST("/endpoints/reorder", s.handleReorderEndpoints)
 		api.GET("/logs", s.handleGetLogs)
+		api.GET("/logs/stats", s.handleGetLogStats)
 		api.PUT("/config", s.handleHotUpdateConfig)
 		api.GET("/config", s.handleGetConfig)
 	}

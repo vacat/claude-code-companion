@@ -2,8 +2,9 @@ package endpoint
 
 import (
 	"fmt"
-	"sort"
 	"sync"
+
+	"claude-proxy/internal/utils"
 )
 
 type Selector struct {
@@ -21,41 +22,29 @@ func (s *Selector) SelectEndpoint() (*Endpoint, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	// 按优先级排序所有启用的端点
-	enabledEndpoints := make([]*Endpoint, 0)
-	for _, ep := range s.endpoints {
-		if ep.Enabled {
-			enabledEndpoints = append(enabledEndpoints, ep)
-		}
+	// 转换为 EndpointSorter 接口类型
+	sorterEndpoints := make([]utils.EndpointSorter, len(s.endpoints))
+	for i, ep := range s.endpoints {
+		sorterEndpoints[i] = ep
 	}
 
-	if len(enabledEndpoints) == 0 {
-		return nil, fmt.Errorf("no enabled endpoints available")
+	// 使用统一的端点选择逻辑
+	selected := utils.SelectBestEndpoint(sorterEndpoints)
+	if selected == nil {
+		return nil, fmt.Errorf("no available endpoints found")
 	}
 
-	// 按优先级排序（数字越小优先级越高）
-	sort.Slice(enabledEndpoints, func(i, j int) bool {
-		return enabledEndpoints[i].Priority < enabledEndpoints[j].Priority
-	})
-
-	// 返回第一个可用的端点
-	for _, ep := range enabledEndpoints {
-		if ep.IsAvailable() {
-			return ep, nil
-		}
-	}
-
-	// 如果没有可用端点，返回错误
-	return nil, fmt.Errorf("no available endpoints found")
+	// 类型断言转换回 *Endpoint
+	return selected.(*Endpoint), nil
 }
 
 func (s *Selector) GetAllEndpoints() []*Endpoint {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	result := make([]*Endpoint, len(s.endpoints))
-	copy(result, s.endpoints)
-	return result
+	// 返回切片引用而不是拷贝，因为端点数据本身是不可变的
+	// 调用者不应该修改返回的切片
+	return s.endpoints
 }
 
 func (s *Selector) UpdateEndpoints(endpoints []*Endpoint) {

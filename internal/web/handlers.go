@@ -7,6 +7,7 @@ import (
 
 	"claude-proxy/internal/config"
 	"claude-proxy/internal/endpoint"
+	"claude-proxy/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -511,6 +512,25 @@ func (s *AdminServer) handleReorderEndpoints(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Endpoints reordered successfully"})
 }
 
+// handleGetLogStats 获取日志统计信息
+func (s *AdminServer) handleGetLogStats(c *gin.Context) {
+	// SQLite存储提供基本统计信息
+	stats := map[string]interface{}{
+		"storage_type": "sqlite",
+		"message": "SQLite storage active with automatic cleanup (30 days retention)",
+		"features": []string{
+			"Automatic cleanup of logs older than 30 days",
+			"Indexed queries for better performance", 
+			"Memory efficient storage",
+			"ACID transactions",
+		},
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"stats": stats,
+	})
+}
+
 // handleGetConfig 获取当前配置
 func (s *AdminServer) handleGetConfig(c *gin.Context) {
 	// 返回当前配置，但隐藏敏感信息
@@ -595,35 +615,19 @@ func (s *AdminServer) handleHotUpdateConfig(c *gin.Context) {
 	})
 }
 
-// validateConfigUpdate validates the configuration update
+// validateConfigUpdate validates the configuration update using unified validation
 func (s *AdminServer) validateConfigUpdate(newConfig *config.Config) error {
-	// 基本验证
-	if newConfig.Server.Port <= 0 || newConfig.Server.Port > 65535 {
-		return fmt.Errorf("invalid server port: %d", newConfig.Server.Port)
+	// 使用统一的服务器配置验证
+	if err := utils.ValidateServerConfig(newConfig.Server.Host, newConfig.Server.Port, newConfig.Server.AuthToken); err != nil {
+		return err
 	}
 
-	if newConfig.Server.AuthToken == "" {
-		return fmt.Errorf("server auth_token cannot be empty")
+	// 转换为接口类型进行统一验证
+	validator := utils.NewEndpointConfigValidator()
+	endpointInterfaces := make([]utils.EndpointConfig, len(newConfig.Endpoints))
+	for i, ep := range newConfig.Endpoints {
+		endpointInterfaces[i] = ep
 	}
 
-	if len(newConfig.Endpoints) == 0 {
-		return fmt.Errorf("at least one endpoint must be configured")
-	}
-
-	for i, endpoint := range newConfig.Endpoints {
-		if endpoint.Name == "" {
-			return fmt.Errorf("endpoint %d: name cannot be empty", i)
-		}
-		if endpoint.URL == "" {
-			return fmt.Errorf("endpoint %d: url cannot be empty", i)
-		}
-		if endpoint.AuthType != "api_key" && endpoint.AuthType != "auth_token" {
-			return fmt.Errorf("endpoint %d: invalid auth_type '%s', must be 'api_key' or 'auth_token'", i, endpoint.AuthType)
-		}
-		if endpoint.AuthValue == "" {
-			return fmt.Errorf("endpoint %d: auth_value cannot be empty", i)
-		}
-	}
-
-	return nil
+	return validator.ValidateEndpoints(endpointInterfaces)
 }

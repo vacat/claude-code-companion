@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 
 	"claude-proxy/internal/endpoint"
 	"claude-proxy/internal/logger"
+	"claude-proxy/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -32,29 +32,29 @@ func (s *Server) handleProxy(c *gin.Context) {
 		c.Request.Body = io.NopCloser(bytes.NewReader(body))
 	}
 
-	// 依次尝试每个端点，从第一个开始按优先级顺序查找可用端点
+	// 依次尝试每个端点，使用统一的排序逻辑
 	allEndpoints := s.endpointManager.GetAllEndpoints()
-	enabledEndpoints := make([]*endpoint.Endpoint, 0)
-	for _, ep := range allEndpoints {
-		if ep.Enabled {
-			enabledEndpoints = append(enabledEndpoints, ep)
-		}
+	
+	// 转换为 EndpointSorter 接口类型
+	sorterEndpoints := make([]utils.EndpointSorter, len(allEndpoints))
+	for i, ep := range allEndpoints {
+		sorterEndpoints[i] = ep
 	}
-
+	
+	// 获取已启用并按优先级排序的端点
+	enabledEndpoints := utils.FilterEnabledEndpoints(sorterEndpoints)
 	if len(enabledEndpoints) == 0 {
 		s.logger.Error("No enabled endpoints", nil)
 		s.sendProxyError(c, http.StatusBadGateway, "no_endpoints", "No enabled endpoints available", requestID)
 		return
 	}
 
-	// 按优先级排序（数字越小优先级越高）
-	sort.Slice(enabledEndpoints, func(i, j int) bool {
-		return enabledEndpoints[i].Priority < enabledEndpoints[j].Priority
-	})
+	utils.SortEndpointsByPriority(enabledEndpoints)
 
 	// 依次尝试每个可用的端点
 	attemptedCount := 0
-	for i, ep := range enabledEndpoints {
+	for i, epInterface := range enabledEndpoints {
+		ep := epInterface.(*endpoint.Endpoint) // 类型断言转换回 *Endpoint
 		// 跳过不可用的端点
 		if !ep.IsAvailable() {
 			s.logger.Debug(fmt.Sprintf("Skipping unavailable endpoint %s", ep.Name))
@@ -135,7 +135,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 
 	// 根据认证类型设置不同的认证头部
 	if ep.AuthType == "api_key" {
-		req.Header.Set("x-api-key", ep.GetAuthHeader())
+		req.Header.Set("x-api-key", ep.AuthValue)
 	} else {
 		req.Header.Set("Authorization", ep.GetAuthHeader())
 	}
@@ -144,14 +144,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		req.URL.RawQuery = c.Request.URL.RawQuery
 	}
 
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSHandshakeTimeout:   10 * time.Second,  // TLS握手超时
-			ResponseHeaderTimeout: 60 * time.Second,  // 等待响应头超时（足够长等待LLM开始响应）
-			IdleConnTimeout:       90 * time.Second,  // 空闲连接超时
-		},
-		// 不设置Client.Timeout，允许长时间的流式响应
-	}
+	client := utils.GetProxyClient()
 
 	resp, err := client.Do(req)
 	if err != nil {

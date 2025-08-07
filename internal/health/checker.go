@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"claude-proxy/internal/endpoint"
+	"claude-proxy/internal/utils"
 )
 
 type Checker struct {
@@ -71,15 +71,13 @@ func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
 
 	// 单独设置认证头部（不包含在默认headers中）
 	if ep.AuthType == "api_key" {
-		req.Header.Set("x-api-key", ep.GetAuthHeader())
+		req.Header.Set("x-api-key", ep.AuthValue)
 	} else {
 		req.Header.Set("Authorization", ep.GetAuthHeader())
 	}
 
 	// 执行请求
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
+	client := utils.GetHealthClient()
 
 	resp, err := client.Do(req)
 	if err != nil {

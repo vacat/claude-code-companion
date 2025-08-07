@@ -1,10 +1,11 @@
 package health
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 	"sync"
+
+	"claude-proxy/internal/utils"
 )
 
 type RequestInfo struct {
@@ -94,73 +95,26 @@ func (re *RequestExtractor) ExtractFromRequest(body []byte, headers http.Header)
 }
 
 func (re *RequestExtractor) extractModel(body []byte) string {
-	if len(body) == 0 {
-		return ""
-	}
-
-	var requestData map[string]interface{}
-	if err := json.Unmarshal(body, &requestData); err != nil {
-		return ""
-	}
-
-	if model, ok := requestData["model"].(string); ok {
-		return model
-	}
-
-	return ""
+	model, _ := utils.ExtractStringField(body, "model")
+	return model
 }
 
 func (re *RequestExtractor) extractUserID(body []byte) string {
-	if len(body) == 0 {
-		return ""
-	}
-
-	var requestData map[string]interface{}
-	if err := json.Unmarshal(body, &requestData); err != nil {
-		return ""
-	}
-
-	if metadata, ok := requestData["metadata"].(map[string]interface{}); ok {
-		if userID, ok := metadata["user_id"].(string); ok {
-			return userID
-		}
-	}
-
-	return ""
+	userID, _ := utils.ExtractNestedStringField(body, []string{"metadata", "user_id"})
+	return userID
 }
 
 func (re *RequestExtractor) extractHeaders(headers http.Header) map[string]string {
-	result := make(map[string]string)
-	
-	// 提取所有请求头，但排除一些敏感或不相关的头部
-	excludeHeaders := map[string]bool{
-		"authorization":    true,
-		"x-api-key":       true,
-		"content-length":  true,
-		"host":           true,
-	}
-
-	for key, values := range headers {
-		lowKey := strings.ToLower(key)
-		if !excludeHeaders[lowKey] && len(values) > 0 {
-			result[key] = values[0]
-		}
-	}
-
-	return result
+	return utils.ExtractRequestHeaders(headers)
 }
 
 func (re *RequestExtractor) GetRequestInfo() *RequestInfo {
 	re.mutex.RLock()
 	defer re.mutex.RUnlock()
 
-	// 返回拷贝以避免并发修改
-	return &RequestInfo{
-		Model:     re.requestInfo.Model,
-		UserID:    re.requestInfo.UserID,
-		Headers:   copyHeaders(re.requestInfo.Headers),
-		Extracted: re.requestInfo.Extracted,
-	}
+	// 返回引用而不是深拷贝，因为 RequestInfo 的字段都是不可变的
+	// 如果需要修改，调用者应该自己进行拷贝
+	return re.requestInfo
 }
 
 func (re *RequestExtractor) HasExtracted() bool {
@@ -169,14 +123,15 @@ func (re *RequestExtractor) HasExtracted() bool {
 	return re.requestInfo.Extracted
 }
 
-func copyHeaders(headers map[string]string) map[string]string {
-	if headers == nil {
-		return make(map[string]string)
-	}
-	
-	result := make(map[string]string, len(headers))
-	for k, v := range headers {
-		result[k] = v
-	}
-	return result
-}
+// copyHeaders 函数不再需要，删除
+// func copyHeaders(headers map[string]string) map[string]string {
+//     if headers == nil {
+//         return make(map[string]string)
+//     }
+//     
+//     result := make(map[string]string, len(headers))
+//     for k, v := range headers {
+//         result[k] = v
+//     }
+//     return result
+// }

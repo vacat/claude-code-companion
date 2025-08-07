@@ -63,4 +63,13 @@ func main() {
 
 	<-quit
 	fmt.Println("\nShutting down servers...")
+	
+	// Graceful shutdown: close logger and database connections
+	if logger := proxyServer.GetLogger(); logger != nil {
+		if err := logger.Close(); err != nil {
+			log.Printf("Error closing logger: %v", err)
+		} else {
+			log.Println("Logger closed successfully")
+		}
+	}
 }
