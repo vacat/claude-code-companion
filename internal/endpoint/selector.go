@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"claude-proxy/internal/interfaces"
 	"claude-proxy/internal/routing"
 	"claude-proxy/internal/utils"
 )
@@ -47,37 +46,20 @@ func (s *Selector) SelectEndpointWithTags(tags []string) (*Endpoint, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	// 转换为TaggedEndpoint
-	taggedEndpoints := make([]interfaces.TaggedEndpoint, len(s.endpoints))
+	// 转换为 EndpointSorter 接口类型
+	sorterEndpoints := make([]utils.EndpointSorter, len(s.endpoints))
 	for i, ep := range s.endpoints {
-		taggedEndpoints[i] = ep.ToTaggedEndpoint()
+		sorterEndpoints[i] = ep
 	}
 
-	// 使用tag匹配器过滤endpoint
-	matchedEndpoints := s.matcher.MatchEndpoints(tags, taggedEndpoints)
-	if len(matchedEndpoints) == 0 {
-		return nil, fmt.Errorf("no endpoints match the required tags: %v", tags)
-	}
-
-	// 在匹配的endpoint中按优先级选择最佳的
-	var bestEndpoint *Endpoint
-	for _, matched := range matchedEndpoints {
-		// 从原始endpoints中找到对应的endpoint
-		for _, ep := range s.endpoints {
-			if ep.Name == matched.Name && ep.IsAvailable() {
-				if bestEndpoint == nil || ep.Priority < bestEndpoint.Priority {
-					bestEndpoint = ep
-				}
-				break
-			}
-		}
-	}
-
-	if bestEndpoint == nil {
+	// 使用新的标签匹配选择逻辑
+	selected := utils.SelectBestEndpointWithTags(sorterEndpoints, tags)
+	if selected == nil {
 		return nil, fmt.Errorf("no available endpoints match the required tags: %v", tags)
 	}
 
-	return bestEndpoint, nil
+	// 类型断言转换回 *Endpoint
+	return selected.(*Endpoint), nil
 }
 
 func (s *Selector) GetAllEndpoints() []*Endpoint {
