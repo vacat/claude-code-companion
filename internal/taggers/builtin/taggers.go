@@ -205,16 +205,12 @@ func (bt *BodyJSONTagger) ShouldTag(request *http.Request) (bool, error) {
 		return false, nil
 	}
 
-	// 读取请求体（注意：这会消耗请求体，实际使用中需要考虑重新设置）
-	if request.Body == nil {
+	// 从请求上下文中获取预处理的请求体数据
+	// 这需要在调用tagger之前由pipeline预处理并设置到context中
+	bodyContent, ok := request.Context().Value("cached_body").([]byte)
+	if !ok || len(bodyContent) == 0 {
 		return false, nil
 	}
-
-	// 为了不影响原始请求，我们需要创建一个可以重复读取的请求体
-	// 这在实际实现中需要在调用tagger之前处理
-	buf := make([]byte, 1024*64) // 64KB缓冲区
-	n, _ := request.Body.Read(buf)
-	bodyContent := buf[:n]
 
 	var jsonData map[string]interface{}
 	if err := json.Unmarshal(bodyContent, &jsonData); err != nil {

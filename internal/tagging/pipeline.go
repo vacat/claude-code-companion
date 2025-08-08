@@ -1,7 +1,9 @@
 package tagging
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -45,6 +47,21 @@ func (tp *TaggerPipeline) ProcessRequest(req *http.Request) (*TaggedRequest, err
 	taggers := make([]Tagger, len(tp.taggers))
 	copy(taggers, tp.taggers)
 	tp.mu.RUnlock()
+
+	// 预处理请求体 - 读取并缓存，然后重新设置给request
+	var cachedBody []byte
+	if req.Body != nil {
+		body, err := io.ReadAll(req.Body)
+		if err == nil {
+			cachedBody = body
+			// 重新设置请求体，这样后续代理请求不会受影响
+			req.Body = io.NopCloser(bytes.NewReader(body))
+			
+			// 将缓存的请求体设置到context中，供tagger使用
+			ctx := context.WithValue(req.Context(), "cached_body", cachedBody)
+			req = req.WithContext(ctx)
+		}
+	}
 
 	// 创建上下文，设置超时
 	ctx, cancel := context.WithTimeout(context.Background(), tp.timeout)
