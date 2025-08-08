@@ -208,3 +208,24 @@ func (v *ResponseValidator) ValidateMessageStartUsage(eventData map[string]inter
 
 	return nil
 }
+
+// DetectJSONContent 检测内容是否为JSON格式（而非SSE格式）
+func (v *ResponseValidator) DetectJSONContent(body []byte) bool {
+	if len(body) == 0 {
+		return false
+	}
+	
+	// 检查是否为有效JSON
+	var jsonData interface{}
+	if err := json.Unmarshal(body, &jsonData); err != nil {
+		return false
+	}
+	
+	// 如果能解析为JSON，再检查是否不是SSE格式
+	bodyStr := string(body)
+	// SSE格式通常包含 "event: " 和 "data: " 标记
+	hasSSEFormat := strings.Contains(bodyStr, "event: ") && strings.Contains(bodyStr, "data: ")
+	
+	// 如果是有效JSON且不包含SSE格式标记，则认为是JSON内容
+	return !hasSSEFormat
+}

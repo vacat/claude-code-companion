@@ -380,13 +380,22 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	isStreaming := strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream")
 	contentTypeOverride := ""
 	
-	// 如果 Content-Type 不是 SSE，但响应体看起来像 SSE 格式，则也当作流式处理
+	// Hack 1: 如果 Content-Type 不是 SSE，但响应体看起来像 SSE 格式，则也当作流式处理
 	if !isStreaming && len(decompressedBody) > 0 {
 		bodyStr := string(decompressedBody)
 		if strings.Contains(bodyStr, "event: ") && strings.Contains(bodyStr, "data: ") {
 			s.logger.Info(fmt.Sprintf("Detected SSE response with incorrect Content-Type from endpoint %s", ep.Name))
 			isStreaming = true
 			contentTypeOverride = "text/event-stream"
+		}
+	}
+	
+	// Hack 2: 如果 Content-Type 是 text/event-stream 但响应体是 JSON 格式，则改为 application/json
+	if isStreaming && len(decompressedBody) > 0 {
+		if s.validator.DetectJSONContent(decompressedBody) {
+			s.logger.Info(fmt.Sprintf("Detected JSON response with text/event-stream Content-Type from endpoint %s, overriding to application/json", ep.Name))
+			isStreaming = false
+			contentTypeOverride = "application/json"
 		}
 	}
 
@@ -407,7 +416,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			}
 		}
 	} else {
-		// 正常情况下复制所有头部，但检查是否需要修正 SSE Content-Type
+		// 正常情况下复制所有头部，但检查是否需要修正 Content-Type
 		for key, values := range resp.Header {
 			if strings.ToLower(key) == "content-type" && contentTypeOverride != "" {
 				c.Header(key, contentTypeOverride)
