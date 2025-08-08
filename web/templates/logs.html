@@ -202,9 +202,9 @@
                 <div class="col-12">
                     <h6>请求详情 - ${logs.length} 次尝试</h6>
                     <div class="alert alert-info">
-                        <strong>请求ID:</strong> ${logs[0].request_id}<br>
-                        <strong>路径:</strong> ${logs[0].path}<br>
-                        <strong>请求方法:</strong> ${logs[0].method}<br>
+                        <strong>请求ID:</strong> ${escapeHtml(logs[0].request_id)}<br>
+                        <strong>路径:</strong> ${escapeHtml(logs[0].path)}<br>
+                        <strong>请求方法:</strong> ${escapeHtml(logs[0].method)}<br>
                         <strong>总耗时:</strong> ${logs.reduce((sum, log) => sum + log.duration_ms, 0)}ms
                     </div>
                 </div>
@@ -221,7 +221,7 @@
                         <div class="card">
                             <div class="card-header">
                                 <h6 class="mb-0">
-                                    尝试 ${attemptNum}: ${log.endpoint} 
+                                    尝试 ${attemptNum}: ${escapeHtml(log.endpoint)} 
                                     <span class="badge ${badgeClass}">${log.status_code}</span>
                                     <span class="badge bg-secondary">${log.duration_ms}ms</span>
                                     ${log.is_streaming ? '<span class="badge bg-info">SSE</span>' : ''}
@@ -242,17 +242,17 @@
                                     <div class="col-6">
                                         <h6>请求体 (${log.request_body_size} 字节)</h6>
                                         <div class="json-pretty" style="max-height: 200px;">
-                                            ${log.request_body ? formatJson(log.request_body) : '无请求体'}
+                                            ${log.request_body ? escapeHtml(formatJson(log.request_body)) : '无请求体'}
                                         </div>
                                     </div>
                                     <div class="col-6">
                                         <h6>响应体 (${log.response_body_size} 字节)</h6>
                                         <div class="json-pretty" style="max-height: 200px;">
-                                            ${log.response_body ? formatJson(log.response_body) : '无响应体'}
+                                            ${log.response_body ? escapeHtml(formatJson(log.response_body)) : '无响应体'}
                                         </div>
                                     </div>
                                 </div>
-                                ${log.error ? `<div class="row mt-2"><div class="col-12"><div class="alert alert-danger"><strong>错误:</strong> ${log.error}</div></div></div>` : ''}
+                                ${log.error ? `<div class="row mt-2"><div class="col-12"><div class="alert alert-danger"><strong>错误:</strong> ${escapeHtml(log.error)}</div></div></div>` : ''}
                             </div>
                         </div>
                     </div>
@@ -271,17 +271,17 @@
                     <div class="col-12 mb-3">
                         <h6>基本信息</h6>
                         <table class="table table-sm">
-                            <tr><th>请求ID:</th><td>${log.request_id}</td></tr>
+                            <tr><th>请求ID:</th><td>${escapeHtml(log.request_id)}</td></tr>
                             <tr><th>时间戳:</th><td>${new Date(log.timestamp).toLocaleString()}</td></tr>
-                            <tr><th>端点:</th><td>${log.endpoint}</td></tr>
-                            <tr><th>请求方法:</th><td>${log.method}</td></tr>
-                            <tr><th>路径:</th><td>${log.path}</td></tr>
+                            <tr><th>端点:</th><td>${escapeHtml(log.endpoint)}</td></tr>
+                            <tr><th>请求方法:</th><td>${escapeHtml(log.method)}</td></tr>
+                            <tr><th>路径:</th><td>${escapeHtml(log.path)}</td></tr>
                             <tr><th>状态码:</th><td>${log.status_code}</td></tr>
                             <tr><th>耗时:</th><td>${log.duration_ms}ms</td></tr>
                             <tr><th>请求体大小:</th><td>${log.request_body_size} 字节</td></tr>
                             <tr><th>响应体大小:</th><td>${log.response_body_size} 字节</td></tr>
                             <tr><th>流式响应:</th><td>${log.is_streaming ? '是 (SSE)' : '否'}</td></tr>
-                            ${log.error ? `<tr><th>错误:</th><td class="text-danger">${log.error}</td></tr>` : ''}
+                            ${log.error ? `<tr><th>错误:</th><td class="text-danger">${escapeHtml(log.error)}</td></tr>` : ''}
                         </table>
                     </div>
                     <div class="col-6 mb-3">
@@ -295,12 +295,12 @@
                     ${log.request_body ? `
                     <div class="col-12 mb-3">
                         <h6>请求体</h6>
-                        <pre class="json-pretty">${formatJson(log.request_body)}</pre>
+                        <pre class="json-pretty">${escapeHtml(formatJson(log.request_body))}</pre>
                     </div>` : ''}
                     ${log.response_body ? `
                     <div class="col-12 mb-3">
                         <h6>响应体</h6>
-                        <pre class="json-pretty">${formatJson(log.response_body)}</pre>
+                        <pre class="json-pretty">${escapeHtml(formatJson(log.response_body))}</pre>
                     </div>` : ''}
                 </div>
             `;
@@ -316,6 +316,17 @@
             } catch {
                 return jsonString;
             }
+        }
+        
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
         }
     </script>
 </body>
