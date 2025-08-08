@@ -304,7 +304,7 @@
                                                 <h6>请求头</h6>
                                                 <button class="btn btn-sm btn-outline-secondary save-file-btn" 
                                                         data-filename="请求头_${log.request_id}_尝试${attemptNum}.json"
-                                                        data-content="${btoa(JSON.stringify(log.request_headers, null, 2))}"
+                                                        data-content="${safeBase64Encode(JSON.stringify(log.request_headers, null, 2))}"
                                                         onclick="saveAsFileFromButton(this)" 
                                                         ${Object.keys(log.request_headers || {}).length === 0 ? 'disabled' : ''}>
                                                     <i class="fas fa-download"></i> 保存
@@ -319,7 +319,7 @@
                                                 <h6>响应头</h6>
                                                 <button class="btn btn-sm btn-outline-secondary save-file-btn" 
                                                         data-filename="响应头_${log.request_id}_尝试${attemptNum}.json"
-                                                        data-content="${btoa(JSON.stringify(log.response_headers, null, 2))}"
+                                                        data-content="${safeBase64Encode(JSON.stringify(log.response_headers, null, 2))}"
                                                         onclick="saveAsFileFromButton(this)" 
                                                         ${Object.keys(log.response_headers || {}).length === 0 ? 'disabled' : ''}>
                                                     <i class="fas fa-download"></i> 保存
@@ -336,7 +336,7 @@
                                                 <h6>请求体 (${log.request_body_size} 字节)</h6>
                                                 <button class="btn btn-sm btn-outline-secondary save-file-btn" 
                                                         data-filename="请求体_${log.request_id}_尝试${attemptNum}.${getFileExtension(log.request_body)}"
-                                                        data-content="${log.request_body ? btoa(log.request_body) : ''}"
+                                                        data-content="${log.request_body ? safeBase64Encode(log.request_body) : ''}"
                                                         onclick="saveAsFileFromButton(this)" 
                                                         ${!log.request_body ? 'disabled' : ''}>
                                                     <i class="fas fa-download"></i> 保存
@@ -353,7 +353,7 @@
                                                 <h6>响应体 (${log.response_body_size} 字节)</h6>
                                                 <button class="btn btn-sm btn-outline-secondary save-file-btn" 
                                                         data-filename="响应体_${log.request_id}_尝试${attemptNum}.${getFileExtension(log.response_body)}"
-                                                        data-content="${log.response_body ? btoa(log.response_body) : ''}"
+                                                        data-content="${log.response_body ? safeBase64Encode(log.response_body) : ''}"
                                                         onclick="saveAsFileFromButton(this)" 
                                                         ${!log.response_body ? 'disabled' : ''}>
                                                     <i class="fas fa-download"></i> 保存
@@ -404,7 +404,7 @@
                                 <h6>请求头</h6>
                                 <button class="btn btn-sm btn-outline-secondary save-file-btn" 
                                         data-filename="请求头_${escapeHtml(log.request_id)}.json"
-                                        data-content="${btoa(JSON.stringify(log.request_headers, null, 2))}"
+                                        data-content="${safeBase64Encode(JSON.stringify(log.request_headers, null, 2))}"
                                         onclick="saveAsFileFromButton(this)" 
                                         ${Object.keys(log.request_headers || {}).length === 0 ? 'disabled' : ''}>
                                     <i class="fas fa-download"></i> 保存
@@ -419,7 +419,7 @@
                                 <h6>响应头</h6>
                                 <button class="btn btn-sm btn-outline-secondary save-file-btn" 
                                         data-filename="响应头_${escapeHtml(log.request_id)}.json"
-                                        data-content="${btoa(JSON.stringify(log.response_headers, null, 2))}"
+                                        data-content="${safeBase64Encode(JSON.stringify(log.response_headers, null, 2))}"
                                         onclick="saveAsFileFromButton(this)" 
                                         ${Object.keys(log.response_headers || {}).length === 0 ? 'disabled' : ''}>
                                     <i class="fas fa-download"></i> 保存
@@ -435,7 +435,7 @@
                                 <h6>请求体</h6>
                                 <button class="btn btn-sm btn-outline-secondary save-file-btn" 
                                         data-filename="请求体_${escapeHtml(log.request_id)}.${getFileExtension(log.request_body)}"
-                                        data-content="${btoa(log.request_body)}"
+                                        data-content="${safeBase64Encode(log.request_body)}"
                                         onclick="saveAsFileFromButton(this)">
                                     <i class="fas fa-download"></i> 保存
                                 </button>
@@ -450,7 +450,7 @@
                                 <h6>响应体</h6>
                                 <button class="btn btn-sm btn-outline-secondary save-file-btn" 
                                         data-filename="响应体_${escapeHtml(log.request_id)}.${getFileExtension(log.response_body)}"
-                                        data-content="${btoa(log.response_body)}"
+                                        data-content="${safeBase64Encode(log.response_body)}"
                                         onclick="saveAsFileFromButton(this)">
                                     <i class="fas fa-download"></i> 保存
                                 </button>
@@ -471,6 +471,40 @@
                 return JSON.stringify(parsed, null, 2);
             } catch {
                 return jsonString;
+            }
+        }
+
+        // UTF-8安全的Base64编码
+        function safeBase64Encode(str) {
+            try {
+                // 首先通过encodeURIComponent处理UTF-8字符，然后进行Base64编码
+                return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+                    return String.fromCharCode('0x' + p1);
+                }));
+            } catch (error) {
+                console.warn('Base64编码失败，使用备用方法:', error);
+                // 备用方法：直接使用encodeURIComponent
+                return encodeURIComponent(str);
+            }
+        }
+
+        // UTF-8安全的Base64解码
+        function safeBase64Decode(str) {
+            try {
+                // 首先尝试标准Base64解码
+                const decoded = atob(str);
+                return decodeURIComponent(Array.prototype.map.call(decoded, function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+            } catch (error) {
+                console.warn('Base64解码失败，使用备用方法:', error);
+                // 备用方法：直接使用decodeURIComponent
+                try {
+                    return decodeURIComponent(str);
+                } catch (e) {
+                    console.error('所有解码方法都失败:', e);
+                    return str; // 返回原始字符串
+                }
             }
         }
         
@@ -512,8 +546,8 @@
             }
 
             try {
-                // 解码Base64内容
-                const content = atob(encodedContent);
+                // 使用UTF-8安全的解码方法
+                const content = safeBase64Decode(encodedContent);
                 
                 // 创建下载链接
                 const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
