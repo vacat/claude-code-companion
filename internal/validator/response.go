@@ -109,6 +109,11 @@ func (v *ResponseValidator) ValidateSSEChunk(chunk []byte) error {
 				if _, hasType := data["type"]; !hasType {
 					return fmt.Errorf("missing 'type' field in SSE data")
 				}
+				
+				// 检查message_start事件的usage统计
+				if err := v.ValidateMessageStartUsage(data); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -140,4 +145,42 @@ func (v *ResponseValidator) GetDecompressedBody(body []byte, contentEncoding str
 
 func (v *ResponseValidator) IsGzipContent(contentEncoding string) bool {
 	return strings.Contains(strings.ToLower(contentEncoding), "gzip")
+}
+
+func (v *ResponseValidator) ValidateMessageStartUsage(eventData map[string]interface{}) error {
+	eventType, ok := eventData["type"].(string)
+	if !ok || eventType != "message_start" {
+		return nil
+	}
+
+	message, ok := eventData["message"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("invalid message_start: missing message field")
+	}
+
+	usage, ok := message["usage"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("invalid message_start: missing usage field")
+	}
+
+	inputTokens := float64(0)
+	outputTokens := float64(0)
+
+	if val, ok := usage["input_tokens"]; ok {
+		if num, ok := val.(float64); ok {
+			inputTokens = num
+		}
+	}
+
+	if val, ok := usage["output_tokens"]; ok {
+		if num, ok := val.(float64); ok {
+			outputTokens = num
+		}
+	}
+
+	if inputTokens == 0 && outputTokens == 0 {
+		return fmt.Errorf("invalid usage stats: all token counts are zero, indicating empty response")
+	}
+
+	return nil
 }

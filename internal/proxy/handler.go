@@ -281,6 +281,15 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	isStreaming := strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream")
 	if s.config.Validation.StrictAnthropicFormat {
 		if err := s.validator.ValidateAnthropicResponse(decompressedBody, isStreaming); err != nil {
+			// 如果是usage统计验证失败，尝试下一个endpoint
+			if strings.Contains(err.Error(), "invalid usage stats") {
+				s.logger.Info(fmt.Sprintf("Usage validation failed for endpoint %s: %v", ep.Name, err))
+				duration := time.Since(startTime)
+				errorLog := fmt.Sprintf("Usage validation failed: %v", err)
+				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog))
+				return false, true // 验证失败，尝试下一个endpoint
+			}
+			
 			if s.config.Validation.DisconnectOnInvalid {
 				s.logger.Error("Invalid response format, disconnecting", err)
 				c.Header("Connection", "close")
