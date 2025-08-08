@@ -18,6 +18,20 @@
             white-space: normal;
             word-break: break-all;
         }
+        .save-file-btn {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            margin-top: 0.25rem;
+        }
+        .content-section {
+            position: relative;
+        }
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
         .json-pretty {
             background-color: #f8f9fa;
             border: 1px solid #dee2e6;
@@ -285,25 +299,69 @@
                             <div class="card-body">
                                 <div class="row mb-3">
                                     <div class="col-6">
-                                        <h6>请求头</h6>
-                                        <pre class="json-pretty" style="max-height: 150px;">${JSON.stringify(log.request_headers, null, 2)}</pre>
+                                        <div class="content-section">
+                                            <div class="content-header">
+                                                <h6>请求头</h6>
+                                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
+                                                        data-filename="请求头_${log.request_id}_尝试${attemptNum}.json"
+                                                        data-content="${btoa(JSON.stringify(log.request_headers, null, 2))}"
+                                                        onclick="saveAsFileFromButton(this)" 
+                                                        ${Object.keys(log.request_headers || {}).length === 0 ? 'disabled' : ''}>
+                                                    <i class="fas fa-download"></i> 保存
+                                                </button>
+                                            </div>
+                                            <pre class="json-pretty" style="max-height: 150px;">${JSON.stringify(log.request_headers, null, 2)}</pre>
+                                        </div>
                                     </div>
                                     <div class="col-6">
-                                        <h6>响应头</h6>
-                                        <pre class="json-pretty" style="max-height: 150px;">${JSON.stringify(log.response_headers, null, 2)}</pre>
+                                        <div class="content-section">
+                                            <div class="content-header">
+                                                <h6>响应头</h6>
+                                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
+                                                        data-filename="响应头_${log.request_id}_尝试${attemptNum}.json"
+                                                        data-content="${btoa(JSON.stringify(log.response_headers, null, 2))}"
+                                                        onclick="saveAsFileFromButton(this)" 
+                                                        ${Object.keys(log.response_headers || {}).length === 0 ? 'disabled' : ''}>
+                                                    <i class="fas fa-download"></i> 保存
+                                                </button>
+                                            </div>
+                                            <pre class="json-pretty" style="max-height: 150px;">${JSON.stringify(log.response_headers, null, 2)}</pre>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="col-6">
-                                        <h6>请求体 (${log.request_body_size} 字节)</h6>
-                                        <div class="json-pretty" style="max-height: 200px;">
-                                            ${log.request_body ? escapeHtml(formatJson(log.request_body)) : '无请求体'}
+                                        <div class="content-section">
+                                            <div class="content-header">
+                                                <h6>请求体 (${log.request_body_size} 字节)</h6>
+                                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
+                                                        data-filename="请求体_${log.request_id}_尝试${attemptNum}.${getFileExtension(log.request_body)}"
+                                                        data-content="${log.request_body ? btoa(log.request_body) : ''}"
+                                                        onclick="saveAsFileFromButton(this)" 
+                                                        ${!log.request_body ? 'disabled' : ''}>
+                                                    <i class="fas fa-download"></i> 保存
+                                                </button>
+                                            </div>
+                                            <div class="json-pretty" style="max-height: 200px;">
+                                                ${log.request_body ? escapeHtml(formatJson(log.request_body)) : '无请求体'}
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="col-6">
-                                        <h6>响应体 (${log.response_body_size} 字节)</h6>
-                                        <div class="json-pretty" style="max-height: 200px;">
-                                            ${log.response_body ? escapeHtml(formatJson(log.response_body)) : '无响应体'}
+                                        <div class="content-section">
+                                            <div class="content-header">
+                                                <h6>响应体 (${log.response_body_size} 字节)</h6>
+                                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
+                                                        data-filename="响应体_${log.request_id}_尝试${attemptNum}.${getFileExtension(log.response_body)}"
+                                                        data-content="${log.response_body ? btoa(log.response_body) : ''}"
+                                                        onclick="saveAsFileFromButton(this)" 
+                                                        ${!log.response_body ? 'disabled' : ''}>
+                                                    <i class="fas fa-download"></i> 保存
+                                                </button>
+                                            </div>
+                                            <div class="json-pretty" style="max-height: 200px;">
+                                                ${log.response_body ? escapeHtml(formatJson(log.response_body)) : '无响应体'}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -341,22 +399,64 @@
                         </table>
                     </div>
                     <div class="col-6 mb-3">
-                        <h6>请求头</h6>
-                        <pre class="json-pretty">${JSON.stringify(log.request_headers, null, 2)}</pre>
+                        <div class="content-section">
+                            <div class="content-header">
+                                <h6>请求头</h6>
+                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
+                                        data-filename="请求头_${escapeHtml(log.request_id)}.json"
+                                        data-content="${btoa(JSON.stringify(log.request_headers, null, 2))}"
+                                        onclick="saveAsFileFromButton(this)" 
+                                        ${Object.keys(log.request_headers || {}).length === 0 ? 'disabled' : ''}>
+                                    <i class="fas fa-download"></i> 保存
+                                </button>
+                            </div>
+                            <pre class="json-pretty">${JSON.stringify(log.request_headers, null, 2)}</pre>
+                        </div>
                     </div>
                     <div class="col-6 mb-3">
-                        <h6>响应头</h6>
-                        <pre class="json-pretty">${JSON.stringify(log.response_headers, null, 2)}</pre>
+                        <div class="content-section">
+                            <div class="content-header">
+                                <h6>响应头</h6>
+                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
+                                        data-filename="响应头_${escapeHtml(log.request_id)}.json"
+                                        data-content="${btoa(JSON.stringify(log.response_headers, null, 2))}"
+                                        onclick="saveAsFileFromButton(this)" 
+                                        ${Object.keys(log.response_headers || {}).length === 0 ? 'disabled' : ''}>
+                                    <i class="fas fa-download"></i> 保存
+                                </button>
+                            </div>
+                            <pre class="json-pretty">${JSON.stringify(log.response_headers, null, 2)}</pre>
+                        </div>
                     </div>
                     ${log.request_body ? `
                     <div class="col-12 mb-3">
-                        <h6>请求体</h6>
-                        <pre class="json-pretty">${escapeHtml(formatJson(log.request_body))}</pre>
+                        <div class="content-section">
+                            <div class="content-header">
+                                <h6>请求体</h6>
+                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
+                                        data-filename="请求体_${escapeHtml(log.request_id)}.${getFileExtension(log.request_body)}"
+                                        data-content="${btoa(log.request_body)}"
+                                        onclick="saveAsFileFromButton(this)">
+                                    <i class="fas fa-download"></i> 保存
+                                </button>
+                            </div>
+                            <pre class="json-pretty">${escapeHtml(formatJson(log.request_body))}</pre>
+                        </div>
                     </div>` : ''}
                     ${log.response_body ? `
                     <div class="col-12 mb-3">
-                        <h6>响应体</h6>
-                        <pre class="json-pretty">${escapeHtml(formatJson(log.response_body))}</pre>
+                        <div class="content-section">
+                            <div class="content-header">
+                                <h6>响应体</h6>
+                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
+                                        data-filename="响应体_${escapeHtml(log.request_id)}.${getFileExtension(log.response_body)}"
+                                        data-content="${btoa(log.response_body)}"
+                                        onclick="saveAsFileFromButton(this)">
+                                    <i class="fas fa-download"></i> 保存
+                                </button>
+                            </div>
+                            <pre class="json-pretty">${escapeHtml(formatJson(log.response_body))}</pre>
+                        </div>
                     </div>` : ''}
                 </div>
             `;
@@ -383,6 +483,89 @@
                 "'": '&#039;'
             };
             return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        // 根据内容判断文件扩展名
+        function getFileExtension(content) {
+            if (!content) return 'txt';
+            
+            try {
+                JSON.parse(content);
+                return 'json';
+            } catch {
+                // 检查是否是SSE格式
+                if (content.includes('event: ') && content.includes('data: ')) {
+                    return 'sse';
+                }
+                return 'txt';
+            }
+        }
+
+        // 保存文件功能 - 从按钮的data属性读取内容
+        function saveAsFileFromButton(button) {
+            const filename = button.getAttribute('data-filename');
+            const encodedContent = button.getAttribute('data-content');
+            
+            if (!encodedContent || encodedContent.trim() === '') {
+                alert('内容为空，无法保存');
+                return;
+            }
+
+            try {
+                // 解码Base64内容
+                const content = atob(encodedContent);
+                
+                // 创建下载链接
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                
+                // 创建下载元素
+                const downloadLink = document.createElement('a');
+                downloadLink.href = url;
+                downloadLink.download = filename;
+                downloadLink.style.display = 'none';
+                
+                // 添加到DOM并触发下载
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                
+                // 清理
+                setTimeout(() => {
+                    document.body.removeChild(downloadLink);
+                    URL.revokeObjectURL(url);
+                }, 100);
+            } catch (error) {
+                console.error('保存文件失败:', error);
+                alert('保存文件失败，请检查浏览器控制台');
+            }
+        }
+
+        // 保存文件功能（旧版本，保留兼容性）
+        function saveAsFile(defaultFilename, content) {
+            if (!content || content.trim() === '') {
+                alert('内容为空，无法保存');
+                return;
+            }
+
+            // 创建下载链接
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            // 创建下载元素
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = defaultFilename;
+            downloadLink.style.display = 'none';
+            
+            // 添加到DOM并触发下载
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            
+            // 清理
+            setTimeout(() => {
+                document.body.removeChild(downloadLink);
+                URL.revokeObjectURL(url);
+            }, 100);
         }
     </script>
 </body>
