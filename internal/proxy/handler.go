@@ -159,7 +159,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		duration := time.Since(startTime)
 		body, _ := io.ReadAll(resp.Body)
 		
-		// 解压响应体用于记录
+		// 解压响应体用于日志记录
 		contentEncoding := resp.Header.Get("Content-Encoding")
 		decompressedBody, err := s.validator.GetDecompressedBody(body, contentEncoding)
 		if err != nil {
@@ -177,6 +177,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		return false, false
 	}
 
+	// 解压响应体仅用于日志记录和验证
 	contentEncoding := resp.Header.Get("Content-Encoding")
 	decompressedBody, err := s.validator.GetDecompressedBody(responseBody, contentEncoding)
 	if err != nil {
@@ -193,20 +194,16 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		for key, values := range resp.Header {
 			if strings.ToLower(key) == "content-type" {
 				c.Header(key, "application/json")
-			} else if key == "Content-Encoding" || key == "Content-Length" {
-				continue // 跳过这些头部
 			} else {
+				// 保持原始头部，包括Content-Encoding
 				for _, value := range values {
 					c.Header(key, value)
 				}
 			}
 		}
 	} else {
-		// 正常情况下复制所有头部
+		// 正常情况下复制所有头部，保持原始状态
 		for key, values := range resp.Header {
-			if key == "Content-Encoding" || key == "Content-Length" {
-				continue
-			}
 			for _, value := range values {
 				c.Header(key, value)
 			}
@@ -226,7 +223,8 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	}
 
 	c.Status(resp.StatusCode)
-	c.Writer.Write(decompressedBody)
+	// 发送原始响应体给客户端（保持压缩状态）
+	c.Writer.Write(responseBody)
 
 	duration := time.Since(startTime)
 	s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil)
