@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"claude-proxy/internal/utils"
 
@@ -16,6 +17,7 @@ type Config struct {
 	Logging     LoggingConfig     `yaml:"logging"`
 	Validation  ValidationConfig  `yaml:"validation"`
 	WebAdmin    WebAdminConfig    `yaml:"web_admin"`
+	Tagging     TaggingConfig     `yaml:"tagging"`     // 新增：Tag系统配置
 }
 
 type ServerConfig struct {
@@ -25,13 +27,14 @@ type ServerConfig struct {
 }
 
 type EndpointConfig struct {
-	Name       string `yaml:"name"`
-	URL        string `yaml:"url"`
-	PathPrefix string `yaml:"path_prefix"`
-	AuthType   string `yaml:"auth_type"`
-	AuthValue  string `yaml:"auth_value"`
-	Enabled    bool   `yaml:"enabled"`
-	Priority   int    `yaml:"priority"`
+	Name       string   `yaml:"name"`
+	URL        string   `yaml:"url"`
+	PathPrefix string   `yaml:"path_prefix"`
+	AuthType   string   `yaml:"auth_type"`
+	AuthValue  string   `yaml:"auth_value"`
+	Enabled    bool     `yaml:"enabled"`
+	Priority   int      `yaml:"priority"`
+	Tags       []string `yaml:"tags"`       // 新增：支持的tag列表
 }
 
 // 实现 EndpointConfig 接口，用于统一验证
@@ -56,6 +59,23 @@ type ValidationConfig struct {
 
 type WebAdminConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+// 新增：Tag系统配置结构
+type TaggingConfig struct {
+	Enabled         bool            `yaml:"enabled"`
+	PipelineTimeout string          `yaml:"pipeline_timeout"`
+	Taggers         []TaggerConfig  `yaml:"taggers"`
+}
+
+type TaggerConfig struct {
+	Name        string                 `yaml:"name"`
+	Type        string                 `yaml:"type"`         // "builtin" | "starlark"
+	BuiltinType string                 `yaml:"builtin_type"` // 内置类型: "path" | "header" | "body-json" | "method" | "query"
+	Tag         string                 `yaml:"tag"`          // 标记的tag名称
+	Enabled     bool                   `yaml:"enabled"`
+	Priority    int                    `yaml:"priority"`     // 执行优先级(未使用，因为并发执行)
+	Config      map[string]interface{} `yaml:"config"`       // tagger特定配置
 }
 
 func LoadConfig(filename string) (*Config, error) {
@@ -149,6 +169,77 @@ func validateConfig(config *Config) error {
 	}
 	if !validResponseBodyType {
 		return fmt.Errorf("invalid log_response_body '%s', must be one of: none, truncated, full", config.Logging.LogResponseBody)
+	}
+
+	// 验证Tagging配置
+	if err := validateTaggingConfig(&config.Tagging); err != nil {
+		return fmt.Errorf("tagging configuration error: %v", err)
+	}
+
+	return nil
+}
+
+func validateTaggingConfig(config *TaggingConfig) error {
+	// 设置默认值
+	if config.PipelineTimeout == "" {
+		config.PipelineTimeout = "5s"
+	}
+	
+	// 验证超时时间格式
+	if _, err := time.ParseDuration(config.PipelineTimeout); err != nil {
+		return fmt.Errorf("invalid pipeline_timeout '%s': %v", config.PipelineTimeout, err)
+	}
+
+	// 验证tagger配置
+	tagNames := make(map[string]bool)
+	for i, tagger := range config.Taggers {
+		if tagger.Name == "" {
+			return fmt.Errorf("tagger[%d]: name is required", i)
+		}
+		
+		if tagNames[tagger.Name] {
+			return fmt.Errorf("tagger[%d]: duplicate name '%s'", i, tagger.Name)
+		}
+		tagNames[tagger.Name] = true
+		
+		if tagger.Tag == "" {
+			return fmt.Errorf("tagger[%d] '%s': tag is required", i, tagger.Name)
+		}
+		
+		if tagger.Type != "builtin" && tagger.Type != "starlark" {
+			return fmt.Errorf("tagger[%d] '%s': type must be 'builtin' or 'starlark'", i, tagger.Name)
+		}
+		
+		// 验证内置tagger类型
+		if tagger.Type == "builtin" {
+			validBuiltinTypes := []string{"path", "header", "body-json", "method", "query"}
+			validType := false
+			for _, vt := range validBuiltinTypes {
+				if tagger.BuiltinType == vt {
+					validType = true
+					break
+				}
+			}
+			if !validType {
+				return fmt.Errorf("tagger[%d] '%s': invalid builtin_type '%s', must be one of: %v", 
+					i, tagger.Name, tagger.BuiltinType, validBuiltinTypes)
+			}
+		}
+		
+		// 验证starlark脚本配置
+		if tagger.Type == "starlark" {
+			// 支持两种方式：script_file 或 script
+			scriptFile, hasScriptFile := tagger.Config["script_file"].(string)
+			script, hasScript := tagger.Config["script"].(string)
+			
+			if hasScriptFile && scriptFile != "" {
+				// 使用脚本文件 - 可以在这里添加脚本文件存在性检查
+			} else if hasScript && script != "" {
+				// 使用内联脚本 - 验证脚本内容非空
+			} else {
+				return fmt.Errorf("tagger[%d] '%s': starlark tagger requires either script_file or script in config", i, tagger.Name)
+			}
+		}
 	}
 
 	return nil

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"claude-proxy/internal/endpoint"
+	"claude-proxy/internal/interfaces"
 	"claude-proxy/internal/logger"
 	"claude-proxy/internal/utils"
 
@@ -32,6 +33,77 @@ func (s *Server) handleProxy(c *gin.Context) {
 		c.Request.Body = io.NopCloser(bytes.NewReader(body))
 	}
 
+	// 使用tagging系统处理请求
+	taggedRequest, err := s.taggingManager.ProcessRequest(c.Request)
+	if err != nil {
+		s.logger.Error("Failed to process request tags", err)
+		// 如果tagging失败，继续使用原有逻辑（无tag）
+		taggedRequest = nil
+	}
+
+	// 选择endpoint
+	var selectedEndpoint *endpoint.Endpoint
+	var endpointSelectionError error
+
+	if taggedRequest != nil && len(taggedRequest.Tags) > 0 {
+		// 使用tag匹配选择endpoint
+		selectedEndpoint, endpointSelectionError = s.endpointManager.GetEndpointWithTags(taggedRequest.Tags)
+		s.logger.Debug(fmt.Sprintf("Request tagged with: %v, selected endpoint: %s", 
+			taggedRequest.Tags, 
+			func() string { if selectedEndpoint != nil { return selectedEndpoint.Name } else { return "none" } }()))
+	} else {
+		// 使用原有逻辑选择endpoint
+		selectedEndpoint, endpointSelectionError = s.endpointManager.GetEndpoint()
+		s.logger.Debug("Request has no tags, using default endpoint selection")
+	}
+
+	if endpointSelectionError != nil {
+		s.logger.Error("Failed to select endpoint", endpointSelectionError)
+		s.sendProxyError(c, http.StatusBadGateway, "no_endpoints", endpointSelectionError.Error(), requestID)
+		return
+	}
+
+	// 尝试代理到选择的endpoint
+	success, _ := s.proxyToEndpoint(c, selectedEndpoint, path, requestBody, requestID, startTime, taggedRequest)
+	if success {
+		s.endpointManager.RecordRequest(selectedEndpoint.ID, true)
+		
+		// 尝试提取基准信息用于健康检查
+		if len(requestBody) > 0 {
+			extracted := s.healthChecker.GetExtractor().ExtractFromRequest(requestBody, c.Request.Header)
+			if extracted {
+				s.logger.Info("Successfully updated health check baseline info from request")
+			}
+		}
+		
+		s.logger.Debug(fmt.Sprintf("Request succeeded on endpoint %s", selectedEndpoint.Name))
+		return
+	}
+
+	// 如果使用tag选择失败，尝试回退到无tag选择其他endpoint
+	if taggedRequest != nil && len(taggedRequest.Tags) > 0 {
+		s.logger.Debug("Tagged endpoint failed, trying fallback endpoints")
+		s.fallbackToUntaggedEndpoints(c, path, requestBody, requestID, startTime, selectedEndpoint, taggedRequest)
+	} else {
+		// 记录失败
+		s.endpointManager.RecordRequest(selectedEndpoint.ID, false)
+		duration := time.Since(startTime)
+		requestLog := s.logger.CreateRequestLog(requestID, "failed", c.Request.Method, path)
+		requestLog.DurationMs = duration.Nanoseconds() / 1000000
+		if len(requestBody) > 0 {
+			requestLog.Model = logger.ExtractModelFromRequestBody(string(requestBody))
+		}
+		requestLog.Error = "Selected endpoint failed"
+		s.logger.LogRequest(requestLog)
+		s.sendProxyError(c, http.StatusBadGateway, "endpoint_failed", "Selected endpoint failed", requestID)
+	}
+}
+
+// fallbackToUntaggedEndpoints 当带tag的endpoint失败时，回退到使用原有逻辑尝试其他endpoint
+func (s *Server) fallbackToUntaggedEndpoints(c *gin.Context, path string, requestBody []byte, requestID string, startTime time.Time, failedEndpoint *endpoint.Endpoint, taggedRequest *interfaces.TaggedRequest) {
+	// 记录失败的endpoint
+	s.endpointManager.RecordRequest(failedEndpoint.ID, false)
+	
 	// 依次尝试每个端点，使用统一的排序逻辑
 	allEndpoints := s.endpointManager.GetAllEndpoints()
 	
@@ -44,45 +116,42 @@ func (s *Server) handleProxy(c *gin.Context) {
 	// 获取已启用并按优先级排序的端点
 	enabledEndpoints := utils.FilterEnabledEndpoints(sorterEndpoints)
 	if len(enabledEndpoints) == 0 {
-		s.logger.Error("No enabled endpoints", nil)
+		s.logger.Error("No enabled endpoints for fallback", nil)
 		s.sendProxyError(c, http.StatusBadGateway, "no_endpoints", "No enabled endpoints available", requestID)
 		return
 	}
 
 	utils.SortEndpointsByPriority(enabledEndpoints)
 
-	// 依次尝试每个可用的端点
+	// 依次尝试每个可用的端点（跳过已经失败的那个）
 	attemptedCount := 0
 	for i, epInterface := range enabledEndpoints {
-		ep := epInterface.(*endpoint.Endpoint) // 类型断言转换回 *Endpoint
+		ep := epInterface.(*endpoint.Endpoint)
+		
+		// 跳过已经失败的endpoint
+		if ep.ID == failedEndpoint.ID {
+			continue
+		}
+		
 		// 跳过不可用的端点
 		if !ep.IsAvailable() {
-			s.logger.Debug(fmt.Sprintf("Skipping unavailable endpoint %s", ep.Name))
+			s.logger.Debug(fmt.Sprintf("Skipping unavailable fallback endpoint %s", ep.Name))
 			continue
 		}
 		
 		attemptedCount++
-		s.logger.Debug(fmt.Sprintf("Attempting request to endpoint %s (%d/%d)", ep.Name, i+1, len(enabledEndpoints)))
+		s.logger.Debug(fmt.Sprintf("Attempting fallback request to endpoint %s (%d/%d)", ep.Name, i+1, len(enabledEndpoints)))
 
-		success, shouldRetry := s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime)
+		success, shouldRetry := s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest)
 		if success {
 			s.endpointManager.RecordRequest(ep.ID, true)
-			
-			// 尝试提取基准信息用于健康检查
-			if len(requestBody) > 0 {
-				extracted := s.healthChecker.GetExtractor().ExtractFromRequest(requestBody, c.Request.Header)
-				if extracted {
-					s.logger.Info("Successfully updated health check baseline info from request")
-				}
-			}
-			
-			s.logger.Debug(fmt.Sprintf("Request succeeded on endpoint %s", ep.Name))
+			s.logger.Debug(fmt.Sprintf("Fallback request succeeded on endpoint %s", ep.Name))
 			return
 		}
 
 		// 记录失败
 		s.endpointManager.RecordRequest(ep.ID, false)
-		s.logger.Debug(fmt.Sprintf("Request failed on endpoint %s, trying next endpoint", ep.Name))
+		s.logger.Debug(fmt.Sprintf("Fallback request failed on endpoint %s, trying next endpoint", ep.Name))
 
 		// 如果不应该重试，则停止尝试其他端点
 		if !shouldRetry {
@@ -95,6 +164,7 @@ func (s *Server) handleProxy(c *gin.Context) {
 		}
 	}
 
+	// 所有回退尝试都失败了
 	duration := time.Since(startTime)
 	requestLog := s.logger.CreateRequestLog(requestID, "failed", c.Request.Method, path)
 	requestLog.DurationMs = duration.Nanoseconds() / 1000000
@@ -102,20 +172,18 @@ func (s *Server) handleProxy(c *gin.Context) {
 		requestLog.Model = logger.ExtractModelFromRequestBody(string(requestBody))
 	}
 	
-	if attemptedCount == 0 {
-		requestLog.Error = "No available endpoints found"
-		s.logger.LogRequest(requestLog)
-		s.logger.Error("No available endpoints", nil)
-		s.sendProxyError(c, http.StatusBadGateway, "no_available_endpoints", "No available endpoints found", requestID)
+	// 在日志中记录tag信息
+	if taggedRequest != nil && len(taggedRequest.Tags) > 0 {
+		requestLog.Error = fmt.Sprintf("Tagged request failed (tags: %v), attempted %d fallback endpoints", taggedRequest.Tags, attemptedCount+1) // +1 包括最初的tagged endpoint
 	} else {
-		requestLog.Error = fmt.Sprintf("All %d available endpoints failed", attemptedCount)
-		s.logger.LogRequest(requestLog)
-		s.logger.Error(fmt.Sprintf("All %d available endpoints failed", attemptedCount), nil)
-		s.sendProxyError(c, http.StatusBadGateway, "all_endpoints_failed", fmt.Sprintf("All %d available endpoints failed", attemptedCount), requestID)
+		requestLog.Error = fmt.Sprintf("All %d available endpoints failed", attemptedCount+1)
 	}
+	
+	s.logger.LogRequest(requestLog)
+	s.sendProxyError(c, http.StatusBadGateway, "all_endpoints_failed", requestLog.Error, requestID)
 }
 
-func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path string, requestBody []byte, requestID string, startTime time.Time) (bool, bool) {
+func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path string, requestBody []byte, requestID string, startTime time.Time, taggedRequest *interfaces.TaggedRequest) (bool, bool) {
 	targetURL := ep.GetFullURL(path)
 	
 	req, err := http.NewRequest(c.Request.Method, targetURL, bytes.NewReader(requestBody))

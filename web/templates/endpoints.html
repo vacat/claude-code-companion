@@ -76,6 +76,7 @@
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="/admin/">控制台</a>
                 <a class="nav-link active" href="/admin/endpoints">端点配置</a>
+                <a class="nav-link" href="/admin/taggers">Taggers</a>
                 <a class="nav-link" href="/admin/logs">请求日志</a>
                 <a class="nav-link" href="/admin/settings">系统设置</a>
             </div>
@@ -105,6 +106,7 @@
                                         <th>名称</th>
                                         <th>URL</th>
                                         <th>认证方式</th>
+                                        <th>Tags</th>
                                         <th>状态</th>
                                         <th>启用</th>
                                         <th>统计</th>
@@ -126,6 +128,15 @@
                                             <span class="badge {{if eq .AuthType "api_key"}}bg-primary{{else}}bg-secondary{{end}}">
                                                 {{.AuthType}}
                                             </span>
+                                        </td>
+                                        <td>
+                                            {{if .Tags}}
+                                                {{range .Tags}}
+                                                    <span class="badge bg-info me-1 mb-1">{{.}}</span>
+                                                {{end}}
+                                            {{else}}
+                                                <span class="text-muted">Universal</span>
+                                            {{end}}
                                         </td>
                                         <td>
                                             {{if eq .Status "active"}}
@@ -243,6 +254,13 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="endpoint-tags" class="form-label">Tags</label>
+                            <input type="text" class="form-control" id="endpoint-tags" 
+                                   placeholder="输入tags，用逗号分隔 (例: api-v1, claude-3)">
+                            <small class="form-text text-muted">留空则为万能endpoint，支持所有tags的请求</small>
+                        </div>
+
+                        <div class="mb-3">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="endpoint-enabled" checked>
                                 <label class="form-check-label" for="endpoint-enabled">
@@ -334,8 +352,8 @@
         }
 
         function updateEndpointRowStatus(row, endpoint) {
-            const statusCell = row.children[5]; // 调整索引，移除了Timeout列
-            const statsCell = row.children[7];  // 调整索引
+            const statusCell = row.children[6]; // 调整索引，增加了Tags列
+            const statsCell = row.children[8];  // 调整索引
             
             // Update status
             let statusBadge = '';
@@ -401,6 +419,14 @@
                     ? (endpoint.success_requests / endpoint.total_requests * 100).toFixed(1) + '%' 
                     : 'N/A';
                 
+                // 构建tags显示
+                let tagsDisplay = '';
+                if (endpoint.tags && endpoint.tags.length > 0) {
+                    tagsDisplay = endpoint.tags.map(tag => `<span class="badge bg-info me-1 mb-1">${tag}</span>`).join('');
+                } else {
+                    tagsDisplay = '<span class="text-muted">Universal</span>';
+                }
+                
                 row.innerHTML = `
                     <td class="drag-handle text-center">
                         <i class="fas fa-arrows-alt text-muted"></i>
@@ -411,6 +437,7 @@
                     <td><strong>${endpoint.name}</strong></td>
                     <td><code>${endpoint.url}</code></td>
                     <td>${authTypeBadge}</td>
+                    <td>${tagsDisplay}</td>
                     <td>${statusBadge}</td>
                     <td>${enabledBadge}</td>
                     <td>
@@ -451,6 +478,7 @@
             document.getElementById('endpointModalTitle').textContent = '添加端点';
             document.getElementById('endpointForm').reset();
             document.getElementById('endpoint-enabled').checked = true;
+            document.getElementById('endpoint-tags').value = ''; // 清理tags字段
             
             // 重置auth visibility
             resetAuthVisibility();
@@ -476,6 +504,10 @@
             document.getElementById('endpoint-url').value = endpoint.url;
             document.getElementById('endpoint-auth-type').value = endpoint.auth_type;
             document.getElementById('endpoint-enabled').checked = endpoint.enabled;
+            
+            // 设置tags字段
+            const tagsValue = endpoint.tags && endpoint.tags.length > 0 ? endpoint.tags.join(', ') : '';
+            document.getElementById('endpoint-tags').value = tagsValue;
             
             // 设置auth value为星号
             document.getElementById('endpoint-auth-value').value = '*'.repeat(Math.min(endpoint.auth_value.length, 50));
@@ -523,13 +555,18 @@
                 authValue = originalAuthValue;
             }
 
+            // 解析tags字段
+            const tagsInput = document.getElementById('endpoint-tags').value.trim();
+            const tags = tagsInput ? tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+
             const data = {
                 name: document.getElementById('endpoint-name').value,
                 url: document.getElementById('endpoint-url').value,
                 path_prefix: '/v1', // 固定为 /v1
                 auth_type: document.getElementById('endpoint-auth-type').value,
                 auth_value: authValue,
-                enabled: document.getElementById('endpoint-enabled').checked
+                enabled: document.getElementById('endpoint-enabled').checked,
+                tags: tags
             };
 
             const isEditing = editingEndpointName !== null;

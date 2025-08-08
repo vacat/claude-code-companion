@@ -209,7 +209,7 @@ func (s *AdminServer) saveEndpointsToConfig(endpointConfigs []config.EndpointCon
 }
 
 // createEndpointConfigFromRequest 从请求创建端点配置，自动设置优先级
-func createEndpointConfigFromRequest(name, url, pathPrefix, authType, authValue string, enabled bool, priority int) config.EndpointConfig {
+func createEndpointConfigFromRequest(name, url, pathPrefix, authType, authValue string, enabled bool, priority int, tags []string) config.EndpointConfig {
 	return config.EndpointConfig{
 		Name:       name,
 		URL:        url,
@@ -218,18 +218,20 @@ func createEndpointConfigFromRequest(name, url, pathPrefix, authType, authValue 
 		AuthValue:  authValue,
 		Enabled:    enabled,
 		Priority:   priority,
+		Tags:       tags,
 	}
 }
 
 // handleCreateEndpoint 创建新端点
 func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 	var request struct {
-		Name       string `json:"name" binding:"required"`
-		URL        string `json:"url" binding:"required"`
-		PathPrefix string `json:"path_prefix"`
-		AuthType   string `json:"auth_type" binding:"required"`
-		AuthValue  string `json:"auth_value" binding:"required"`
-		Enabled    bool   `json:"enabled"`
+		Name       string   `json:"name" binding:"required"`
+		URL        string   `json:"url" binding:"required"`
+		PathPrefix string   `json:"path_prefix"`
+		AuthType   string   `json:"auth_type" binding:"required"`
+		AuthValue  string   `json:"auth_value" binding:"required"`
+		Enabled    bool     `json:"enabled"`
+		Tags       []string `json:"tags"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -260,7 +262,7 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 	newEndpoint := createEndpointConfigFromRequest(
 		request.Name, request.URL, request.PathPrefix, 
 		request.AuthType, request.AuthValue, 
-		request.Enabled, maxPriority+1)
+		request.Enabled, maxPriority+1, request.Tags)
 	currentEndpoints = append(currentEndpoints, newEndpoint)
 
 	// 使用热更新机制
@@ -303,12 +305,13 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 	endpointName := c.Param("id") // 使用名称作为ID
 
 	var request struct {
-		Name       string `json:"name"`
-		URL        string `json:"url"`
-		PathPrefix string `json:"path_prefix"`
-		AuthType   string `json:"auth_type"`
-		AuthValue  string `json:"auth_value"`
-		Enabled    bool   `json:"enabled"`
+		Name       string   `json:"name"`
+		URL        string   `json:"url"`
+		PathPrefix string   `json:"path_prefix"`
+		AuthType   string   `json:"auth_type"`
+		AuthValue  string   `json:"auth_value"`
+		Enabled    bool     `json:"enabled"`
+		Tags       []string `json:"tags"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -343,6 +346,9 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 				currentEndpoints[i].AuthValue = request.AuthValue
 			}
 			currentEndpoints[i].Enabled = request.Enabled
+			
+			// 更新tags字段
+			currentEndpoints[i].Tags = request.Tags
 			
 			found = true
 			break

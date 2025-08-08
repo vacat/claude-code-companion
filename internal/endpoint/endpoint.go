@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"claude-proxy/internal/config"
+	"claude-proxy/internal/interfaces"
 	"claude-proxy/internal/utils"
 )
 
@@ -28,6 +29,7 @@ type Endpoint struct {
 	AuthValue       string          `json:"auth_value"`
 	Enabled         bool            `json:"enabled"`
 	Priority        int             `json:"priority"`
+	Tags            []string        `json:"tags"`           // 新增：支持的tag列表
 	Status          Status          `json:"status"`
 	LastCheck       time.Time       `json:"last_check"`
 	FailureCount    int             `json:"failure_count"`
@@ -48,6 +50,7 @@ func NewEndpoint(config config.EndpointConfig) *Endpoint {
 		AuthValue:      config.AuthValue,
 		Enabled:        config.Enabled,
 		Priority:       config.Priority,
+		Tags:           config.Tags,       // 新增：从配置中复制tags
 		Status:         StatusActive,
 		LastCheck:      time.Now(),
 		RequestHistory: utils.NewCircularBuffer(100, 140*time.Second), // 100个记录，140秒窗口
@@ -78,6 +81,33 @@ func (e *Endpoint) GetAuthHeader() string {
 		return "Bearer " + e.AuthValue // auth_token 使用 Bearer 前缀
 	default:
 		return e.AuthValue
+	}
+}
+
+func (e *Endpoint) GetTags() []string {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	
+	// 返回tags的副本以避免并发修改
+	tags := make([]string, len(e.Tags))
+	copy(tags, e.Tags)
+	return tags
+}
+
+// ToTaggedEndpoint 将Endpoint转换为TaggedEndpoint
+func (e *Endpoint) ToTaggedEndpoint() interfaces.TaggedEndpoint {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	
+	tags := make([]string, len(e.Tags))
+	copy(tags, e.Tags)
+	
+	return interfaces.TaggedEndpoint{
+		Name:     e.Name,
+		URL:      e.URL,
+		Tags:     tags,
+		Priority: e.Priority,
+		Enabled:  e.Enabled,
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"claude-proxy/internal/endpoint"
 	"claude-proxy/internal/health"
 	"claude-proxy/internal/logger"
+	"claude-proxy/internal/tagging"
 	"claude-proxy/internal/validator"
 	"claude-proxy/internal/web"
 
@@ -20,6 +21,7 @@ type Server struct {
 	validator       *validator.ResponseValidator
 	healthChecker   *health.Checker
 	adminServer     *web.AdminServer
+	taggingManager  *tagging.Manager  // 新增：tagging系统管理器
 	router          *gin.Engine
 	configFilePath  string
 }
@@ -42,10 +44,16 @@ func NewServer(cfg *config.Config, configFilePath string) (*Server, error) {
 	responseValidator := validator.NewResponseValidator(cfg.Validation.StrictAnthropicFormat)
 	healthChecker := health.NewChecker()
 
+	// 初始化tagging系统
+	taggingManager := tagging.NewManager()
+	if err := taggingManager.Initialize(&cfg.Tagging); err != nil {
+		return nil, fmt.Errorf("failed to initialize tagging system: %v", err)
+	}
+
 	// 创建管理界面服务器（如果启用）
 	var adminServer *web.AdminServer
 	if cfg.WebAdmin.Enabled {
-		adminServer = web.NewAdminServer(cfg, endpointManager, log, configFilePath)
+		adminServer = web.NewAdminServer(cfg, endpointManager, taggingManager, log, configFilePath)
 	}
 
 	server := &Server{
@@ -55,6 +63,7 @@ func NewServer(cfg *config.Config, configFilePath string) (*Server, error) {
 		validator:       responseValidator,
 		healthChecker:   healthChecker,
 		adminServer:     adminServer,
+		taggingManager:  taggingManager,  // 新增：设置tagging管理器
 		configFilePath:  configFilePath,
 	}
 	

@@ -42,6 +42,11 @@ func (m *Manager) GetEndpoint() (*Endpoint, error) {
 	return m.selector.SelectEndpoint()
 }
 
+// GetEndpointWithTags 根据tags选择endpoint
+func (m *Manager) GetEndpointWithTags(tags []string) (*Endpoint, error) {
+	return m.selector.SelectEndpointWithTags(tags)
+}
+
 func (m *Manager) GetAllEndpoints() []*Endpoint {
 	return m.selector.GetAllEndpoints()
 }
