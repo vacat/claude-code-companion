@@ -102,7 +102,7 @@ func validateConfig(config *Config) error {
 	}
 
 	// 使用统一的服务器配置验证
-	if err := utils.ValidateServerConfig(config.Server.Host, config.Server.Port, ""); err != nil {
+	if err := utils.ValidateServerConfig(config.Server.Host, config.Server.Port); err != nil {
 		return err
 	}
 

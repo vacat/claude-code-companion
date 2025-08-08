@@ -57,13 +57,9 @@ func (v *EndpointConfigValidator) ValidateEndpoints(endpoints []EndpointConfig) 
 }
 
 // ValidateServerConfig validates server configuration
-func ValidateServerConfig(host string, port int, authToken string) error {
+func ValidateServerConfig(host string, port int) error {
 	if port <= 0 || port > 65535 {
 		return fmt.Errorf("invalid server port: %d", port)
-	}
-	
-	if authToken == "" {
-		return fmt.Errorf("server auth_token cannot be empty")
 	}
 	
 	return nil

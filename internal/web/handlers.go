@@ -661,7 +661,7 @@ func (s *AdminServer) handleHotUpdateConfig(c *gin.Context) {
 // validateConfigUpdate validates the configuration update using unified validation
 func (s *AdminServer) validateConfigUpdate(newConfig *config.Config) error {
 	// 使用统一的服务器配置验证
-	if err := utils.ValidateServerConfig(newConfig.Server.Host, newConfig.Server.Port, ""); err != nil {
+	if err := utils.ValidateServerConfig(newConfig.Server.Host, newConfig.Server.Port); err != nil {
 		return err
 	}
 
