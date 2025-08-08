@@ -169,23 +169,41 @@ func (v *ResponseValidator) ValidateMessageStartUsage(eventData map[string]inter
 		return fmt.Errorf("invalid message_start: missing usage field")
 	}
 
-	inputTokens := float64(0)
-	outputTokens := float64(0)
+	// 检查是否存在 input_tokens 和 output_tokens 字段
+	_, hasInputTokens := usage["input_tokens"]
+	_, hasOutputTokens := usage["output_tokens"]
 
-	if val, ok := usage["input_tokens"]; ok {
-		if num, ok := val.(float64); ok {
-			inputTokens = num
+	if hasInputTokens && hasOutputTokens {
+		// 如果存在标准字段，直接认为是合法的（不管值是什么）
+		return nil
+	} else {
+		// 如果不存在标准字段，检查是否为不合法的格式
+		promptTokens := float64(-1)
+		completionTokens := float64(-1)
+		totalTokens := float64(-1)
+
+		if val, ok := usage["prompt_tokens"]; ok {
+			if num, ok := val.(float64); ok {
+				promptTokens = num
+			}
 		}
-	}
 
-	if val, ok := usage["output_tokens"]; ok {
-		if num, ok := val.(float64); ok {
-			outputTokens = num
+		if val, ok := usage["completion_tokens"]; ok {
+			if num, ok := val.(float64); ok {
+				completionTokens = num
+			}
 		}
-	}
 
-	if inputTokens == 0 && outputTokens == 0 {
-		return fmt.Errorf("invalid usage stats: all token counts are zero, indicating empty response")
+		if val, ok := usage["total_tokens"]; ok {
+			if num, ok := val.(float64); ok {
+				totalTokens = num
+			}
+		}
+
+		// 只有当三个字段都存在且都为0时才判定为不合法
+		if promptTokens == 0 && completionTokens == 0 && totalTokens == 0 {
+			return fmt.Errorf("invalid usage stats: prompt_tokens, completion_tokens and total_tokens are all zero, indicating malformed response")
+		}
 	}
 
 	return nil
