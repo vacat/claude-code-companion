@@ -5,7 +5,7 @@ import (
 )
 
 func TestValidateMessageStartUsage(t *testing.T) {
-	validator := NewResponseValidator(true)
+	validator := NewResponseValidator(true, true)
 	
 	// 测试用例1: 正常的message_start事件，包含非零usage统计
 	validEvent := map[string]interface{}{
@@ -59,7 +59,7 @@ func TestValidateMessageStartUsage(t *testing.T) {
 }
 
 func TestValidateSSEChunkWithUsage(t *testing.T) {
-	validator := NewResponseValidator(true)
+	validator := NewResponseValidator(true, true)
 	
 	// 测试用例1: 包含有效usage的流式响应
 	validSSEData := []byte(`event: message_start

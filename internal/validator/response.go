@@ -10,16 +10,22 @@ import (
 )
 
 type ResponseValidator struct {
-	strictMode bool
+	strictMode      bool
+	validateStream  bool
 }
 
-func NewResponseValidator(strictMode bool) *ResponseValidator {
+func NewResponseValidator(strictMode, validateStream bool) *ResponseValidator {
 	return &ResponseValidator{
-		strictMode: strictMode,
+		strictMode:     strictMode,
+		validateStream: validateStream,
 	}
 }
 
 func (v *ResponseValidator) ValidateAnthropicResponse(body []byte, isStreaming bool) error {
+	if isStreaming && !v.validateStream {
+		// 如果禁用了流式验证，直接返回成功
+		return nil
+	}
 	if isStreaming {
 		return v.ValidateSSEChunk(body)
 	}

@@ -41,7 +41,7 @@ func NewServer(cfg *config.Config, configFilePath string) (*Server, error) {
 	}
 
 	endpointManager := endpoint.NewManager(cfg)
-	responseValidator := validator.NewResponseValidator(cfg.Validation.StrictAnthropicFormat)
+	responseValidator := validator.NewResponseValidator(cfg.Validation.StrictAnthropicFormat, cfg.Validation.ValidateStreaming)
 	healthChecker := health.NewChecker()
 
 	// 初始化tagging系统
@@ -199,6 +199,6 @@ func (s *Server) updateLoggingConfig(newLogging config.LoggingConfig) error {
 
 // updateValidatorConfig updates response validator configuration
 func (s *Server) updateValidatorConfig(newValidation config.ValidationConfig) {
-	s.validator = validator.NewResponseValidator(newValidation.StrictAnthropicFormat)
+	s.validator = validator.NewResponseValidator(newValidation.StrictAnthropicFormat, newValidation.ValidateStreaming)
 	s.config.Validation = newValidation
 }
