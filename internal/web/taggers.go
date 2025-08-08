@@ -30,7 +30,7 @@ type TagResponse struct {
 // handleTaggersPage 显示tagger管理页面
 func (s *AdminServer) handleTaggersPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "taggers.html", gin.H{
-		"title": "Tagger Management",
+		"Title": "Tagger Management",
 	})
 }
 
