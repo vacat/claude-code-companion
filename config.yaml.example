@@ -36,3 +36,83 @@ validation:
 
 web_admin:
     enabled: true                 # Admin interface runs on same host:port as proxy server
+
+# Tagging system - 根据请求特征为endpoint分配标签进行路由
+tagging:
+    enabled: true                 # Enable tagging system
+    pipeline_timeout: 5s          # Timeout for tagger pipeline execution
+    taggers:
+        # Path Tagger - 匹配HTTP请求路径
+        - name: api-v1-detector
+          type: builtin
+          builtin_type: path
+          tag: api-v1
+          enabled: false
+          priority: 1
+          config:
+            path_pattern: /v1/*   # 匹配所有/v1/开头的路径
+        
+        # Body JSON Tagger - 匹配JSON请求体中的字段值
+        - name: claude-3-detector
+          type: builtin
+          builtin_type: body-json
+          tag: claude-3
+          enabled: false
+          priority: 2
+          config:
+            json_path: model      # JSON路径，支持嵌套如 data.model
+            expected_value: claude-3*  # 期望值，支持通配符
+        
+        # Header Tagger - 匹配HTTP请求头部
+        - name: content-type-detector
+          type: builtin
+          builtin_type: header
+          tag: json-request
+          enabled: false
+          priority: 3
+          config:
+            header_name: Content-Type      # 头部字段名
+            expected_value: application/json  # 期望值，支持通配符
+        
+        # Method Tagger - 匹配HTTP请求方法
+        - name: post-method-detector
+          type: builtin
+          builtin_type: method
+          tag: post-request
+          enabled: false
+          priority: 4
+          config:
+            methods: [POST, PUT]  # 支持的HTTP方法列表
+        
+        # Query Tagger - 匹配URL查询参数
+        - name: beta-feature-detector
+          type: builtin
+          builtin_type: query
+          tag: beta-feature
+          enabled: false
+          priority: 5
+          config:
+            param_name: beta      # 查询参数名
+            expected_value: "true"  # 期望值，支持通配符
+        
+        # Starlark Tagger - 自定义脚本逻辑
+        - name: custom-detector
+          type: starlark
+          tag: custom-tag
+          enabled: false
+          priority: 6
+          config:
+            script: |-           # 内联Starlark脚本
+                def should_tag():
+                    # 检查请求头
+                    if "anthropic-beta" in request.headers:
+                        return True
+                    # 检查路径
+                    if "beta" in lower(request.path):
+                        return True
+                    # 检查查询参数
+                    if request.query.get("experimental") == "true":
+                        return True
+                    return False
+            # 或使用外部脚本文件
+            # script_file: /path/to/custom.star
