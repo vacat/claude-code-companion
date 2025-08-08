@@ -163,9 +163,6 @@ func (s *Server) validateConfigForHotUpdate(newConfig *config.Config) error {
 	if newConfig.Server.Port != s.config.Server.Port {
 		return fmt.Errorf("server port cannot be changed via hot update")
 	}
-	if newConfig.Server.AuthToken != s.config.Server.AuthToken {
-		return fmt.Errorf("auth token cannot be changed via hot update")
-	}
 
 	// 验证端点配置
 	if len(newConfig.Endpoints) == 0 {

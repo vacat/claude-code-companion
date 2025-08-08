@@ -10,20 +10,6 @@ import (
 
 func (s *Server) authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
-			c.Abort()
-			return
-		}
-
-		expectedAuth := "Bearer " + s.config.Server.AuthToken
-		if authHeader != expectedAuth {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization token"})
-			c.Abort()
-			return
-		}
-
 		c.Next()
 	}
 }

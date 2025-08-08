@@ -21,9 +21,8 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Host      string `yaml:"host"`
-	Port      int    `yaml:"port"`
-	AuthToken string `yaml:"auth_token"`
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
 }
 
 type EndpointConfig struct {
@@ -103,7 +102,7 @@ func validateConfig(config *Config) error {
 	}
 
 	// 使用统一的服务器配置验证
-	if err := utils.ValidateServerConfig(config.Server.Host, config.Server.Port, config.Server.AuthToken); err != nil {
+	if err := utils.ValidateServerConfig(config.Server.Host, config.Server.Port, ""); err != nil {
 		return err
 	}
 
