@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -104,7 +103,7 @@ type TaggerConfig struct {
 }
 
 func LoadConfig(filename string) (*Config, error) {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %v", err)
 	}
@@ -354,7 +353,7 @@ func SaveConfig(config *Config, filename string) error {
 	}
 
 	// 写入新配置
-	if err := ioutil.WriteFile(filename, data, 0644); err != nil {
+	if err := os.WriteFile(filename, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %v", err)
 	}
 

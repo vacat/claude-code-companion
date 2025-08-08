@@ -132,6 +132,13 @@ func (s *Server) tryProxyRequest(c *gin.Context, ep *endpoint.Endpoint, requestB
 	return false, true
 }
 
+// rebuildRequestBody rebuilds the request body from the cached bytes
+func (s *Server) rebuildRequestBody(c *gin.Context, requestBody []byte) {
+	if c.Request.Body != nil {
+		c.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
+	}
+}
+
 // endpointContainsAllTags 检查endpoint的标签是否包含请求的所有标签
 func (s *Server) endpointContainsAllTags(endpointTags, requestTags []string) bool {
 	if len(requestTags) == 0 {
@@ -228,9 +235,7 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 			}
 			
 			// 重新构建请求体
-			if c.Request.Body != nil {
-				c.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
-			}
+			s.rebuildRequestBody(c, requestBody)
 		}
 		
 		// 第二阶段：尝试万用端点
@@ -256,9 +261,7 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 			}
 			
 			// 重新构建请求体
-			if c.Request.Body != nil {
-				c.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
-			}
+			s.rebuildRequestBody(c, requestBody)
 		}
 		
 		// 所有endpoint都失败了
@@ -324,9 +327,7 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 			}
 			
 			// 重新构建请求体
-			if c.Request.Body != nil {
-				c.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
-			}
+			s.rebuildRequestBody(c, requestBody)
 		}
 		
 		// 所有universal endpoint都失败了

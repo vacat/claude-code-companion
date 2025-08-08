@@ -70,7 +70,10 @@ func (tp *TaggerPipeline) ProcessRequest(req *http.Request) (*TaggedRequest, err
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var tags []string
+	var tagSet map[string]bool // 用于快速检查标签重复
 	var results []TaggerResult
+
+	tagSet = make(map[string]bool)
 
 	// 并发执行所有tagger
 	for _, tagger := range taggers {
@@ -96,16 +99,11 @@ func (tp *TaggerPipeline) ProcessRequest(req *http.Request) (*TaggedRequest, err
 			
 			// 如果匹配成功且没有错误，添加tag（去重）
 			if matched && err == nil {
-				// 检查tag是否已存在，避免重复添加
-				tagExists := false
-				for _, existingTag := range tags {
-					if existingTag == t.Tag() {
-						tagExists = true
-						break
-					}
-				}
-				if !tagExists {
-					tags = append(tags, t.Tag())
+				// 使用map快速检查tag是否已存在
+				tag := t.Tag()
+				if !tagSet[tag] {
+					tagSet[tag] = true
+					tags = append(tags, tag)
 				}
 			}
 			mu.Unlock()
