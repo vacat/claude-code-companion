@@ -14,31 +14,54 @@ var (
 	clientInitOnce  sync.Once
 )
 
-// InitHTTPClients initializes the global HTTP clients
+// TimeoutConfig represents timeout configuration for HTTP clients
+type TimeoutConfig struct {
+	TLSHandshake     time.Duration
+	ResponseHeader   time.Duration
+	IdleConnection   time.Duration
+	OverallRequest   time.Duration // zero means no timeout
+}
+
+// InitHTTPClients initializes the global HTTP clients with default timeouts
 func InitHTTPClients() {
+	InitHTTPClientsWithTimeouts(TimeoutConfig{
+		TLSHandshake:   10 * time.Second,
+		ResponseHeader: 60 * time.Second,
+		IdleConnection: 90 * time.Second,
+		OverallRequest: 0, // no timeout for proxy
+	}, TimeoutConfig{
+		TLSHandshake:   5 * time.Second,
+		ResponseHeader: 30 * time.Second,
+		IdleConnection: 60 * time.Second,
+		OverallRequest: 30 * time.Second,
+	})
+}
+
+// InitHTTPClientsWithTimeouts initializes the global HTTP clients with custom timeouts
+func InitHTTPClientsWithTimeouts(proxyTimeouts, healthTimeouts TimeoutConfig) {
 	clientInitOnce.Do(func() {
 		// Proxy client - designed for long-running streaming requests
 		proxyClient = &http.Client{
 			Transport: &http.Transport{
-				TLSHandshakeTimeout:   10 * time.Second,
-				ResponseHeaderTimeout: 60 * time.Second, // Long enough for LLM to start responding
-				IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   proxyTimeouts.TLSHandshake,
+				ResponseHeaderTimeout: proxyTimeouts.ResponseHeader,
+				IdleConnTimeout:       proxyTimeouts.IdleConnection,
 				MaxIdleConns:          100,
 				MaxIdleConnsPerHost:   20,
 			},
-			// No timeout for streaming responses
+			Timeout: proxyTimeouts.OverallRequest, // 0 means no timeout
 		}
 
 		// Health check client - designed for quick health checks
 		healthClient = &http.Client{
 			Transport: &http.Transport{
-				TLSHandshakeTimeout:   5 * time.Second,
-				ResponseHeaderTimeout: 30 * time.Second,
-				IdleConnTimeout:       60 * time.Second,
+				TLSHandshakeTimeout:   healthTimeouts.TLSHandshake,
+				ResponseHeaderTimeout: healthTimeouts.ResponseHeader,
+				IdleConnTimeout:       healthTimeouts.IdleConnection,
 				MaxIdleConns:          50,
 				MaxIdleConnsPerHost:   10,
 			},
-			Timeout: 30 * time.Second,
+			Timeout: healthTimeouts.OverallRequest,
 		}
 	})
 }

@@ -18,6 +18,7 @@ type Config struct {
 	Validation  ValidationConfig  `yaml:"validation"`
 	WebAdmin    WebAdminConfig    `yaml:"web_admin"`
 	Tagging     TaggingConfig     `yaml:"tagging"`     // 新增：Tag系统配置
+	Timeouts    TimeoutConfig     `yaml:"timeouts"`    // 新增：超时配置
 }
 
 type ServerConfig struct {
@@ -58,6 +59,31 @@ type ValidationConfig struct {
 
 type WebAdminConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+// 新增：超时配置结构
+type TimeoutConfig struct {
+	// 代理客户端超时设置
+	Proxy ProxyTimeoutConfig `yaml:"proxy"`
+	// 健康检查超时设置
+	HealthCheck HealthCheckTimeoutConfig `yaml:"health_check"`
+}
+
+// 代理客户端超时配置
+type ProxyTimeoutConfig struct {
+	TLSHandshake     string `yaml:"tls_handshake"`      // TLS握手超时，默认10s
+	ResponseHeader   string `yaml:"response_header"`    // 响应头超时，默认60s  
+	IdleConnection   string `yaml:"idle_connection"`    // 空闲连接超时，默认90s
+	OverallRequest   string `yaml:"overall_request"`    // 整体请求超时，默认无限制(支持流式)
+}
+
+// 健康检查超时配置
+type HealthCheckTimeoutConfig struct {
+	TLSHandshake     string `yaml:"tls_handshake"`      // TLS握手超时，默认5s
+	ResponseHeader   string `yaml:"response_header"`    // 响应头超时，默认30s
+	IdleConnection   string `yaml:"idle_connection"`    // 空闲连接超时，默认60s
+	OverallRequest   string `yaml:"overall_request"`    // 整体请求超时，默认30s
+	CheckInterval    string `yaml:"check_interval"`     // 健康检查间隔，默认30s
 }
 
 // 新增：Tag系统配置结构
@@ -175,6 +201,11 @@ func validateConfig(config *Config) error {
 		return fmt.Errorf("tagging configuration error: %v", err)
 	}
 
+	// 验证Timeout配置
+	if err := validateTimeoutConfig(&config.Timeouts); err != nil {
+		return fmt.Errorf("timeout configuration error: %v", err)
+	}
+
 	return nil
 }
 
@@ -237,6 +268,64 @@ func validateTaggingConfig(config *TaggingConfig) error {
 				// 使用内联脚本 - 验证脚本内容非空
 			} else {
 				return fmt.Errorf("tagger[%d] '%s': starlark tagger requires either script_file or script in config", i, tagger.Name)
+			}
+		}
+	}
+
+	return nil
+}
+
+func validateTimeoutConfig(config *TimeoutConfig) error {
+	// 设置代理超时默认值
+	if config.Proxy.TLSHandshake == "" {
+		config.Proxy.TLSHandshake = "10s"
+	}
+	if config.Proxy.ResponseHeader == "" {
+		config.Proxy.ResponseHeader = "60s"
+	}
+	if config.Proxy.IdleConnection == "" {
+		config.Proxy.IdleConnection = "90s"
+	}
+	// OverallRequest 默认为空，表示无限制（支持流式响应）
+	
+	// 设置健康检查超时默认值
+	if config.HealthCheck.TLSHandshake == "" {
+		config.HealthCheck.TLSHandshake = "5s"
+	}
+	if config.HealthCheck.ResponseHeader == "" {
+		config.HealthCheck.ResponseHeader = "30s"
+	}
+	if config.HealthCheck.IdleConnection == "" {
+		config.HealthCheck.IdleConnection = "60s"
+	}
+	if config.HealthCheck.OverallRequest == "" {
+		config.HealthCheck.OverallRequest = "30s"
+	}
+	if config.HealthCheck.CheckInterval == "" {
+		config.HealthCheck.CheckInterval = "30s"
+	}
+
+	// 验证所有非空超时时间格式
+	timeoutFields := map[string]string{
+		"proxy.tls_handshake":          config.Proxy.TLSHandshake,
+		"proxy.response_header":        config.Proxy.ResponseHeader,
+		"proxy.idle_connection":        config.Proxy.IdleConnection,
+		"health_check.tls_handshake":   config.HealthCheck.TLSHandshake,
+		"health_check.response_header": config.HealthCheck.ResponseHeader,
+		"health_check.idle_connection": config.HealthCheck.IdleConnection,
+		"health_check.overall_request": config.HealthCheck.OverallRequest,
+		"health_check.check_interval":  config.HealthCheck.CheckInterval,
+	}
+
+	// 如果配置了proxy overall_request，也验证它
+	if config.Proxy.OverallRequest != "" {
+		timeoutFields["proxy.overall_request"] = config.Proxy.OverallRequest
+	}
+
+	for fieldName, value := range timeoutFields {
+		if value != "" {
+			if _, err := time.ParseDuration(value); err != nil {
+				return fmt.Errorf("invalid timeout '%s' for field '%s': %v", value, fieldName, err)
 			}
 		}
 	}

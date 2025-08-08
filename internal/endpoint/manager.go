@@ -103,8 +103,13 @@ func (m *Manager) startHealthChecks() {
 		return
 	}
 
-	// 每30秒进行一次健康检查（仅对不可用的端点）
+	// 获取健康检查间隔配置，默认30秒
 	interval := 30 * time.Second
+	if m.config.Timeouts.HealthCheck.CheckInterval != "" {
+		if d, err := time.ParseDuration(m.config.Timeouts.HealthCheck.CheckInterval); err == nil {
+			interval = d
+		}
+	}
 	
 	for _, endpoint := range m.endpoints {
 		if endpoint.Enabled {
