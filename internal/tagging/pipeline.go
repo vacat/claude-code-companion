@@ -94,9 +94,19 @@ func (tp *TaggerPipeline) ProcessRequest(req *http.Request) (*TaggedRequest, err
 			mu.Lock()
 			results = append(results, result)
 			
-			// 如果匹配成功且没有错误，添加tag
+			// 如果匹配成功且没有错误，添加tag（去重）
 			if matched && err == nil {
-				tags = append(tags, t.Tag())
+				// 检查tag是否已存在，避免重复添加
+				tagExists := false
+				for _, existingTag := range tags {
+					if existingTag == t.Tag() {
+						tagExists = true
+						break
+					}
+				}
+				if !tagExists {
+					tags = append(tags, t.Tag())
+				}
 			}
 			mu.Unlock()
 		}(tagger)

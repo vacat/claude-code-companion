@@ -48,6 +48,13 @@
    - 错误日志和调试信息
    - 日志不需要轮转和清理
 
+7. **标签系统** (`tagging/`)
+
+   - 请求标记和分类功能
+   - 支持多个tagger对请求进行标记
+   - 基于标签的路由和端点选择
+   - 内置和自定义标签规则支持
+
 ### 技术栈
 
 - **语言**：Go 1.19+
@@ -648,3 +655,156 @@ data: {"type":"message_stop"}
 - 头部清理：移除 `Content-Encoding` 和 `Content-Length`
 
 现在可以开始具体的编码实现工作。
+
+## 标签系统设计
+
+### 标签系统概述
+
+标签系统用于对 HTTP 请求进行分类和标记，以支持基于标签的路由、统计和管理功能。系统由以下核心组件组成：
+
+1. **Tagger接口** - 定义标记规则的执行器
+2. **TagRegistry** - 管理所有注册的标签和标记器  
+3. **TaggerPipeline** - 并发执行所有标记器的管道
+4. **TaggedRequest** - 包含标签信息的请求对象
+
+### 标签注册机制
+
+**重要变更**：从v2.0开始，系统允许多个tagger注册相同的tag名称，效果不叠加。
+
+#### 注册规则
+
+1. **Tagger唯一性**：每个tagger必须有唯一的名称，重复注册会返回错误
+2. **Tag重复允许**：多个tagger可以注册相同的tag名称  
+3. **Tag去重处理**：当多个tagger对同一请求打上相同标签时，最终结果中该标签只出现一次
+
+#### 实现逻辑
+
+```go
+// TagRegistry.RegisterTagger 允许tag重复注册
+func (tr *TagRegistry) RegisterTagger(tagger Tagger) error {
+    // 检查tagger名称唯一性
+    if _, exists := tr.taggers[name]; exists {
+        return fmt.Errorf("tagger '%s' already registered", name)
+    }
+    
+    // 自动注册tag（允许多个tagger使用相同tag）
+    tag := tagger.Tag()
+    if _, exists := tr.tags[tag]; !exists {
+        tr.tags[tag] = &Tag{
+            Name:        tag,
+            Description: fmt.Sprintf("Tag from tagger '%s'", name),
+        }
+    }
+    
+    tr.taggers[name] = tagger
+    return nil
+}
+```
+
+#### 标签去重处理
+
+在TaggerPipeline执行过程中，对相同标签进行去重：
+
+```go
+// TaggerPipeline.ProcessRequest 中的去重逻辑
+if matched && err == nil {
+    // 检查tag是否已存在，避免重复添加
+    tagExists := false
+    for _, existingTag := range tags {
+        if existingTag == t.Tag() {
+            tagExists = true
+            break
+        }
+    }
+    if !tagExists {
+        tags = append(tags, t.Tag())
+    }
+}
+```
+
+### 使用场景示例
+
+#### 场景1：多个AI模型检测器
+
+```yaml
+taggers:
+  - name: "claude-detector-v1"
+    type: "builtin"
+    rule: "path-contains"
+    value: "/v1/messages"  
+    tag: "ai-request"
+    
+  - name: "claude-detector-v2"  
+    type: "builtin"
+    rule: "header-contains"
+    value: "anthropic"
+    tag: "ai-request"    # 与v1使用相同tag
+```
+
+**结果**：当请求同时匹配两个检测器时，最终只会有一个"ai-request"标签。
+
+#### 场景2：不同维度的分类
+
+```yaml  
+taggers:
+  - name: "model-classifier"
+    tag: "claude-3"
+    
+  - name: "source-classifier"  
+    tag: "web-ui"
+    
+  - name: "priority-classifier"
+    tag: "high-priority"
+```
+
+**结果**：一个请求可能同时具有多个不同的标签：["claude-3", "web-ui", "high-priority"]
+
+### 配置格式
+
+标签系统配置添加到主配置文件中：
+
+```yaml
+tagging:
+  enabled: true
+  timeout_seconds: 5  # tagger执行超时
+  
+  # 内置标记器配置
+  builtin_taggers:
+    - name: "model-detector"
+      type: "path-match" 
+      pattern: "/v1/messages"
+      tag: "anthropic-api"
+      
+    - name: "streaming-detector"
+      type: "header-match"
+      header: "accept"
+      pattern: "text/event-stream"  
+      tag: "streaming"
+
+  # 自定义Starlark标记器
+  custom_taggers:
+    - name: "custom-classifier"
+      script_file: "./taggers/classifier.star"
+      tag: "custom-category"
+```
+
+### Web管理界面
+
+标签管理页面 (`/admin/taggers`) 包含：
+
+1. **标记器列表**
+   - 显示所有已注册的tagger及其状态
+   - 支持启用/禁用特定tagger
+   - 显示每个tagger的执行统计
+
+2. **标签统计**  
+   - 展示各标签的使用频率
+   - 标签相关的请求数量统计
+   - 标签组合分析
+
+3. **规则测试**
+   - 提供请求样本测试功能
+   - 实时预览标记结果
+   - 调试tagger执行过程
+
+这种设计既保持了tagger的独立性，又允许灵活的标签复用，满足复杂场景下的分类需求。

@@ -47,7 +47,7 @@ func (tr *TagRegistry) RegisterTagger(tagger Tagger) error {
 		return fmt.Errorf("tagger '%s' already registered", name)
 	}
 	
-	// 自动注册tagger对应的tag
+	// 自动注册tagger对应的tag（允许多个tagger使用相同tag）
 	tag := tagger.Tag()
 	if _, exists := tr.tags[tag]; !exists {
 		tr.tags[tag] = &Tag{
