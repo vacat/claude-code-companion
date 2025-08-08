@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -84,4 +85,16 @@ func CreateRequest(method, url string, body []byte) (*http.Request, error) {
 		return http.NewRequest(method, url, bytes.NewReader(body))
 	}
 	return http.NewRequest(method, url, nil)
+}
+
+// parseTimeoutWithDefault parses a timeout string with fallback to default
+func ParseTimeoutWithDefault(value, fieldName string, defaultDuration time.Duration) (time.Duration, error) {
+	if value == "" {
+		return defaultDuration, nil
+	}
+	d, err := time.ParseDuration(value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid %s timeout: %v", fieldName, err)
+	}
+	return d, nil
 }

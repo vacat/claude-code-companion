@@ -4,20 +4,17 @@ import (
 	"fmt"
 	"sync"
 
-	"claude-proxy/internal/routing"
 	"claude-proxy/internal/utils"
 )
 
 type Selector struct {
 	endpoints []*Endpoint
-	matcher   *routing.TagMatcher  // 新增：tag匹配器
 	mutex     sync.RWMutex
 }
 
 func NewSelector(endpoints []*Endpoint) *Selector {
 	return &Selector{
 		endpoints: endpoints,
-		matcher:   routing.NewTagMatcher(),  // 初始化tag匹配器
 	}
 }
 

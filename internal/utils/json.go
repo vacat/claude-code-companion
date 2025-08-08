@@ -66,3 +66,11 @@ func ExtractUserIDFromRequestBody(body []byte) string {
 	userID, _ := ExtractNestedStringField(body, []string{"metadata", "user_id"})
 	return userID
 }
+
+// TruncateBody truncates body content to specified length
+func TruncateBody(body string, maxLen int) string {
+	if len(body) <= maxLen {
+		return body
+	}
+	return body[:maxLen] + "... [truncated]"
+}

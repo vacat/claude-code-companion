@@ -117,24 +117,27 @@ func FilterEndpointsForTags(endpoints []EndpointSorter, requiredTags []string) [
 
 // FilterEnabledEndpoints filters out disabled endpoints
 func FilterEnabledEndpoints(endpoints []EndpointSorter) []EndpointSorter {
-	enabled := make([]EndpointSorter, 0, len(endpoints))
-	for _, ep := range endpoints {
-		if ep.IsEnabled() {
-			enabled = append(enabled, ep)
-		}
-	}
-	return enabled
+	return FilterEndpoints(endpoints, func(ep EndpointSorter) bool {
+		return ep.IsEnabled()
+	})
 }
 
 // FilterAvailableEndpoints filters out unavailable endpoints
 func FilterAvailableEndpoints(endpoints []EndpointSorter) []EndpointSorter {
-	available := make([]EndpointSorter, 0, len(endpoints))
+	return FilterEndpoints(endpoints, func(ep EndpointSorter) bool {
+		return ep.IsAvailable()
+	})
+}
+
+// FilterEndpoints applies a generic filter predicate to endpoints
+func FilterEndpoints(endpoints []EndpointSorter, predicate func(EndpointSorter) bool) []EndpointSorter {
+	filtered := make([]EndpointSorter, 0, len(endpoints))
 	for _, ep := range endpoints {
-		if ep.IsAvailable() {
-			available = append(available, ep)
+		if predicate(ep) {
+			filtered = append(filtered, ep)
 		}
 	}
-	return available
+	return filtered
 }
 
 // SortEndpointsByPriority sorts endpoints by priority (lower number = higher priority)

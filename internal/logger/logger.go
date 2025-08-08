@@ -129,13 +129,6 @@ func (l *Logger) shouldLogRequest(statusCode int) bool {
 	}
 }
 
-// truncateBody truncates body content to specified length
-func (l *Logger) truncateBody(body string, maxLen int) string {
-	if len(body) <= maxLen {
-		return body
-	}
-	return body[:maxLen] + "... [truncated]"
-}
 
 func (l *Logger) Info(msg string, fields ...logrus.Fields) {
 	if len(fields) > 0 {
@@ -182,9 +175,6 @@ func (l *Logger) GetAllLogsByRequestID(requestID string) ([]*RequestLog, error) 
 	return l.storage.GetAllLogsByRequestID(requestID)
 }
 
-func headersToMap(headers http.Header) map[string]string {
-	return utils.HeadersToMap(headers)
-}
 
 func (l *Logger) CreateRequestLog(requestID, endpoint, method, path string) *RequestLog {
 	return &RequestLog{
@@ -200,14 +190,14 @@ func (l *Logger) UpdateRequestLog(log *RequestLog, req *http.Request, resp *http
 	log.DurationMs = duration.Nanoseconds() / 1000000
 	
 	if req != nil {
-		log.RequestHeaders = headersToMap(req.Header)
+		log.RequestHeaders = utils.HeadersToMap(req.Header)
 		log.IsStreaming = req.Header.Get("Accept") == "text/event-stream" || 
 			req.Header.Get("Accept") == "application/json, text/event-stream"
 	}
 	
 	if resp != nil {
 		log.StatusCode = resp.StatusCode
-		log.ResponseHeaders = headersToMap(resp.Header)
+		log.ResponseHeaders = utils.HeadersToMap(resp.Header)
 		
 		// 检查响应是否为流式
 		if resp.Header.Get("Content-Type") != "" {
@@ -221,7 +211,7 @@ func (l *Logger) UpdateRequestLog(log *RequestLog, req *http.Request, resp *http
 	log.ResponseBodySize = len(body)
 	if l.config.LogResponseBody != "none" && len(body) > 0 {
 		if l.config.LogResponseBody == "truncated" {
-			log.ResponseBody = l.truncateBody(string(body), 1024)
+			log.ResponseBody = utils.TruncateBody(string(body), 1024)
 		} else {
 			log.ResponseBody = string(body)
 		}
@@ -240,7 +230,3 @@ func (l *Logger) Close() error {
 	return nil
 }
 
-// ExtractModelFromRequestBody extracts the model name from request body JSON
-func ExtractModelFromRequestBody(body string) string {
-	return utils.ExtractModelFromRequestBody(body)
-}

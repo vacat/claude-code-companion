@@ -94,9 +94,8 @@ func (s *Server) setupRoutes() {
 		s.adminServer.RegisterRoutes(s.router)
 	}
 
-	// 为 API 端点添加认证和日志中间件
+	// 为 API 端点添加日志中间件
 	apiGroup := s.router.Group("/v1")
-	apiGroup.Use(s.authMiddleware())
 	apiGroup.Use(s.loggingMiddleware())
 	{
 		apiGroup.Any("/*path", s.handleProxy)

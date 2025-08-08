@@ -9,8 +9,7 @@ import (
 	"time"
 
 	"claude-proxy/internal/endpoint"
-	"claude-proxy/internal/interfaces"
-	"claude-proxy/internal/logger"
+	"claude-proxy/internal/tagging"
 	"claude-proxy/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -21,25 +20,62 @@ func (s *Server) handleProxy(c *gin.Context) {
 	startTime := c.MustGet("start_time").(time.Time)
 	path := c.Param("path")
 
-	var requestBody []byte
-	if c.Request.Body != nil {
-		body, err := io.ReadAll(c.Request.Body)
-		if err != nil {
-			s.logger.Error("Failed to read request body", err)
-			s.sendProxyError(c, http.StatusBadRequest, "request_body_error", "Failed to read request body", requestID)
-			return
-		}
-		requestBody = body
-		c.Request.Body = io.NopCloser(bytes.NewReader(body))
+	// 读取请求体
+	requestBody, err := s.readRequestBody(c)
+	if err != nil {
+		s.sendProxyError(c, http.StatusBadRequest, "request_body_error", "Failed to read request body", requestID)
+		return
 	}
 
-	// 使用tagging系统处理请求
-	taggedRequest, err := s.taggingManager.ProcessRequest(c.Request)
+	// 处理请求标签
+	taggedRequest := s.processRequestTags(c.Request)
+
+	// 选择端点并处理请求
+	selectedEndpoint, err := s.selectEndpointForRequest(taggedRequest)
+	if err != nil {
+		s.logger.Error("Failed to select endpoint", err)
+		s.sendProxyError(c, http.StatusBadGateway, "no_available_endpoints", "All endpoints are currently unavailable", requestID)
+		return
+	}
+
+	// 尝试向选择的端点发送请求，失败时回退到其他端点
+	success, shouldRetry := s.tryProxyRequest(c, selectedEndpoint, requestBody, requestID, startTime, path)
+	if success {
+		return
+	}
+
+	if shouldRetry {
+		// 使用回退逻辑
+		s.fallbackToOtherEndpoints(c, path, requestBody, requestID, startTime, selectedEndpoint, taggedRequest)
+	}
+}
+
+// readRequestBody reads and buffers the request body
+func (s *Server) readRequestBody(c *gin.Context) ([]byte, error) {
+	if c.Request.Body == nil {
+		return nil, nil
+	}
+	
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		s.logger.Error("Failed to read request body", err)
+		return nil, err
+	}
+	
+	// 重新设置请求体供后续使用
+	c.Request.Body = io.NopCloser(bytes.NewReader(body))
+	return body, nil
+}
+
+// processRequestTags handles request tagging with error handling
+func (s *Server) processRequestTags(req *http.Request) *tagging.TaggedRequest {
+	taggedRequest, err := s.taggingManager.ProcessRequest(req)
 	if err != nil {
 		s.logger.Error("Failed to process request tags", err)
-		// 如果tagging失败，继续使用原有逻辑（无tag）
-		taggedRequest = nil
-	} else if taggedRequest != nil {
+		return nil
+	}
+	
+	if taggedRequest != nil {
 		// 记录详细的tagging结果
 		s.logger.Debug(fmt.Sprintf("Tagging completed: found %d tags: %v", len(taggedRequest.Tags), taggedRequest.Tags))
 		for _, result := range taggedRequest.TaggerResults {
@@ -51,33 +87,32 @@ func (s *Server) handleProxy(c *gin.Context) {
 			}
 		}
 	}
+	
+	return taggedRequest
+}
 
-	// 选择endpoint
-	var selectedEndpoint *endpoint.Endpoint
-	var endpointSelectionError error
-
+// selectEndpointForRequest selects the appropriate endpoint based on tags
+func (s *Server) selectEndpointForRequest(taggedRequest *tagging.TaggedRequest) (*endpoint.Endpoint, error) {
 	if taggedRequest != nil && len(taggedRequest.Tags) > 0 {
 		// 使用tag匹配选择endpoint
-		selectedEndpoint, endpointSelectionError = s.endpointManager.GetEndpointWithTags(taggedRequest.Tags)
+		selectedEndpoint, err := s.endpointManager.GetEndpointWithTags(taggedRequest.Tags)
 		s.logger.Debug(fmt.Sprintf("Request tagged with: %v, selected endpoint: %s", 
 			taggedRequest.Tags, 
 			func() string { if selectedEndpoint != nil { return selectedEndpoint.Name } else { return "none" } }()))
+		return selectedEndpoint, err
 	} else {
 		// 使用原有逻辑选择endpoint
-		selectedEndpoint, endpointSelectionError = s.endpointManager.GetEndpoint()
+		selectedEndpoint, err := s.endpointManager.GetEndpoint()
 		s.logger.Debug("Request has no tags, using default endpoint selection")
+		return selectedEndpoint, err
 	}
+}
 
-	if endpointSelectionError != nil {
-		s.logger.Error("Failed to select endpoint", endpointSelectionError)
-		s.sendProxyError(c, http.StatusBadGateway, "no_endpoints", endpointSelectionError.Error(), requestID)
-		return
-	}
-
-	// 尝试代理到选择的endpoint
-	success, _ := s.proxyToEndpoint(c, selectedEndpoint, path, requestBody, requestID, startTime, taggedRequest)
+// tryProxyRequest attempts to proxy the request to the given endpoint
+func (s *Server) tryProxyRequest(c *gin.Context, ep *endpoint.Endpoint, requestBody []byte, requestID string, startTime time.Time, path string) (success, shouldRetry bool) {
+	success, _ = s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, nil)
 	if success {
-		s.endpointManager.RecordRequest(selectedEndpoint.ID, true)
+		s.endpointManager.RecordRequest(ep.ID, true)
 		
 		// 尝试提取基准信息用于健康检查
 		if len(requestBody) > 0 {
@@ -87,13 +122,14 @@ func (s *Server) handleProxy(c *gin.Context) {
 			}
 		}
 		
-		s.logger.Debug(fmt.Sprintf("Request succeeded on endpoint %s", selectedEndpoint.Name))
-		return
+		s.logger.Debug(fmt.Sprintf("Request succeeded on endpoint %s", ep.Name))
+		return true, false
 	}
-
-	// 主endpoint失败，尝试fallback到其他可用的endpoint
+	
+	// 记录失败
+	s.endpointManager.RecordRequest(ep.ID, false)
 	s.logger.Debug("Primary endpoint failed, trying fallback endpoints")
-	s.fallbackToOtherEndpoints(c, path, requestBody, requestID, startTime, selectedEndpoint, taggedRequest)
+	return false, true
 }
 
 // endpointContainsAllTags 检查endpoint的标签是否包含请求的所有标签
@@ -118,7 +154,7 @@ func (s *Server) endpointContainsAllTags(endpointTags, requestTags []string) boo
 }
 
 // fallbackToOtherEndpoints 当endpoint失败时，根据是否有tag决定fallback策略
-func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBody []byte, requestID string, startTime time.Time, failedEndpoint *endpoint.Endpoint, taggedRequest *interfaces.TaggedRequest) {
+func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBody []byte, requestID string, startTime time.Time, failedEndpoint *endpoint.Endpoint, taggedRequest *tagging.TaggedRequest) {
 	// 记录失败的endpoint
 	s.endpointManager.RecordRequest(failedEndpoint.ID, false)
 	
@@ -230,7 +266,7 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 		requestLog := s.logger.CreateRequestLog(requestID, "failed", c.Request.Method, path)
 		requestLog.DurationMs = duration.Nanoseconds() / 1000000
 		if len(requestBody) > 0 {
-			requestLog.Model = logger.ExtractModelFromRequestBody(string(requestBody))
+			requestLog.Model = utils.ExtractModelFromRequestBody(string(requestBody))
 		}
 		requestLog.Tags = requestTags
 		requestLog.Error = fmt.Sprintf("All %d endpoints failed for tagged request (tags: %v)", attemptedCount, requestTags)
@@ -298,7 +334,7 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 		requestLog := s.logger.CreateRequestLog(requestID, "failed", c.Request.Method, path)
 		requestLog.DurationMs = duration.Nanoseconds() / 1000000
 		if len(requestBody) > 0 {
-			requestLog.Model = logger.ExtractModelFromRequestBody(string(requestBody))
+			requestLog.Model = utils.ExtractModelFromRequestBody(string(requestBody))
 		}
 		requestLog.Error = fmt.Sprintf("All %d universal endpoints failed for untagged request", attemptedCount)
 		s.logger.LogRequest(requestLog)
@@ -306,7 +342,7 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 	}
 }
 
-func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path string, requestBody []byte, requestID string, startTime time.Time, taggedRequest *interfaces.TaggedRequest) (bool, bool) {
+func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path string, requestBody []byte, requestID string, startTime time.Time, taggedRequest *tagging.TaggedRequest) (bool, bool) {
 	targetURL := ep.GetFullURL(path)
 	
 	// Extract tags from taggedRequest
@@ -479,13 +515,6 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	return true, false
 }
 
-// truncateBody truncates body content to specified length
-func truncateBody(body string, maxLen int) string {
-	if len(body) <= maxLen {
-		return body
-	}
-	return body[:maxLen] + "... [truncated]"
-}
 
 // sendProxyError sends a standardized error response for proxy failures
 func (s *Server) sendProxyError(c *gin.Context, statusCode int, errorType, message string, requestID string) {
@@ -516,7 +545,7 @@ func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, r
 	// 设置请求体日志
 	if s.config.Logging.LogRequestBody != "none" && len(requestBody) > 0 {
 		if s.config.Logging.LogRequestBody == "truncated" {
-			requestLog.RequestBody = truncateBody(string(requestBody), 1024)
+			requestLog.RequestBody = utils.TruncateBody(string(requestBody), 1024)
 		} else {
 			requestLog.RequestBody = string(requestBody)
 		}
@@ -524,7 +553,7 @@ func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, r
 	
 	// 提取模型信息
 	if len(requestBody) > 0 {
-		requestLog.Model = logger.ExtractModelFromRequestBody(string(requestBody))
+		requestLog.Model = utils.ExtractModelFromRequestBody(string(requestBody))
 	}
 	
 	// 更新并记录日志

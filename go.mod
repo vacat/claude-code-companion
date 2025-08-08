@@ -7,6 +7,7 @@ toolchain go1.23.12
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/sirupsen/logrus v1.9.3
+	go.starlark.net v0.0.0-20250804182900-3c9dc17c5f2e
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.38.2
 )
@@ -33,7 +34,6 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
-	go.starlark.net v0.0.0-20250804182900-3c9dc17c5f2e // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect

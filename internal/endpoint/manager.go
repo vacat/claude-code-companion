@@ -83,9 +83,6 @@ func (m *Manager) UpdateEndpoints(endpointConfigs []config.EndpointConfig) {
 	m.startHealthChecks()
 }
 
-func (m *Manager) GetHealthChecker() HealthChecker {
-	return m.healthChecker
-}
 
 func (m *Manager) SetHealthChecker(checker HealthChecker) {
 	m.mutex.Lock()

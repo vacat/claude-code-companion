@@ -7,11 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (s *Server) authMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Next()
-	}
-}
 
 func (s *Server) loggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {

@@ -84,86 +84,41 @@ func initHTTPClientsFromConfig(cfg *config.Config) error {
 	// Parse proxy timeouts
 	proxyTimeouts := utils.TimeoutConfig{}
 	
-	if cfg.Timeouts.Proxy.TLSHandshake != "" {
-		if d, err := time.ParseDuration(cfg.Timeouts.Proxy.TLSHandshake); err != nil {
-			return fmt.Errorf("invalid proxy.tls_handshake timeout: %v", err)
-		} else {
-			proxyTimeouts.TLSHandshake = d
-		}
-	} else {
-		proxyTimeouts.TLSHandshake = 10 * time.Second
+	var err error
+	if proxyTimeouts.TLSHandshake, err = utils.ParseTimeoutWithDefault(cfg.Timeouts.Proxy.TLSHandshake, "proxy.tls_handshake", 10*time.Second); err != nil {
+		return err
 	}
 	
-	if cfg.Timeouts.Proxy.ResponseHeader != "" {
-		if d, err := time.ParseDuration(cfg.Timeouts.Proxy.ResponseHeader); err != nil {
-			return fmt.Errorf("invalid proxy.response_header timeout: %v", err)
-		} else {
-			proxyTimeouts.ResponseHeader = d
-		}
-	} else {
-		proxyTimeouts.ResponseHeader = 60 * time.Second
+	if proxyTimeouts.ResponseHeader, err = utils.ParseTimeoutWithDefault(cfg.Timeouts.Proxy.ResponseHeader, "proxy.response_header", 60*time.Second); err != nil {
+		return err
 	}
 	
-	if cfg.Timeouts.Proxy.IdleConnection != "" {
-		if d, err := time.ParseDuration(cfg.Timeouts.Proxy.IdleConnection); err != nil {
-			return fmt.Errorf("invalid proxy.idle_connection timeout: %v", err)
-		} else {
-			proxyTimeouts.IdleConnection = d
-		}
-	} else {
-		proxyTimeouts.IdleConnection = 90 * time.Second
+	if proxyTimeouts.IdleConnection, err = utils.ParseTimeoutWithDefault(cfg.Timeouts.Proxy.IdleConnection, "proxy.idle_connection", 90*time.Second); err != nil {
+		return err
 	}
 	
 	// Overall request timeout is optional for proxy (streaming support)
-	if cfg.Timeouts.Proxy.OverallRequest != "" {
-		if d, err := time.ParseDuration(cfg.Timeouts.Proxy.OverallRequest); err != nil {
-			return fmt.Errorf("invalid proxy.overall_request timeout: %v", err)
-		} else {
-			proxyTimeouts.OverallRequest = d
-		}
+	if proxyTimeouts.OverallRequest, err = utils.ParseTimeoutWithDefault(cfg.Timeouts.Proxy.OverallRequest, "proxy.overall_request", 0); err != nil {
+		return err
 	}
 	
 	// Parse health check timeouts
 	healthTimeouts := utils.TimeoutConfig{}
 	
-	if cfg.Timeouts.HealthCheck.TLSHandshake != "" {
-		if d, err := time.ParseDuration(cfg.Timeouts.HealthCheck.TLSHandshake); err != nil {
-			return fmt.Errorf("invalid health_check.tls_handshake timeout: %v", err)
-		} else {
-			healthTimeouts.TLSHandshake = d
-		}
-	} else {
-		healthTimeouts.TLSHandshake = 5 * time.Second
+	if healthTimeouts.TLSHandshake, err = utils.ParseTimeoutWithDefault(cfg.Timeouts.HealthCheck.TLSHandshake, "health_check.tls_handshake", 5*time.Second); err != nil {
+		return err
 	}
 	
-	if cfg.Timeouts.HealthCheck.ResponseHeader != "" {
-		if d, err := time.ParseDuration(cfg.Timeouts.HealthCheck.ResponseHeader); err != nil {
-			return fmt.Errorf("invalid health_check.response_header timeout: %v", err)
-		} else {
-			healthTimeouts.ResponseHeader = d
-		}
-	} else {
-		healthTimeouts.ResponseHeader = 30 * time.Second
+	if healthTimeouts.ResponseHeader, err = utils.ParseTimeoutWithDefault(cfg.Timeouts.HealthCheck.ResponseHeader, "health_check.response_header", 30*time.Second); err != nil {
+		return err
 	}
 	
-	if cfg.Timeouts.HealthCheck.IdleConnection != "" {
-		if d, err := time.ParseDuration(cfg.Timeouts.HealthCheck.IdleConnection); err != nil {
-			return fmt.Errorf("invalid health_check.idle_connection timeout: %v", err)
-		} else {
-			healthTimeouts.IdleConnection = d
-		}
-	} else {
-		healthTimeouts.IdleConnection = 60 * time.Second
+	if healthTimeouts.IdleConnection, err = utils.ParseTimeoutWithDefault(cfg.Timeouts.HealthCheck.IdleConnection, "health_check.idle_connection", 60*time.Second); err != nil {
+		return err
 	}
 	
-	if cfg.Timeouts.HealthCheck.OverallRequest != "" {
-		if d, err := time.ParseDuration(cfg.Timeouts.HealthCheck.OverallRequest); err != nil {
-			return fmt.Errorf("invalid health_check.overall_request timeout: %v", err)
-		} else {
-			healthTimeouts.OverallRequest = d
-		}
-	} else {
-		healthTimeouts.OverallRequest = 30 * time.Second
+	if healthTimeouts.OverallRequest, err = utils.ParseTimeoutWithDefault(cfg.Timeouts.HealthCheck.OverallRequest, "health_check.overall_request", 30*time.Second); err != nil {
+		return err
 	}
 	
 	// Initialize HTTP clients
