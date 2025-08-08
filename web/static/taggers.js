@@ -23,7 +23,7 @@ async function loadTaggers() {
         const data = await response.json();
         
         if (data.enabled) {
-            document.getElementById('systemStatus').textContent = 'Enabled';
+            document.getElementById('systemStatus').textContent = '已启用';
             document.getElementById('systemStatus').className = 'fs-4 fw-bold text-success';
             document.getElementById('pipelineTimeout').textContent = data.timeout || '5s';
             
@@ -32,14 +32,14 @@ async function loadTaggers() {
             
             renderTaggers();
         } else {
-            document.getElementById('systemStatus').textContent = 'Disabled';
+            document.getElementById('systemStatus').textContent = '已禁用';
             document.getElementById('systemStatus').className = 'fs-4 fw-bold text-warning';
             taggers = [];
             renderTaggers();
         }
     } catch (error) {
         console.error('Failed to load taggers:', error);
-        showAlert('Failed to load taggers', 'danger');
+        showAlert('加载 Tagger 失败', 'danger');
     }
 }
 
@@ -56,7 +56,7 @@ async function loadTags() {
         }
     } catch (error) {
         console.error('Failed to load tags:', error);
-        showAlert('Failed to load tags', 'danger');
+        showAlert('加载标签失败', 'danger');
     }
 }
 
@@ -84,15 +84,15 @@ function renderTaggers() {
             <td>${tagger.priority}</td>
             <td>
                 <span class="badge ${tagger.enabled ? 'bg-success' : 'bg-warning'}">
-                    ${tagger.enabled ? 'Enabled' : 'Disabled'}
+                    ${tagger.enabled ? '已启用' : '已禁用'}
                 </span>
             </td>
             <td>
                 <button class="btn btn-sm btn-outline-primary" onclick="editTagger('${tagger.name}')">
-                    <i class="bi bi-pencil"></i> Edit
+                    <i class="fas fa-edit"></i> 编辑
                 </button>
                 <button class="btn btn-sm btn-outline-danger" onclick="deleteTagger('${tagger.name}')">
-                    <i class="bi bi-trash"></i> Delete
+                    <i class="fas fa-trash"></i> 删除
                 </button>
             </td>
         `;
@@ -115,7 +115,7 @@ function renderTags() {
         tagElement.className = `badge me-2 mb-2 ${tag.in_use ? 'bg-success' : 'bg-secondary'}`;
         tagElement.innerHTML = `
             ${escapeHtml(tag.name)}
-            ${tag.in_use ? '<i class="bi bi-check-circle ms-1"></i>' : ''}
+            ${tag.in_use ? '<i class="fas fa-check-circle ms-1"></i>' : ''}
         `;
         tagElement.title = tag.description + (tag.in_use ? ' (in use)' : ' (not used)');
         container.appendChild(tagElement);
@@ -125,7 +125,7 @@ function renderTags() {
 // Show add tagger modal
 function showAddTaggerModal() {
     editingTagger = null;
-    document.getElementById('taggerModalTitle').textContent = 'Add Tagger';
+    document.getElementById('taggerModalTitle').textContent = '添加 Tagger';
     document.getElementById('taggerForm').reset();
     document.getElementById('taggerEnabled').checked = true;
     clearConfigFields();
@@ -137,7 +137,7 @@ function editTagger(name) {
     editingTagger = taggers.find(t => t.name === name);
     if (!editingTagger) return;
     
-    document.getElementById('taggerModalTitle').textContent = 'Edit Tagger';
+    document.getElementById('taggerModalTitle').textContent = '编辑 Tagger';
     document.getElementById('taggerName').value = editingTagger.name;
     document.getElementById('taggerType').value = editingTagger.type;
     document.getElementById('taggerTag').value = editingTagger.tag;
@@ -157,7 +157,7 @@ function editTagger(name) {
 
 // Delete tagger
 async function deleteTagger(name) {
-    if (!confirm(`Are you sure you want to delete tagger "${name}"?`)) {
+    if (!confirm(`确定要删除 Tagger "${name}" 吗？`)) {
         return;
     }
     
@@ -173,11 +173,11 @@ async function deleteTagger(name) {
             loadTaggers();
             loadTags();
         } else {
-            showAlert(data.error || 'Failed to delete tagger', 'danger');
+            showAlert(data.error || '删除 Tagger 失败', 'danger');
         }
     } catch (error) {
         console.error('Failed to delete tagger:', error);
-        showAlert('Failed to delete tagger', 'danger');
+        showAlert('删除 Tagger 失败', 'danger');
     }
 }
 
@@ -234,11 +234,11 @@ async function saveTagger() {
             loadTaggers();
             loadTags();
         } else {
-            showAlert(data.error || 'Failed to save tagger', 'danger');
+            showAlert(data.error || '保存 Tagger 失败', 'danger');
         }
     } catch (error) {
         console.error('Failed to save tagger:', error);
-        showAlert('Failed to save tagger', 'danger');
+        showAlert('保存 Tagger 失败', 'danger');
     }
 }
 

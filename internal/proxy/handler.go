@@ -174,6 +174,7 @@ func (s *Server) fallbackToUntaggedEndpoints(c *gin.Context, path string, reques
 	
 	// 在日志中记录tag信息
 	if taggedRequest != nil && len(taggedRequest.Tags) > 0 {
+		requestLog.Tags = taggedRequest.Tags
 		requestLog.Error = fmt.Sprintf("Tagged request failed (tags: %v), attempted %d fallback endpoints", taggedRequest.Tags, attemptedCount+1) // +1 包括最初的tagged endpoint
 	} else {
 		requestLog.Error = fmt.Sprintf("All %d available endpoints failed", attemptedCount+1)
@@ -186,9 +187,19 @@ func (s *Server) fallbackToUntaggedEndpoints(c *gin.Context, path string, reques
 func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path string, requestBody []byte, requestID string, startTime time.Time, taggedRequest *interfaces.TaggedRequest) (bool, bool) {
 	targetURL := ep.GetFullURL(path)
 	
+	// Extract tags from taggedRequest
+	var tags []string
+	if taggedRequest != nil {
+		tags = taggedRequest.Tags
+	}
+	
 	req, err := http.NewRequest(c.Request.Method, targetURL, bytes.NewReader(requestBody))
 	if err != nil {
 		s.logger.Error("Failed to create request", err)
+		// 记录创建请求失败的日志
+		duration := time.Since(startTime)
+		createRequestError := fmt.Sprintf("Failed to create request: %v", err)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags)
 		return false, false
 	}
 
@@ -217,7 +228,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	resp, err := client.Do(req)
 	if err != nil {
 		duration := time.Since(startTime)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, nil, nil, duration, err)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags)
 		return false, true
 	}
 	defer resp.Body.Close()
@@ -234,7 +245,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			decompressedBody = body // 如果解压失败，使用原始数据
 		}
 		
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil, s.isRequestExpectingStream(req), tags)
 		s.logger.Debug(fmt.Sprintf("HTTP error %d from endpoint %s, trying next endpoint", resp.StatusCode, ep.Name))
 		return false, true
 	}
@@ -242,6 +253,10 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		s.logger.Error("Failed to read response body", err)
+		// 记录读取响应体失败的日志
+		duration := time.Since(startTime)
+		readError := fmt.Sprintf("Failed to read response body: %v", err)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, nil, duration, fmt.Errorf(readError), s.isRequestExpectingStream(req), tags)
 		return false, false
 	}
 
@@ -250,7 +265,25 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	decompressedBody, err := s.validator.GetDecompressedBody(responseBody, contentEncoding)
 	if err != nil {
 		s.logger.Error("Failed to decompress response body", err)
+		// 记录解压响应体失败的日志
+		duration := time.Since(startTime)
+		decompressError := fmt.Sprintf("Failed to decompress response body: %v", err)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, responseBody, duration, fmt.Errorf(decompressError), s.isRequestExpectingStream(req), tags)
 		return false, false
+	}
+
+	// 检测流式响应：首先检查 Content-Type，然后检查响应体内容
+	isStreaming := strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream")
+	contentTypeOverride := ""
+	
+	// 如果 Content-Type 不是 SSE，但响应体看起来像 SSE 格式，则也当作流式处理
+	if !isStreaming && len(decompressedBody) > 0 {
+		bodyStr := string(decompressedBody)
+		if strings.Contains(bodyStr, "event: ") && strings.Contains(bodyStr, "data: ") {
+			s.logger.Info(fmt.Sprintf("Detected SSE response with incorrect Content-Type from endpoint %s", ep.Name))
+			isStreaming = true
+			contentTypeOverride = "text/event-stream"
+		}
 	}
 
 	// 检查Content-Type，如果是text/plain但状态码是200，改写Content-Type为application/json
@@ -270,15 +303,17 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			}
 		}
 	} else {
-		// 正常情况下复制所有头部，保持原始状态
+		// 正常情况下复制所有头部，但检查是否需要修正 SSE Content-Type
 		for key, values := range resp.Header {
-			for _, value := range values {
-				c.Header(key, value)
+			if strings.ToLower(key) == "content-type" && contentTypeOverride != "" {
+				c.Header(key, contentTypeOverride)
+			} else {
+				for _, value := range values {
+					c.Header(key, value)
+				}
 			}
 		}
 	}
-
-	isStreaming := strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream")
 	if s.config.Validation.StrictAnthropicFormat {
 		if err := s.validator.ValidateAnthropicResponse(decompressedBody, isStreaming); err != nil {
 			// 如果是usage统计验证失败，尝试下一个endpoint
@@ -286,12 +321,16 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 				s.logger.Info(fmt.Sprintf("Usage validation failed for endpoint %s: %v", ep.Name, err))
 				duration := time.Since(startTime)
 				errorLog := fmt.Sprintf("Usage validation failed: %v", err)
-				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog))
+				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags)
 				return false, true // 验证失败，尝试下一个endpoint
 			}
 			
 			if s.config.Validation.DisconnectOnInvalid {
 				s.logger.Error("Invalid response format, disconnecting", err)
+				// 记录验证失败的请求日志
+				duration := time.Since(startTime)
+				validationError := fmt.Sprintf("Response validation failed: %v", err)
+				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags)
 				c.Header("Connection", "close")
 				c.AbortWithStatus(http.StatusBadGateway)
 				return false, false
@@ -304,7 +343,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	c.Writer.Write(responseBody)
 
 	duration := time.Since(startTime)
-	s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil)
+	s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil, isStreaming, tags)
 
 	return true, false
 }
@@ -328,10 +367,20 @@ func (s *Server) sendProxyError(c *gin.Context, statusCode int, errorType, messa
 	})
 }
 
+// isRequestExpectingStream 检查请求是否期望流式响应
+func (s *Server) isRequestExpectingStream(req *http.Request) bool {
+	if req == nil {
+		return false
+	}
+	accept := req.Header.Get("Accept")
+	return accept == "text/event-stream" || strings.Contains(accept, "text/event-stream")
+}
+
 // createAndLogRequest creates a request log entry, populates common fields, and logs it
-func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, requestBody []byte, req *http.Request, resp *http.Response, responseBody []byte, duration time.Duration, err error) {
+func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, requestBody []byte, req *http.Request, resp *http.Response, responseBody []byte, duration time.Duration, err error, isStreaming bool, tags []string) {
 	requestLog := s.logger.CreateRequestLog(requestID, endpoint, method, path)
 	requestLog.RequestBodySize = len(requestBody)
+	requestLog.Tags = tags
 	
 	// 设置请求体日志
 	if s.config.Logging.LogRequestBody != "none" && len(requestBody) > 0 {
@@ -349,5 +398,9 @@ func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, r
 	
 	// 更新并记录日志
 	s.logger.UpdateRequestLog(requestLog, req, resp, responseBody, duration, err)
+	
+	// 覆盖流式检测结果
+	requestLog.IsStreaming = isStreaming
+	
 	s.logger.LogRequest(requestLog)
 }

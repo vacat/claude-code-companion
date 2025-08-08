@@ -39,6 +39,7 @@
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="/admin/">控制台</a>
                 <a class="nav-link" href="/admin/endpoints">端点配置</a>
+                <a class="nav-link" href="/admin/taggers">Taggers</a>
                 <a class="nav-link active" href="/admin/logs">请求日志</a>
                 <a class="nav-link" href="/admin/settings">系统设置</a>
             </div>
@@ -74,6 +75,7 @@
                                         <th>请求ID</th>
                                         <th>端点</th>
                                         <th>模型</th>
+                                        <th>Tags</th>
                                         <th>状态</th>
                                         <th>耗时</th>
                                         <th>请求大小</th>
@@ -89,6 +91,15 @@
                                         <td><small>{{.RequestID}}</small></td>
                                         <td><small>{{.Endpoint}}</small></td>
                                         <td><small>{{if .Model}}{{.Model}}{{else}}-{{end}}</small></td>
+                                        <td>
+                                            {{if .Tags}}
+                                                {{range $i, $tag := .Tags}}
+                                                    <span class="badge bg-primary me-1">{{$tag}}</span>
+                                                {{end}}
+                                            {{else}}
+                                                <small class="text-muted">-</small>
+                                            {{end}}
+                                        </td>
                                         <td>
                                             {{if lt .StatusCode 400}}
                                                 <span class="badge bg-success">{{.StatusCode}}</span>
@@ -116,6 +127,49 @@
                                 </tbody>
                             </table>
                         </div>
+                        
+                        <!-- Pagination -->
+                        {{if gt .TotalPages 1}}
+                        <nav aria-label="Logs pagination">
+                            <ul class="pagination pagination-sm justify-content-center">
+                                {{if .HasPrev}}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{.PrevPage}}&failed_only={{.FailedOnly}}">上一页</a>
+                                </li>
+                                {{else}}
+                                <li class="page-item disabled">
+                                    <span class="page-link">上一页</span>
+                                </li>
+                                {{end}}
+                                
+                                {{range .Pages}}
+                                {{if eq . $.Page}}
+                                <li class="page-item active">
+                                    <span class="page-link">{{.}}</span>
+                                </li>
+                                {{else}}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{.}}&failed_only={{$.FailedOnly}}">{{.}}</a>
+                                </li>
+                                {{end}}
+                                {{end}}
+                                
+                                {{if .HasNext}}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{.NextPage}}&failed_only={{.FailedOnly}}">下一页</a>
+                                </li>
+                                {{else}}
+                                <li class="page-item disabled">
+                                    <span class="page-link">下一页</span>
+                                </li>
+                                {{end}}
+                            </ul>
+                        </nav>
+                        
+                        <div class="text-center text-muted small mt-2">
+                            第 {{.Page}} / {{.TotalPages}} 页，共 {{.Total}} 条记录，每页显示 {{.Limit}} 条
+                        </div>
+                        {{end}}
                     </div>
                 </div>
             </div>
@@ -141,6 +195,7 @@
     <script>
         // 获取当前状态
         let failedOnly = {{.FailedOnly}};
+        let currentPage = {{.Page}};
         
         function formatDuration(ms) {
             return (ms / 1000).toFixed(3) + 's';
@@ -170,11 +225,11 @@
         
         function toggleFailedOnly() {
             failedOnly = !failedOnly;
-            window.location.href = `/admin/logs?failed_only=${failedOnly}`;
+            window.location.href = `/admin/logs?page=1&failed_only=${failedOnly}`;
         }
         
         function refreshLogs() {
-            window.location.href = `/admin/logs?failed_only=${failedOnly}`;
+            window.location.href = `/admin/logs?page=${currentPage}&failed_only=${failedOnly}`;
         }
 
         function showLogDetails(requestId) {
@@ -281,6 +336,7 @@
                             <tr><th>请求体大小:</th><td>${log.request_body_size} 字节</td></tr>
                             <tr><th>响应体大小:</th><td>${log.response_body_size} 字节</td></tr>
                             <tr><th>流式响应:</th><td>${log.is_streaming ? '是 (SSE)' : '否'}</td></tr>
+                            <tr><th>Tags:</th><td>${log.tags && log.tags.length > 0 ? log.tags.map(tag => `<span class="badge bg-primary me-1">${escapeHtml(tag)}</span>`).join('') : '<small class="text-muted">无</small>'}</td></tr>
                             ${log.error ? `<tr><th>错误:</th><td class="text-danger">${escapeHtml(log.error)}</td></tr>` : ''}
                         </table>
                     </div>

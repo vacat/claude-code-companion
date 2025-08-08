@@ -28,6 +28,7 @@ type RequestLog struct {
 	ResponseBodySize int              `json:"response_body_size"`
 	IsStreaming     bool              `json:"is_streaming"`
 	Model           string            `json:"model,omitempty"`
+	Tags            []string          `json:"tags,omitempty"`
 }
 
 // StorageInterface defines the interface for log storage backends

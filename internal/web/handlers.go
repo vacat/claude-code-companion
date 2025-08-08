@@ -92,16 +92,61 @@ func (s *AdminServer) handleEndpointsPage(c *gin.Context) {
 }
 
 func (s *AdminServer) handleLogsPage(c *gin.Context) {
-	// 获取failed_only参数
+	// 获取参数
+	pageStr := c.DefaultQuery("page", "1")
 	failedOnlyStr := c.DefaultQuery("failed_only", "false")
+	
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+	
 	failedOnly, _ := strconv.ParseBool(failedOnlyStr)
 	
-	logs, total, _ := s.logger.GetLogs(50, 0, failedOnly)
+	// 每页100条记录
+	limit := 100
+	offset := (page - 1) * limit
+	
+	logs, total, _ := s.logger.GetLogs(limit, offset, failedOnly)
+	
+	// 计算分页信息
+	totalPages := (total + limit - 1) / limit
+	if totalPages == 0 {
+		totalPages = 1
+	}
+	
+	// 生成分页数组
+	var pages []int
+	startPage := page - 5
+	if startPage < 1 {
+		startPage = 1
+	}
+	endPage := startPage + 9
+	if endPage > totalPages {
+		endPage = totalPages
+		startPage = endPage - 9
+		if startPage < 1 {
+			startPage = 1
+		}
+	}
+	
+	for i := startPage; i <= endPage; i++ {
+		pages = append(pages, i)
+	}
+	
 	c.HTML(http.StatusOK, "logs.html", gin.H{
-		"Title":     "Request Logs",
-		"Logs":      logs,
-		"Total":     total,
-		"FailedOnly": failedOnly,
+		"Title":       "Request Logs",
+		"Logs":        logs,
+		"Total":       total,
+		"FailedOnly":  failedOnly,
+		"Page":        page,
+		"TotalPages":  totalPages,
+		"Pages":       pages,
+		"HasPrev":     page > 1,
+		"HasNext":     page < totalPages,
+		"PrevPage":    page - 1,
+		"NextPage":    page + 1,
+		"Limit":       limit,
 	})
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -80,11 +81,21 @@ func (s *SQLiteStorage) initDatabase() error {
 		is_streaming BOOLEAN DEFAULT FALSE,
 		model TEXT DEFAULT '',
 		error TEXT DEFAULT '',
+		tags TEXT DEFAULT '[]',
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`
 
 	if _, err := s.db.Exec(createTableSQL); err != nil {
 		return fmt.Errorf("failed to create table: %v", err)
+	}
+
+	// Add tags column to existing tables if it doesn't exist
+	alterTableSQL := `ALTER TABLE request_logs ADD COLUMN tags TEXT DEFAULT '[]';`
+	_, err := s.db.Exec(alterTableSQL)
+	// Ignore error if column already exists (SQLite returns error for existing column)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		// Only log other errors, not duplicate column errors
+		fmt.Printf("Note: %v (this is expected if upgrading from older version)\n", err)
 	}
 
 	// Create indexes for better query performance
@@ -114,21 +125,24 @@ func (s *SQLiteStorage) SaveLog(log *RequestLog) {
 	// Marshal headers to JSON
 	requestHeaders, _ := json.Marshal(log.RequestHeaders)
 	responseHeaders, _ := json.Marshal(log.ResponseHeaders)
+	
+	// Marshal tags to JSON
+	tags, _ := json.Marshal(log.Tags)
 
 	insertSQL := `
 	INSERT INTO request_logs (
 		timestamp, request_id, endpoint, method, path, status_code, duration_ms,
 		request_headers, request_body, request_body_size,
 		response_headers, response_body, response_body_size,
-		is_streaming, model, error
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		is_streaming, model, error, tags
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.Exec(insertSQL,
 		log.Timestamp, log.RequestID, log.Endpoint, log.Method, log.Path,
 		log.StatusCode, log.DurationMs,
 		string(requestHeaders), log.RequestBody, log.RequestBodySize,
 		string(responseHeaders), log.ResponseBody, log.ResponseBodySize,
-		log.IsStreaming, log.Model, log.Error,
+		log.IsStreaming, log.Model, log.Error, string(tags),
 	)
 
 	if err != nil {
@@ -163,7 +177,7 @@ func (s *SQLiteStorage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestL
 		SELECT timestamp, request_id, endpoint, method, path, status_code, duration_ms,
 			   request_headers, request_body, request_body_size,
 			   response_headers, response_body, response_body_size,
-			   is_streaming, model, error
+			   is_streaming, model, error, tags
 		FROM request_logs %s
 		ORDER BY timestamp DESC
 		LIMIT ? OFFSET ?`, whereClause)
@@ -178,14 +192,14 @@ func (s *SQLiteStorage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestL
 	var logs []*RequestLog
 	for rows.Next() {
 		log := &RequestLog{}
-		var requestHeaders, responseHeaders string
+		var requestHeaders, responseHeaders, tagsJSON string
 
 		err := rows.Scan(
 			&log.Timestamp, &log.RequestID, &log.Endpoint, &log.Method, &log.Path,
 			&log.StatusCode, &log.DurationMs,
 			&requestHeaders, &log.RequestBody, &log.RequestBodySize,
 			&responseHeaders, &log.ResponseBody, &log.ResponseBodySize,
-			&log.IsStreaming, &log.Model, &log.Error,
+			&log.IsStreaming, &log.Model, &log.Error, &tagsJSON,
 		)
 		if err != nil {
 			continue // Skip invalid rows
@@ -194,6 +208,11 @@ func (s *SQLiteStorage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestL
 		// Unmarshal JSON headers
 		json.Unmarshal([]byte(requestHeaders), &log.RequestHeaders)
 		json.Unmarshal([]byte(responseHeaders), &log.ResponseHeaders)
+		
+		// Unmarshal JSON tags
+		if tagsJSON != "" && tagsJSON != "null" {
+			json.Unmarshal([]byte(tagsJSON), &log.Tags)
+		}
 
 		logs = append(logs, log)
 	}
@@ -210,7 +229,7 @@ func (s *SQLiteStorage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, 
 		SELECT timestamp, request_id, endpoint, method, path, status_code, duration_ms,
 			   request_headers, request_body, request_body_size,
 			   response_headers, response_body, response_body_size,
-			   is_streaming, model, error
+			   is_streaming, model, error, tags
 		FROM request_logs
 		WHERE request_id = ?
 		ORDER BY timestamp ASC`
@@ -224,14 +243,14 @@ func (s *SQLiteStorage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, 
 	var logs []*RequestLog
 	for rows.Next() {
 		log := &RequestLog{}
-		var requestHeaders, responseHeaders string
+		var requestHeaders, responseHeaders, tagsJSON string
 
 		err := rows.Scan(
 			&log.Timestamp, &log.RequestID, &log.Endpoint, &log.Method, &log.Path,
 			&log.StatusCode, &log.DurationMs,
 			&requestHeaders, &log.RequestBody, &log.RequestBodySize,
 			&responseHeaders, &log.ResponseBody, &log.ResponseBodySize,
-			&log.IsStreaming, &log.Model, &log.Error,
+			&log.IsStreaming, &log.Model, &log.Error, &tagsJSON,
 		)
 		if err != nil {
 			continue // Skip invalid rows
@@ -240,6 +259,11 @@ func (s *SQLiteStorage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, 
 		// Unmarshal JSON headers
 		json.Unmarshal([]byte(requestHeaders), &log.RequestHeaders)
 		json.Unmarshal([]byte(responseHeaders), &log.ResponseHeaders)
+		
+		// Unmarshal JSON tags
+		if tagsJSON != "" && tagsJSON != "null" {
+			json.Unmarshal([]byte(tagsJSON), &log.Tags)
+		}
 
 		logs = append(logs, log)
 	}
