@@ -17,66 +17,41 @@ type EndpointSorter interface {
 // 排序规则:
 // 1. 满足所有 requiredTags 的 endpoint 按 priority 排序
 // 2. 万用 endpoint (无 tag 限制) 按 priority 排序
+// 3. 不满足条件的 endpoint 按 priority 排序
 func SortEndpointsByTagsAndPriority(endpoints []EndpointSorter, requiredTags []string) {
 	sort.Slice(endpoints, func(i, j int) bool {
 		endpointI := endpoints[i]
 		endpointJ := endpoints[j]
 		
-		tagsI := endpointI.GetTags()
-		tagsJ := endpointJ.GetTags()
+		tierI := getEndpointTier(endpointI.GetTags(), requiredTags)
+		tierJ := getEndpointTier(endpointJ.GetTags(), requiredTags)
 		
-		matchesI := matchesAllTags(tagsI, requiredTags)
-		matchesJ := matchesAllTags(tagsJ, requiredTags)
-		
-		isUniversalI := len(tagsI) == 0  // 万用 endpoint
-		isUniversalJ := len(tagsJ) == 0  // 万用 endpoint
-		
-		// 排序逻辑：
-		// 1. 完全匹配的 endpoint 优先
-		// 2. 万用 endpoint 其次
-		// 3. 不满足条件的 endpoint 最后（实际上会被过滤掉）
-		// 4. 相同类型内按 priority 排序
-		
-		if matchesI && matchesJ {
-			// 都完全匹配，按 priority 排序
-			return endpointI.GetPriority() < endpointJ.GetPriority()
-		}
-		if matchesI && !matchesJ {
-			// i 匹配，j 不匹配
-			if isUniversalJ {
-				// i 匹配，j 万用，i 优先
-				return true
-			}
-			// i 匹配，j 既不匹配也不万用，i 优先
-			return true
-		}
-		if !matchesI && matchesJ {
-			// j 匹配，i 不匹配
-			if isUniversalI {
-				// j 匹配，i 万用，j 优先
-				return false
-			}
-			// j 匹配，i 既不匹配也不万用，j 优先
-			return false
+		// 先按tier排序（数字越小优先级越高）
+		if tierI != tierJ {
+			return tierI < tierJ
 		}
 		
-		// 都不匹配
-		if isUniversalI && isUniversalJ {
-			// 都是万用，按 priority 排序
-			return endpointI.GetPriority() < endpointJ.GetPriority()
-		}
-		if isUniversalI && !isUniversalJ {
-			// i 万用，j 不万用，i 优先
-			return true
-		}
-		if !isUniversalI && isUniversalJ {
-			// j 万用，i 不万用，j 优先
-			return false
-		}
-		
-		// 都不匹配也不万用，按 priority 排序
+		// 同tier内按priority排序（数字越小优先级越高）
 		return endpointI.GetPriority() < endpointJ.GetPriority()
 	})
+}
+
+// getEndpointTier 计算端点的优先级层级
+// 返回值：0=完全匹配（最高优先级），1=万用端点（中等优先级），2=不匹配（最低优先级）
+func getEndpointTier(endpointTags, requiredTags []string) int {
+	if len(requiredTags) == 0 {
+		return 0 // 无标签要求时，所有端点同级
+	}
+	
+	if matchesAllTags(endpointTags, requiredTags) {
+		return 0 // 完全匹配，最高优先级
+	}
+	
+	if len(endpointTags) == 0 {
+		return 1 // 万用端点，中等优先级
+	}
+	
+	return 2 // 不匹配，最低优先级
 }
 
 // matchesAllTags 检查 endpoint 的 tags 是否包含所有 requiredTags
