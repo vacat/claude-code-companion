@@ -43,7 +43,6 @@ func main() {
 
 	go func() {
 		log.Printf("Starting proxy server on %s:%d", cfg.Server.Host, cfg.Server.Port)
-		log.Printf("Authorization token: %s", cfg.Server.AuthToken)
 		if err := proxyServer.Start(); err != nil {
 			log.Fatalf("Proxy server error: %v", err)
 		}
@@ -57,7 +56,6 @@ func main() {
 	if cfg.WebAdmin.Enabled {
 		fmt.Printf("Admin Interface: http://%s:%d/admin/\n", cfg.Server.Host, cfg.Server.Port)
 	}
-	fmt.Printf("Authorization Token: %s\n", cfg.Server.AuthToken)
 	fmt.Printf("Configuration File: %s\n", *configFile)
 	fmt.Printf("\nPress Ctrl+C to stop the server...\n\n")
 

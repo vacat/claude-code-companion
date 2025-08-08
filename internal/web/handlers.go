@@ -600,15 +600,7 @@ func (s *AdminServer) handleGetConfig(c *gin.Context) {
 		}
 	}
 	
-	// 隐藏服务器认证token
-	if configCopy.Server.AuthToken != "" {
-		token := configCopy.Server.AuthToken
-		if len(token) > 8 {
-			configCopy.Server.AuthToken = token[:4] + "****" + token[len(token)-4:]
-		} else {
-			configCopy.Server.AuthToken = "****"
-		}
-	}
+	// 不再隐藏服务器认证token（已移除）
 	
 	c.JSON(http.StatusOK, gin.H{
 		"config": configCopy,
@@ -669,7 +661,7 @@ func (s *AdminServer) handleHotUpdateConfig(c *gin.Context) {
 // validateConfigUpdate validates the configuration update using unified validation
 func (s *AdminServer) validateConfigUpdate(newConfig *config.Config) error {
 	// 使用统一的服务器配置验证
-	if err := utils.ValidateServerConfig(newConfig.Server.Host, newConfig.Server.Port, newConfig.Server.AuthToken); err != nil {
+	if err := utils.ValidateServerConfig(newConfig.Server.Host, newConfig.Server.Port, ""); err != nil {
 		return err
 	}
 
