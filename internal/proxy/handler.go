@@ -91,201 +91,219 @@ func (s *Server) handleProxy(c *gin.Context) {
 		return
 	}
 
-	// 如果使用tag选择失败，尝试回退到其他匹配相同tag的endpoint
-	if taggedRequest != nil && len(taggedRequest.Tags) > 0 {
-		s.logger.Debug("Tagged endpoint failed, trying other endpoints with matching tags")
-		s.fallbackToMatchingTaggedEndpoints(c, path, requestBody, requestID, startTime, selectedEndpoint, taggedRequest)
-	} else {
-		// 记录失败
-		s.endpointManager.RecordRequest(selectedEndpoint.ID, false)
-		duration := time.Since(startTime)
-		requestLog := s.logger.CreateRequestLog(requestID, "failed", c.Request.Method, path)
-		requestLog.DurationMs = duration.Nanoseconds() / 1000000
-		if len(requestBody) > 0 {
-			requestLog.Model = logger.ExtractModelFromRequestBody(string(requestBody))
-		}
-		requestLog.Error = "Selected endpoint failed"
-		s.logger.LogRequest(requestLog)
-		s.sendProxyError(c, http.StatusBadGateway, "endpoint_failed", "Selected endpoint failed", requestID)
-	}
+	// 主endpoint失败，尝试fallback到其他可用的endpoint
+	s.logger.Debug("Primary endpoint failed, trying fallback endpoints")
+	s.fallbackToOtherEndpoints(c, path, requestBody, requestID, startTime, selectedEndpoint, taggedRequest)
 }
 
-// fallbackToMatchingTaggedEndpoints 当带tag的endpoint失败时，只尝试其他匹配相同tag的endpoint
-func (s *Server) fallbackToMatchingTaggedEndpoints(c *gin.Context, path string, requestBody []byte, requestID string, startTime time.Time, failedEndpoint *endpoint.Endpoint, taggedRequest *interfaces.TaggedRequest) {
+// endpointContainsAllTags 检查endpoint的标签是否包含请求的所有标签
+func (s *Server) endpointContainsAllTags(endpointTags, requestTags []string) bool {
+	if len(requestTags) == 0 {
+		return true // 无标签请求总是匹配
+	}
+	
+	// 将endpoint的标签转换为map以便快速查找
+	tagSet := make(map[string]bool)
+	for _, tag := range endpointTags {
+		tagSet[tag] = true
+	}
+	
+	// 检查是否包含所有请求的标签
+	for _, reqTag := range requestTags {
+		if !tagSet[reqTag] {
+			return false
+		}
+	}
+	return true
+}
+
+// fallbackToOtherEndpoints 当endpoint失败时，根据是否有tag决定fallback策略
+func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBody []byte, requestID string, startTime time.Time, failedEndpoint *endpoint.Endpoint, taggedRequest *interfaces.TaggedRequest) {
 	// 记录失败的endpoint
 	s.endpointManager.RecordRequest(failedEndpoint.ID, false)
 	
-	// 如果请求有tag，只尝试其他匹配相同tags的endpoints
-	if taggedRequest != nil && len(taggedRequest.Tags) > 0 {
-		s.logger.Debug(fmt.Sprintf("Tagged request failed on %s, looking for other endpoints with matching tags: %v", failedEndpoint.Name, taggedRequest.Tags))
+	allEndpoints := s.endpointManager.GetAllEndpoints()
+	var requestTags []string
+	if taggedRequest != nil {
+		requestTags = taggedRequest.Tags
+	}
+	
+	if len(requestTags) > 0 {
+		// 有标签请求：分两阶段尝试
+		s.logger.Debug(fmt.Sprintf("Tagged request failed on %s, trying fallback with tags: %v", failedEndpoint.Name, requestTags))
 		
-		// 获取所有匹配tags的endpoints，排除已经失败的
-		allTaggedEndpoints := s.endpointManager.GetAllEndpoints()
+		// 第一阶段：尝试有标签且包含所有请求标签的端点
+		taggedEndpoints := make([]*endpoint.Endpoint, 0)
+		universalEndpoints := make([]*endpoint.Endpoint, 0)
 		
-		var matchedEndpoints []*endpoint.Endpoint
-		for _, ep := range allTaggedEndpoints {
+		for _, ep := range allEndpoints {
 			// 跳过已失败的endpoint
 			if ep.ID == failedEndpoint.ID {
 				continue
 			}
-			
-			// 检查endpoint是否有匹配的tags
-			epTags := ep.Tags
-			hasMatchingTag := false
-			for _, reqTag := range taggedRequest.Tags {
-				for _, epTag := range epTags {
-					if reqTag == epTag {
-						hasMatchingTag = true
-						break
-					}
-				}
-				if hasMatchingTag {
-					break
-				}
+			// 跳过禁用或不可用的端点
+			if !ep.Enabled || !ep.IsAvailable() {
+				continue
 			}
 			
-			if hasMatchingTag && ep.Enabled && ep.IsAvailable() {
-				matchedEndpoints = append(matchedEndpoints, ep)
+			if len(ep.Tags) == 0 {
+				// 无标签端点（万用端点）
+				universalEndpoints = append(universalEndpoints, ep)
+			} else if s.endpointContainsAllTags(ep.Tags, requestTags) {
+				// 有标签且包含所有请求标签的端点
+				taggedEndpoints = append(taggedEndpoints, ep)
 			}
 		}
 		
-		if len(matchedEndpoints) == 0 {
-			s.logger.Error(fmt.Sprintf("No other endpoints available with matching tags: %v", taggedRequest.Tags), nil)
-			duration := time.Since(startTime)
-			requestLog := s.logger.CreateRequestLog(requestID, "failed", c.Request.Method, path)
-			requestLog.DurationMs = duration.Nanoseconds() / 1000000
-			if len(requestBody) > 0 {
-				requestLog.Model = logger.ExtractModelFromRequestBody(string(requestBody))
-			}
-			requestLog.Tags = taggedRequest.Tags
-			requestLog.Error = fmt.Sprintf("No endpoints available with required tags: %v", taggedRequest.Tags)
-			s.logger.LogRequest(requestLog)
-			s.sendProxyError(c, http.StatusBadGateway, "no_matching_endpoints", fmt.Sprintf("No endpoints available with required tags: %v", taggedRequest.Tags), requestID)
-			return
+		// 按优先级排序
+		taggedSorter := make([]utils.EndpointSorter, len(taggedEndpoints))
+		for i, ep := range taggedEndpoints {
+			taggedSorter[i] = ep
 		}
+		utils.SortEndpointsByPriority(taggedSorter)
 		
-		// 按优先级排序matched endpoints
-		sorterEndpoints := make([]utils.EndpointSorter, len(matchedEndpoints))
-		for i, ep := range matchedEndpoints {
-			sorterEndpoints[i] = ep
+		universalSorter := make([]utils.EndpointSorter, len(universalEndpoints))
+		for i, ep := range universalEndpoints {
+			universalSorter[i] = ep
 		}
-		utils.SortEndpointsByPriority(sorterEndpoints)
+		utils.SortEndpointsByPriority(universalSorter)
 		
-		// 尝试匹配tags的其他endpoints
 		attemptedCount := 1 // 包括最初失败的endpoint
-		for _, epInterface := range sorterEndpoints {
+		
+		// 第一阶段：尝试有标签且匹配的端点
+		for _, epInterface := range taggedSorter {
 			ep := epInterface.(*endpoint.Endpoint)
-			
 			attemptedCount++
-			s.logger.Debug(fmt.Sprintf("Attempting tagged fallback request to endpoint %s with tags %v", ep.Name, ep.Tags))
+			s.logger.Debug(fmt.Sprintf("Phase 1: Attempting tagged endpoint %s with tags %v", ep.Name, ep.Tags))
 			
 			success, shouldRetry := s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest)
 			if success {
 				s.endpointManager.RecordRequest(ep.ID, true)
-				s.logger.Debug(fmt.Sprintf("Tagged fallback request succeeded on endpoint %s", ep.Name))
+				s.logger.Debug(fmt.Sprintf("Phase 1: Request succeeded on tagged endpoint %s", ep.Name))
 				return
 			}
 			
-			// 记录失败
 			s.endpointManager.RecordRequest(ep.ID, false)
-			s.logger.Debug(fmt.Sprintf("Tagged fallback request failed on endpoint %s, trying next matching endpoint", ep.Name))
+			s.logger.Debug(fmt.Sprintf("Phase 1: Request failed on tagged endpoint %s", ep.Name))
 			
-			// 如果不应该重试，则停止尝试其他端点
 			if !shouldRetry {
+				s.logger.Debug("Endpoint indicated no retry, stopping fallback")
 				break
 			}
 			
-			// 重新构建请求体用于下次尝试
+			// 重新构建请求体
 			if c.Request.Body != nil {
 				c.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
 			}
 		}
 		
-		// 所有匹配tags的endpoints都失败了
+		// 第二阶段：尝试万用端点
+		s.logger.Debug(fmt.Sprintf("Phase 2: Trying %d universal endpoints", len(universalSorter)))
+		for _, epInterface := range universalSorter {
+			ep := epInterface.(*endpoint.Endpoint)
+			attemptedCount++
+			s.logger.Debug(fmt.Sprintf("Phase 2: Attempting universal endpoint %s", ep.Name))
+			
+			success, shouldRetry := s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest)
+			if success {
+				s.endpointManager.RecordRequest(ep.ID, true)
+				s.logger.Debug(fmt.Sprintf("Phase 2: Request succeeded on universal endpoint %s", ep.Name))
+				return
+			}
+			
+			s.endpointManager.RecordRequest(ep.ID, false)
+			s.logger.Debug(fmt.Sprintf("Phase 2: Request failed on universal endpoint %s", ep.Name))
+			
+			if !shouldRetry {
+				s.logger.Debug("Endpoint indicated no retry, stopping fallback")
+				break
+			}
+			
+			// 重新构建请求体
+			if c.Request.Body != nil {
+				c.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
+			}
+		}
+		
+		// 所有endpoint都失败了
 		duration := time.Since(startTime)
 		requestLog := s.logger.CreateRequestLog(requestID, "failed", c.Request.Method, path)
 		requestLog.DurationMs = duration.Nanoseconds() / 1000000
 		if len(requestBody) > 0 {
 			requestLog.Model = logger.ExtractModelFromRequestBody(string(requestBody))
 		}
-		requestLog.Tags = taggedRequest.Tags
-		requestLog.Error = fmt.Sprintf("All %d endpoints with required tags failed (tags: %v)", attemptedCount, taggedRequest.Tags)
+		requestLog.Tags = requestTags
+		requestLog.Error = fmt.Sprintf("All %d endpoints failed for tagged request (tags: %v)", attemptedCount, requestTags)
 		s.logger.LogRequest(requestLog)
-		s.sendProxyError(c, http.StatusBadGateway, "all_matching_endpoints_failed", requestLog.Error, requestID)
-		return
-	}
-	
-	// 对于无tag的请求，按原逻辑尝试所有endpoints
-	s.logger.Debug("Untagged request failed, falling back to all available endpoints")
-	allEndpoints := s.endpointManager.GetAllEndpoints()
-	
-	// 转换为 EndpointSorter 接口类型
-	sorterEndpoints := make([]utils.EndpointSorter, len(allEndpoints))
-	for i, ep := range allEndpoints {
-		sorterEndpoints[i] = ep
-	}
-	
-	// 获取已启用并按优先级排序的端点
-	enabledEndpoints := utils.FilterEnabledEndpoints(sorterEndpoints)
-	if len(enabledEndpoints) == 0 {
-		s.logger.Error("No enabled endpoints for fallback", nil)
-		s.sendProxyError(c, http.StatusBadGateway, "no_endpoints", "No enabled endpoints available", requestID)
-		return
-	}
-
-	utils.SortEndpointsByPriority(enabledEndpoints)
-
-	// 依次尝试每个可用的端点（跳过已经失败的那个）
-	attemptedCount := 0
-	for i, epInterface := range enabledEndpoints {
-		ep := epInterface.(*endpoint.Endpoint)
+		s.sendProxyError(c, http.StatusBadGateway, "all_endpoints_failed", requestLog.Error, requestID)
 		
-		// 跳过已经失败的endpoint
-		if ep.ID == failedEndpoint.ID {
-			continue
+	} else {
+		// 无标签请求：只尝试万用端点
+		s.logger.Debug("Untagged request failed, trying universal endpoints only")
+		
+		universalEndpoints := make([]*endpoint.Endpoint, 0)
+		for _, ep := range allEndpoints {
+			// 跳过已失败的endpoint
+			if ep.ID == failedEndpoint.ID {
+				continue
+			}
+			// 只匹配无标签的端点
+			if len(ep.Tags) == 0 && ep.Enabled && ep.IsAvailable() {
+				universalEndpoints = append(universalEndpoints, ep)
+			}
 		}
 		
-		// 跳过不可用的端点
-		if !ep.IsAvailable() {
-			s.logger.Debug(fmt.Sprintf("Skipping unavailable fallback endpoint %s", ep.Name))
-			continue
-		}
-		
-		attemptedCount++
-		s.logger.Debug(fmt.Sprintf("Attempting fallback request to endpoint %s (%d/%d)", ep.Name, i+1, len(enabledEndpoints)))
-
-		success, shouldRetry := s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest)
-		if success {
-			s.endpointManager.RecordRequest(ep.ID, true)
-			s.logger.Debug(fmt.Sprintf("Fallback request succeeded on endpoint %s", ep.Name))
+		if len(universalEndpoints) == 0 {
+			s.logger.Error("No universal endpoints available for untagged request", nil)
+			s.sendProxyError(c, http.StatusBadGateway, "no_universal_endpoints", "No universal endpoints available", requestID)
 			return
 		}
-
-		// 记录失败
-		s.endpointManager.RecordRequest(ep.ID, false)
-		s.logger.Debug(fmt.Sprintf("Fallback request failed on endpoint %s, trying next endpoint", ep.Name))
-
-		// 如果不应该重试，则停止尝试其他端点
-		if !shouldRetry {
-			break
+		
+		// 按优先级排序
+		universalSorter := make([]utils.EndpointSorter, len(universalEndpoints))
+		for i, ep := range universalEndpoints {
+			universalSorter[i] = ep
 		}
-
-		// 重新构建请求体用于下次尝试
-		if c.Request.Body != nil {
-			c.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
+		utils.SortEndpointsByPriority(universalSorter)
+		
+		attemptedCount := 1 // 包括最初失败的endpoint
+		for _, epInterface := range universalSorter {
+			ep := epInterface.(*endpoint.Endpoint)
+			attemptedCount++
+			s.logger.Debug(fmt.Sprintf("Attempting universal endpoint %s for untagged request", ep.Name))
+			
+			success, shouldRetry := s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest)
+			if success {
+				s.endpointManager.RecordRequest(ep.ID, true)
+				s.logger.Debug(fmt.Sprintf("Untagged request succeeded on universal endpoint %s", ep.Name))
+				return
+			}
+			
+			s.endpointManager.RecordRequest(ep.ID, false)
+			s.logger.Debug(fmt.Sprintf("Untagged request failed on universal endpoint %s", ep.Name))
+			
+			if !shouldRetry {
+				s.logger.Debug("Endpoint indicated no retry, stopping fallback")
+				break
+			}
+			
+			// 重新构建请求体
+			if c.Request.Body != nil {
+				c.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
+			}
 		}
+		
+		// 所有universal endpoint都失败了
+		duration := time.Since(startTime)
+		requestLog := s.logger.CreateRequestLog(requestID, "failed", c.Request.Method, path)
+		requestLog.DurationMs = duration.Nanoseconds() / 1000000
+		if len(requestBody) > 0 {
+			requestLog.Model = logger.ExtractModelFromRequestBody(string(requestBody))
+		}
+		requestLog.Error = fmt.Sprintf("All %d universal endpoints failed for untagged request", attemptedCount)
+		s.logger.LogRequest(requestLog)
+		s.sendProxyError(c, http.StatusBadGateway, "all_universal_endpoints_failed", requestLog.Error, requestID)
 	}
-
-	// 所有回退尝试都失败了
-	duration := time.Since(startTime)
-	requestLog := s.logger.CreateRequestLog(requestID, "failed", c.Request.Method, path)
-	requestLog.DurationMs = duration.Nanoseconds() / 1000000
-	if len(requestBody) > 0 {
-		requestLog.Model = logger.ExtractModelFromRequestBody(string(requestBody))
-	}
-	requestLog.Error = fmt.Sprintf("All %d available endpoints failed", attemptedCount+1)
-	s.logger.LogRequest(requestLog)
-	s.sendProxyError(c, http.StatusBadGateway, "all_endpoints_failed", requestLog.Error, requestID)
 }
 
 func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path string, requestBody []byte, requestID string, startTime time.Time, taggedRequest *interfaces.TaggedRequest) (bool, bool) {
