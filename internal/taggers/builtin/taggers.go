@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"claude-proxy/internal/interfaces"
@@ -39,8 +40,39 @@ func NewPathTagger(name, tag string, config map[string]interface{}) (interfaces.
 }
 
 func (pt *PathTagger) ShouldTag(request *http.Request) (bool, error) {
-	matched, err := filepath.Match(pt.pathPattern, request.URL.Path)
+	// 使用增强的通配符匹配，支持 * 跨路径分隔符
+	matched, err := pt.matchPath(pt.pathPattern, request.URL.Path)
 	return matched, err
+}
+
+// matchPath 实现增强的路径匹配，支持更直观的通配符
+// * 可以匹配任何字符包括 /
+// ? 匹配单个字符但不包括 /
+func (pt *PathTagger) matchPath(pattern, path string) (bool, error) {
+	// 将通配符模式转换为正则表达式
+	regexPattern := pt.wildcardToRegex(pattern)
+	
+	// 编译正则表达式
+	regex, err := regexp.Compile("^" + regexPattern + "$")
+	if err != nil {
+		return false, fmt.Errorf("invalid pattern '%s': %v", pattern, err)
+	}
+	
+	return regex.MatchString(path), nil
+}
+
+// wildcardToRegex 将通配符模式转换为正则表达式
+func (pt *PathTagger) wildcardToRegex(pattern string) string {
+	// 转义正则表达式特殊字符，但保留我们的通配符
+	escaped := regexp.QuoteMeta(pattern)
+	
+	// 将转义后的通配符还原并转换为正则表达式
+	// \* -> .* (匹配任意字符包括/)
+	// \? -> [^/] (匹配单个非/字符)
+	escaped = strings.ReplaceAll(escaped, `\*`, `.*`)
+	escaped = strings.ReplaceAll(escaped, `\?`, `[^/]`)
+	
+	return escaped
 }
 
 // HeaderTagger 请求头匹配tagger
