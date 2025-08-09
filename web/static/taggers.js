@@ -283,6 +283,9 @@ function onBuiltinTypeChange() {
             addConfigField('json_path', 'text', 'JSON Path', 'model');
             addConfigField('expected_value', 'text', 'Expected Value', 'claude-3*');
             break;
+        case 'user-message':
+            addConfigField('expected_value', 'text', 'Expected Value (supports wildcards)', '*#use-claude*');
+            break;
     }
 }
 
