@@ -280,3 +280,122 @@ func (bt *BodyJSONTagger) extractJSONValue(data map[string]interface{}, path str
 
 	return nil, fmt.Errorf("empty path")
 }
+
+// UserMessageTagger 用户最新消息内容匹配tagger
+// 匹配 messages 中第一条 role 为 user 的消息的最后一个 text 类型内容
+type UserMessageTagger struct {
+	BaseTagger
+	expectedValue string
+}
+
+// NewUserMessageTagger 创建用户消息内容匹配tagger
+func NewUserMessageTagger(name, tag string, config map[string]interface{}) (interfaces.Tagger, error) {
+	expectedValue, ok := config["expected_value"].(string)
+	if !ok || expectedValue == "" {
+		return nil, fmt.Errorf("user-message tagger requires 'expected_value' in config")
+	}
+
+	return &UserMessageTagger{
+		BaseTagger:    BaseTagger{name: name, tag: tag},
+		expectedValue: expectedValue,
+	}, nil
+}
+
+func (ut *UserMessageTagger) ShouldTag(request *http.Request) (bool, error) {
+	// 只处理JSON内容类型
+	contentType := request.Header.Get("Content-Type")
+	if !strings.Contains(contentType, "application/json") {
+		return false, nil
+	}
+
+	// 从请求上下文中获取预处理的请求体数据
+	bodyContent, ok := request.Context().Value("cached_body").([]byte)
+	if !ok || len(bodyContent) == 0 {
+		return false, nil
+	}
+
+	var requestData map[string]interface{}
+	if err := json.Unmarshal(bodyContent, &requestData); err != nil {
+		return false, nil // JSON解析失败，不匹配
+	}
+
+	// 提取用户最新消息的文本内容
+	userText, err := ut.extractLatestUserMessage(requestData)
+	if err != nil {
+		return false, nil
+	}
+
+	if userText == "" {
+		return false, nil
+	}
+
+	// 使用统一的通配符匹配函数
+	return wildcardMatch(ut.expectedValue, userText)
+}
+
+// extractLatestUserMessage 提取用户最新消息的文本内容
+// 从 messages 中找到第一条 role 为 "user" 的消息，取其 content 中最后一个 text 类型的 text 字段
+func (ut *UserMessageTagger) extractLatestUserMessage(data map[string]interface{}) (string, error) {
+	// 获取 messages 数组
+	messagesInterface, ok := data["messages"]
+	if !ok {
+		return "", fmt.Errorf("no messages field found")
+	}
+
+	messages, ok := messagesInterface.([]interface{})
+	if !ok {
+		return "", fmt.Errorf("messages field is not an array")
+	}
+
+	// 找到第一条 role 为 "user" 的消息
+	for _, msgInterface := range messages {
+		msg, ok := msgInterface.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		role, ok := msg["role"].(string)
+		if !ok || role != "user" {
+			continue
+		}
+
+		// 找到了用户消息，提取 content
+		contentInterface, ok := msg["content"]
+		if !ok {
+			continue
+		}
+
+		// content 可能是字符串或数组
+		switch content := contentInterface.(type) {
+		case string:
+			// 简单字符串格式
+			return content, nil
+
+		case []interface{}:
+			// 数组格式，找最后一个 text 类型的内容
+			var lastText string
+			for _, itemInterface := range content {
+				item, ok := itemInterface.(map[string]interface{})
+				if !ok {
+					continue
+				}
+
+				itemType, ok := item["type"].(string)
+				if !ok || itemType != "text" {
+					continue
+				}
+
+				text, ok := item["text"].(string)
+				if ok {
+					lastText = text // 保存最后一个 text
+				}
+			}
+
+			if lastText != "" {
+				return lastText, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no user message found")
+}

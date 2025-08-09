@@ -26,6 +26,7 @@ func NewBuiltinTaggerFactory() *BuiltinTaggerFactory {
 	factory.Register("method", NewMethodTagger)
 	factory.Register("query", NewQueryTagger)
 	factory.Register("body-json", NewBodyJSONTagger)
+	factory.Register("user-message", NewUserMessageTagger)
 
 	return factory
 }
