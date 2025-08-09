@@ -105,6 +105,10 @@ func (l *Logger) LogRequest(log *RequestLog) {
 			fields["model"] = log.Model
 		}
 
+		if len(log.Tags) > 0 {
+			fields["tags"] = log.Tags
+		}
+
 		// Note: Request and response bodies are not logged to console
 		// They are available in the web admin interface
 
