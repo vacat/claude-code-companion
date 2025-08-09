@@ -4,12 +4,41 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"regexp"
 	"strings"
 
 	"claude-proxy/internal/interfaces"
 )
+
+// wildcardMatch 统一的通配符匹配函数，支持更直观的通配符语义
+// * 匹配任意字符序列
+// ? 匹配单个字符
+func wildcardMatch(pattern, str string) (bool, error) {
+	// 将通配符模式转换为正则表达式
+	regexPattern := wildcardToRegex(pattern)
+	
+	// 编译正则表达式
+	regex, err := regexp.Compile("^" + regexPattern + "$")
+	if err != nil {
+		return false, fmt.Errorf("invalid pattern '%s': %v", pattern, err)
+	}
+	
+	return regex.MatchString(str), nil
+}
+
+// wildcardToRegex 将通配符模式转换为正则表达式
+func wildcardToRegex(pattern string) string {
+	// 转义正则表达式特殊字符，但保留我们的通配符
+	escaped := regexp.QuoteMeta(pattern)
+	
+	// 将转义后的通配符还原并转换为正则表达式
+	// \* -> .* (匹配任意字符序列)
+	// \? -> . (匹配单个字符)
+	escaped = strings.ReplaceAll(escaped, `\*`, `.*`)
+	escaped = strings.ReplaceAll(escaped, `\?`, `.`)
+	
+	return escaped
+}
 
 // BaseTagger 内置tagger的基础结构
 type BaseTagger struct {
@@ -40,39 +69,8 @@ func NewPathTagger(name, tag string, config map[string]interface{}) (interfaces.
 }
 
 func (pt *PathTagger) ShouldTag(request *http.Request) (bool, error) {
-	// 使用增强的通配符匹配，支持 * 跨路径分隔符
-	matched, err := pt.matchPath(pt.pathPattern, request.URL.Path)
-	return matched, err
-}
-
-// matchPath 实现增强的路径匹配，支持更直观的通配符
-// * 可以匹配任何字符包括 /
-// ? 匹配单个字符但不包括 /
-func (pt *PathTagger) matchPath(pattern, path string) (bool, error) {
-	// 将通配符模式转换为正则表达式
-	regexPattern := pt.wildcardToRegex(pattern)
-	
-	// 编译正则表达式
-	regex, err := regexp.Compile("^" + regexPattern + "$")
-	if err != nil {
-		return false, fmt.Errorf("invalid pattern '%s': %v", pattern, err)
-	}
-	
-	return regex.MatchString(path), nil
-}
-
-// wildcardToRegex 将通配符模式转换为正则表达式
-func (pt *PathTagger) wildcardToRegex(pattern string) string {
-	// 转义正则表达式特殊字符，但保留我们的通配符
-	escaped := regexp.QuoteMeta(pattern)
-	
-	// 将转义后的通配符还原并转换为正则表达式
-	// \* -> .* (匹配任意字符包括/)
-	// \? -> [^/] (匹配单个非/字符)
-	escaped = strings.ReplaceAll(escaped, `\*`, `.*`)
-	escaped = strings.ReplaceAll(escaped, `\?`, `[^/]`)
-	
-	return escaped
+	// 使用统一的通配符匹配函数
+	return wildcardMatch(pt.pathPattern, request.URL.Path)
 }
 
 // HeaderTagger 请求头匹配tagger
@@ -107,9 +105,8 @@ func (ht *HeaderTagger) ShouldTag(request *http.Request) (bool, error) {
 		return false, nil
 	}
 
-	// 支持通配符匹配
-	matched, err := filepath.Match(ht.expectedValue, headerValue)
-	return matched, err
+	// 使用统一的通配符匹配函数
+	return wildcardMatch(ht.expectedValue, headerValue)
 }
 
 // MethodTagger HTTP方法匹配tagger
@@ -199,9 +196,8 @@ func (qt *QueryTagger) ShouldTag(request *http.Request) (bool, error) {
 		return false, nil
 	}
 
-	// 支持通配符匹配
-	matched, err := filepath.Match(qt.expectedValue, paramValue)
-	return matched, err
+	// 使用统一的通配符匹配函数
+	return wildcardMatch(qt.expectedValue, paramValue)
 }
 
 // BodyJSONTagger JSON请求体字段匹配tagger
@@ -256,8 +252,8 @@ func (bt *BodyJSONTagger) ShouldTag(request *http.Request) (bool, error) {
 	}
 
 	if strValue, ok := value.(string); ok {
-		matched, err := filepath.Match(bt.expectedValue, strValue)
-		return matched, err
+		// 使用统一的通配符匹配函数
+		return wildcardMatch(bt.expectedValue, strValue)
 	}
 
 	return false, nil
