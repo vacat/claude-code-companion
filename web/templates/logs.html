@@ -95,6 +95,7 @@
                                         <th>请求大小</th>
                                         <th>响应大小</th>
                                         <th>流式</th>
+                                        <th>内容类型</th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
@@ -129,6 +130,13 @@
                                                 <span class="badge bg-info">SSE</span>
                                             {{else}}
                                                 <span class="badge bg-secondary">REQ</span>
+                                            {{end}}
+                                        </td>
+                                        <td>
+                                            {{if .ContentTypeOverride}}
+                                                <span class="badge bg-warning text-dark" title="Content-Type自动覆盖: {{.ContentTypeOverride}}">{{.ContentTypeOverride}}</span>
+                                            {{else}}
+                                                <span class="text-muted">-</span>
                                             {{end}}
                                         </td>
                                         <td>
@@ -294,6 +302,7 @@
                                     <span class="badge ${badgeClass}">${log.status_code}</span>
                                     <span class="badge bg-secondary">${log.duration_ms}ms</span>
                                     ${log.is_streaming ? '<span class="badge bg-info">SSE</span>' : ''}
+                                    ${log.content_type_override ? `<span class="badge bg-warning text-dark" title="Content-Type覆盖: ${escapeHtml(log.content_type_override)}">${escapeHtml(log.content_type_override)}</span>` : ''}
                                 </h6>
                             </div>
                             <div class="card-body">
@@ -395,6 +404,7 @@
                             <tr><th>响应体大小:</th><td>${log.response_body_size} 字节</td></tr>
                             <tr><th>流式响应:</th><td>${log.is_streaming ? '是 (SSE)' : '否'}</td></tr>
                             <tr><th>Tags:</th><td>${log.tags && log.tags.length > 0 ? log.tags.map(tag => `<span class="badge bg-primary me-1">${escapeHtml(tag)}</span>`).join('') : '<small class="text-muted">无</small>'}</td></tr>
+                            <tr><th>Content-Type覆盖:</th><td>${log.content_type_override ? `<span class="badge bg-warning text-dark">${escapeHtml(log.content_type_override)}</span>` : '<small class="text-muted">无</small>'}</td></tr>
                             ${log.error ? `<tr><th>错误:</th><td class="text-danger">${escapeHtml(log.error)}</td></tr>` : ''}
                         </table>
                     </div>
