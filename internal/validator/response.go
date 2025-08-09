@@ -229,3 +229,58 @@ func (v *ResponseValidator) DetectJSONContent(body []byte) bool {
 	// 如果是有效JSON且不包含SSE格式标记，则认为是JSON内容
 	return !hasSSEFormat
 }
+
+// DetectSSEContent 检测内容是否为SSE格式
+func (v *ResponseValidator) DetectSSEContent(body []byte) bool {
+	if len(body) == 0 {
+		return false
+	}
+	
+	bodyStr := string(body)
+	// SSE格式通常包含 "event: " 和 "data: " 标记
+	return strings.Contains(bodyStr, "event: ") && strings.Contains(bodyStr, "data: ")
+}
+
+// SmartDetectContentType 智能检测内容类型并返回应该设置的Content-Type和覆盖信息
+// 返回值: (newContentType, overrideInfo)
+// - newContentType: 应该设置的Content-Type，空字符串表示不需要修改
+// - overrideInfo: 覆盖信息，用于日志记录，格式如 "json->sse" 或 "sse->json"
+func (v *ResponseValidator) SmartDetectContentType(body []byte, currentContentType string, statusCode int) (string, string) {
+	if statusCode != 200 || len(body) == 0 {
+		return "", "" // 只处理200状态码的响应
+	}
+	
+	// 标准化当前Content-Type
+	currentContentTypeLower := strings.ToLower(currentContentType)
+	isCurrentSSE := strings.Contains(currentContentTypeLower, "text/event-stream")
+	isCurrentJSON := strings.Contains(currentContentTypeLower, "application/json")
+	isCurrentPlain := strings.Contains(currentContentTypeLower, "text/plain")
+	
+	// 检测实际内容类型
+	isActualSSE := v.DetectSSEContent(body)
+	isActualJSON := v.DetectJSONContent(body)
+	
+	// 决定是否需要覆盖Content-Type
+	if isActualSSE && !isCurrentSSE {
+		// 内容是SSE但Content-Type不是，覆盖为SSE
+		if isCurrentJSON {
+			return "text/event-stream; charset=utf-8", "json->sse"
+		} else if isCurrentPlain {
+			return "text/event-stream; charset=utf-8", "plain->sse"
+		} else {
+			return "text/event-stream; charset=utf-8", "unknown->sse"
+		}
+	} else if isActualJSON && !isCurrentJSON {
+		// 内容是JSON但Content-Type不是，覆盖为JSON
+		if isCurrentSSE {
+			return "application/json", "sse->json"
+		} else if isCurrentPlain {
+			return "application/json", "plain->json"
+		} else {
+			return "application/json", "unknown->json"
+		}
+	}
+	
+	// 不需要覆盖
+	return "", ""
+}

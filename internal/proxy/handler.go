@@ -323,7 +323,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		// 记录创建请求失败的日志
 		duration := time.Since(startTime)
 		createRequestError := fmt.Sprintf("Failed to create request: %v", err)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "")
 		return false, false
 	}
 
@@ -352,7 +352,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	resp, err := client.Do(req)
 	if err != nil {
 		duration := time.Since(startTime)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags, "")
 		return false, true
 	}
 	defer resp.Body.Close()
@@ -369,7 +369,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			decompressedBody = body // 如果解压失败，使用原始数据
 		}
 		
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil, s.isRequestExpectingStream(req), tags)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil, s.isRequestExpectingStream(req), tags, "")
 		s.logger.Debug(fmt.Sprintf("HTTP error %d from endpoint %s, trying next endpoint", resp.StatusCode, ep.Name))
 		return false, true
 	}
@@ -380,7 +380,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		// 记录读取响应体失败的日志
 		duration := time.Since(startTime)
 		readError := fmt.Sprintf("Failed to read response body: %v", err)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, nil, duration, fmt.Errorf(readError), s.isRequestExpectingStream(req), tags)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, nil, duration, fmt.Errorf(readError), s.isRequestExpectingStream(req), tags, "")
 		return false, false
 	}
 
@@ -392,58 +392,31 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		// 记录解压响应体失败的日志
 		duration := time.Since(startTime)
 		decompressError := fmt.Sprintf("Failed to decompress response body: %v", err)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, responseBody, duration, fmt.Errorf(decompressError), s.isRequestExpectingStream(req), tags)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, responseBody, duration, fmt.Errorf(decompressError), s.isRequestExpectingStream(req), tags, "")
 		return false, false
 	}
 
-	// 检测流式响应：首先检查 Content-Type，然后检查响应体内容
-	isStreaming := strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream")
-	contentTypeOverride := ""
+	// 智能检测内容类型并自动覆盖
+	currentContentType := resp.Header.Get("Content-Type")
+	newContentType, overrideInfo := s.validator.SmartDetectContentType(decompressedBody, currentContentType, resp.StatusCode)
 	
-	// Hack 1: 如果 Content-Type 不是 SSE，但响应体看起来像 SSE 格式，则也当作流式处理
-	if !isStreaming && len(decompressedBody) > 0 {
-		bodyStr := string(decompressedBody)
-		if strings.Contains(bodyStr, "event: ") && strings.Contains(bodyStr, "data: ") {
-			s.logger.Info(fmt.Sprintf("Detected SSE response with incorrect Content-Type from endpoint %s", ep.Name))
-			isStreaming = true
-			contentTypeOverride = "text/event-stream"
-		}
+	// 确定最终的Content-Type和是否为流式响应
+	finalContentType := currentContentType
+	if newContentType != "" {
+		finalContentType = newContentType
+		s.logger.Info(fmt.Sprintf("Auto-detected content type mismatch for endpoint %s: %s", ep.Name, overrideInfo))
 	}
 	
-	// Hack 2: 如果 Content-Type 是 text/event-stream 但响应体是 JSON 格式，则改为 application/json
-	if isStreaming && len(decompressedBody) > 0 {
-		if s.validator.DetectJSONContent(decompressedBody) {
-			s.logger.Info(fmt.Sprintf("Detected JSON response with text/event-stream Content-Type from endpoint %s, overriding to application/json", ep.Name))
-			isStreaming = false
-			contentTypeOverride = "application/json"
-		}
-	}
+	// 判断是否为流式响应（基于最终的Content-Type）
+	isStreaming := strings.Contains(strings.ToLower(finalContentType), "text/event-stream")
 
-	// 检查Content-Type，如果是text/plain但状态码是200，改写Content-Type为application/json
-	contentType := resp.Header.Get("Content-Type")
-	if resp.StatusCode == 200 && strings.Contains(strings.ToLower(contentType), "text/plain") {
-		s.logger.Info(fmt.Sprintf("Rewriting Content-Type from text/plain to application/json for endpoint %s", ep.Name))
-		
-		// 复制所有响应头，但修改Content-Type
-		for key, values := range resp.Header {
-			if strings.ToLower(key) == "content-type" {
-				c.Header(key, "application/json")
-			} else {
-				// 保持原始头部，包括Content-Encoding
-				for _, value := range values {
-					c.Header(key, value)
-				}
-			}
-		}
-	} else {
-		// 正常情况下复制所有头部，但检查是否需要修正 Content-Type
-		for key, values := range resp.Header {
-			if strings.ToLower(key) == "content-type" && contentTypeOverride != "" {
-				c.Header(key, contentTypeOverride)
-			} else {
-				for _, value := range values {
-					c.Header(key, value)
-				}
+	// 复制所有响应头，如果需要则覆盖Content-Type
+	for key, values := range resp.Header {
+		if strings.ToLower(key) == "content-type" && newContentType != "" {
+			c.Header(key, finalContentType)
+		} else {
+			for _, value := range values {
+				c.Header(key, value)
 			}
 		}
 	}
@@ -454,7 +427,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 				s.logger.Info(fmt.Sprintf("Usage validation failed for endpoint %s: %v", ep.Name, err))
 				duration := time.Since(startTime)
 				errorLog := fmt.Sprintf("Usage validation failed: %v", err)
-				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags)
+				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "")
 				return false, true // 验证失败，尝试下一个endpoint
 			}
 			
@@ -463,7 +436,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 				// 记录验证失败的请求日志
 				duration := time.Since(startTime)
 				validationError := fmt.Sprintf("Response validation failed: %v", err)
-				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags)
+				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags, "")
 				c.Header("Connection", "close")
 				c.AbortWithStatus(http.StatusBadGateway)
 				return false, false
@@ -476,7 +449,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	c.Writer.Write(responseBody)
 
 	duration := time.Since(startTime)
-	s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil, isStreaming, tags)
+	s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil, isStreaming, tags, overrideInfo)
 
 	return true, false
 }
@@ -503,10 +476,11 @@ func (s *Server) isRequestExpectingStream(req *http.Request) bool {
 }
 
 // createAndLogRequest creates a request log entry, populates common fields, and logs it
-func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, requestBody []byte, req *http.Request, resp *http.Response, responseBody []byte, duration time.Duration, err error, isStreaming bool, tags []string) {
+func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, requestBody []byte, req *http.Request, resp *http.Response, responseBody []byte, duration time.Duration, err error, isStreaming bool, tags []string, contentTypeOverride string) {
 	requestLog := s.logger.CreateRequestLog(requestID, endpoint, method, path)
 	requestLog.RequestBodySize = len(requestBody)
 	requestLog.Tags = tags
+	requestLog.ContentTypeOverride = contentTypeOverride
 	
 	// 设置请求体日志
 	if s.config.Logging.LogRequestBody != "none" && len(requestBody) > 0 {

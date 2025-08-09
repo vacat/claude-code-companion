@@ -29,6 +29,7 @@ type RequestLog struct {
 	IsStreaming     bool              `json:"is_streaming"`
 	Model           string            `json:"model,omitempty"`
 	Tags            []string          `json:"tags,omitempty"`
+	ContentTypeOverride string        `json:"content_type_override,omitempty"`
 }
 
 // StorageInterface defines the interface for log storage backends
