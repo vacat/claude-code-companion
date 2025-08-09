@@ -39,7 +39,7 @@ func (s *Server) handleProxy(c *gin.Context) {
 	}
 
 	// 尝试向选择的端点发送请求，失败时回退到其他端点
-	success, shouldRetry := s.tryProxyRequest(c, selectedEndpoint, requestBody, requestID, startTime, path)
+	success, shouldRetry := s.tryProxyRequest(c, selectedEndpoint, requestBody, requestID, startTime, path, taggedRequest)
 	if success {
 		return
 	}
@@ -109,8 +109,8 @@ func (s *Server) selectEndpointForRequest(taggedRequest *tagging.TaggedRequest) 
 }
 
 // tryProxyRequest attempts to proxy the request to the given endpoint
-func (s *Server) tryProxyRequest(c *gin.Context, ep *endpoint.Endpoint, requestBody []byte, requestID string, startTime time.Time, path string) (success, shouldRetry bool) {
-	success, _ = s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, nil)
+func (s *Server) tryProxyRequest(c *gin.Context, ep *endpoint.Endpoint, requestBody []byte, requestID string, startTime time.Time, path string, taggedRequest *tagging.TaggedRequest) (success, shouldRetry bool) {
+	success, _ = s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest)
 	if success {
 		s.endpointManager.RecordRequest(ep.ID, true)
 		
