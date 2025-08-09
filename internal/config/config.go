@@ -241,7 +241,7 @@ func validateTaggingConfig(config *TaggingConfig) error {
 		
 		// 验证内置tagger类型
 		if tagger.Type == "builtin" {
-			validBuiltinTypes := []string{"path", "header", "body-json", "method", "query"}
+			validBuiltinTypes := []string{"path", "header", "body-json", "method", "query", "user-message"}
 			validType := false
 			for _, vt := range validBuiltinTypes {
 				if tagger.BuiltinType == vt {
