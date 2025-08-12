@@ -65,6 +65,26 @@
         .action-buttons button {
             cursor: pointer;
         }
+        /* URL 和路径显示样式 */
+        .url-display, .path-display {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .path-display {
+            max-width: 150px;
+        }
+        .url-display:hover, .path-display:hover {
+            overflow: visible;
+            white-space: normal;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+            padding: 2px 4px;
+            position: relative;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
@@ -125,7 +145,7 @@
                                             <span class="badge bg-info priority-badge">{{.Priority}}</span>
                                         </td>
                                         <td><strong>{{.Name}}</strong></td>
-                                        <td><code>{{.URL}}</code></td>
+                                        <td><code class="url-display" title="{{.URL}}">{{.URL}}</code></td>
                                         <td>
                                             <span class="badge {{if eq .EndpointType "openai"}}bg-warning{{else}}bg-primary{{end}}">
                                                 {{if .EndpointType}}{{.EndpointType}}{{else}}anthropic{{end}}
@@ -133,7 +153,7 @@
                                         </td>
                                         <td>
                                             {{if eq .EndpointType "openai"}}
-                                                <code>{{.PathPrefix}}</code>
+                                                <code class="path-display" title="{{.PathPrefix}}">{{.PathPrefix}}</code>
                                             {{else}}
                                                 <span class="text-muted">/v1/messages</span>
                                             {{end}}
@@ -446,6 +466,24 @@
             loadEndpoints();
         }
 
+        // 提取域名，只显示域名部分，路径用...省略  
+        function extractDomain(url) {
+            try {
+                const urlObj = new URL(url);
+                return urlObj.hostname;
+            } catch (e) {
+                return url; // 如果不是有效URL，返回原始内容
+            }
+        }
+        
+        // 截断路径，超过指定长度用...显示
+        function truncatePath(path, maxLength = 10) {
+            if (!path || path.length <= maxLength) {
+                return path;
+            }
+            return path.substring(0, maxLength) + '...';
+        }
+
         function rebuildTable(endpoints) {
             const tbody = document.getElementById('endpoint-list');
             tbody.innerHTML = '';
@@ -475,10 +513,19 @@
                     ? '<span class="badge bg-warning">openai</span>'
                     : '<span class="badge bg-primary">anthropic</span>';
                 
-                // 构建路径显示
-                const pathDisplay = endpoint.endpoint_type === 'openai' 
-                    ? `<code>${endpoint.path_prefix || ''}</code>`
-                    : '<span class="text-muted">/v1/messages</span>';
+                // 构建 URL 显示：只显示域名，完整 URL 在 title 中显示 
+                const domainOnly = extractDomain(endpoint.url);
+                const urlDisplay = `<code class="url-display" title="${endpoint.url}">${domainOnly}</code>`;
+                
+                // 构建路径显示：超过10个字符截断
+                let pathDisplay;
+                if (endpoint.endpoint_type === 'openai') {
+                    const fullPath = endpoint.path_prefix || '';
+                    const truncatedPath = truncatePath(fullPath, 10);
+                    pathDisplay = `<code class="path-display" title="${fullPath}">${truncatedPath}</code>`;
+                } else {
+                    pathDisplay = '<span class="text-muted">/v1/messages</span>';
+                }
                 
                 // 构建认证类型徽章
                 const authTypeBadge = endpoint.auth_type === 'api_key' 
@@ -506,7 +553,7 @@
                         <span class="badge bg-info priority-badge">${endpoint.priority}</span>
                     </td>
                     <td><strong>${endpoint.name}</strong></td>
-                    <td><code>${endpoint.url}</code></td>
+                    <td>${urlDisplay}</td>
                     <td>${endpointTypeBadge}</td>
                     <td>${pathDisplay}</td>
                     <td>${authTypeBadge}</td>
