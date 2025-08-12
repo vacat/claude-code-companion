@@ -36,6 +36,16 @@ func (s *Server) handleProxy(c *gin.Context) {
 	// 处理请求标签
 	taggedRequest := s.processRequestTags(c.Request)
 
+	// 检查 OpenAI 端点是否收到 count_tokens 请求
+	if strings.Contains(path, "/count_tokens") {
+		selectedEndpoint, err := s.selectEndpointForRequest(taggedRequest)
+		if err == nil && selectedEndpoint.EndpointType == "openai" {
+			s.logger.Debug("Rejecting count_tokens request for OpenAI endpoint")
+			s.sendProxyError(c, http.StatusNotFound, "unsupported_endpoint", "OpenAI endpoints do not support count_tokens API", requestID)
+			return
+		}
+	}
+
 	// 选择端点并处理请求
 	selectedEndpoint, err := s.selectEndpointForRequest(taggedRequest)
 	if err != nil {
@@ -520,7 +530,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		}
 	}
 	if s.config.Validation.StrictAnthropicFormat {
-		if err := s.validator.ValidateResponse(decompressedBody, isStreaming, ep.EndpointType); err != nil {
+		if err := s.validator.ValidateResponseWithPath(decompressedBody, isStreaming, ep.EndpointType, path); err != nil {
 			// 如果是usage统计验证失败，尝试下一个endpoint
 			if strings.Contains(err.Error(), "invalid usage stats") {
 				s.logger.Info(fmt.Sprintf("Usage validation failed for endpoint %s: %v", ep.Name, err))

@@ -26,14 +26,38 @@ func (v *ResponseValidator) ValidateAnthropicResponse(body []byte, isStreaming b
 }
 
 func (v *ResponseValidator) ValidateResponse(body []byte, isStreaming bool, endpointType string) error {
+	return v.ValidateResponseWithPath(body, isStreaming, endpointType, "")
+}
+
+func (v *ResponseValidator) ValidateResponseWithPath(body []byte, isStreaming bool, endpointType, path string) error {
 	if isStreaming && !v.validateStream {
 		// 如果禁用了流式验证，直接返回成功
 		return nil
 	}
+	
+	// 跳过 count_tokens 接口的 Anthropic 格式验证
+	if isCountTokensEndpoint(path) {
+		// count_tokens 接口只做基本 JSON 格式验证
+		var response map[string]interface{}
+		if err := json.Unmarshal(body, &response); err != nil {
+			return fmt.Errorf("invalid JSON response: %v", err)
+		}
+		// count_tokens 应该返回包含 input_tokens 的响应
+		if _, hasInputTokens := response["input_tokens"]; hasInputTokens {
+			return nil
+		}
+		return fmt.Errorf("count_tokens response missing input_tokens field")
+	}
+	
 	if isStreaming {
 		return v.ValidateSSEChunk(body, endpointType)
 	}
 	return v.ValidateStandardResponse(body, endpointType)
+}
+
+// isCountTokensEndpoint 检查是否为 count_tokens 接口
+func isCountTokensEndpoint(path string) bool {
+	return strings.Contains(path, "/count_tokens")
 }
 
 func (v *ResponseValidator) ValidateStandardResponse(body []byte, endpointType string) error {

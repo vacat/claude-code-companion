@@ -71,7 +71,7 @@ data: {"type":"content_block_start","index":0}
 
 `)
 	
-	err := validator.ValidateSSEChunk(validSSEData)
+	err := validator.ValidateSSEChunk(validSSEData, "anthropic")
 	if err != nil {
 		t.Errorf("Expected valid SSE data to pass, got error: %v", err)
 	}
@@ -82,7 +82,7 @@ data: {"type":"message_start","message":{"id":"msg_123","usage":{"prompt_tokens"
 
 `)
 	
-	err = validator.ValidateSSEChunk(invalidSSEData)
+	err = validator.ValidateSSEChunk(invalidSSEData, "anthropic")
 	if err == nil {
 		t.Error("Expected invalid SSE data (zero tokens) to fail validation")
 	}
