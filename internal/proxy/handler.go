@@ -409,6 +409,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	// 格式转换（在模型重写之后）
 	var conversionContext *conversion.ConversionContext
 	if s.converter.ShouldConvert(ep.EndpointType) {
+		s.logger.Info(fmt.Sprintf("Starting request conversion for endpoint type: %s", ep.EndpointType))
 		convertedBody, ctx, err := s.converter.ConvertRequest(finalRequestBody, ep.EndpointType)
 		if err != nil {
 			s.logger.Error("Request format conversion failed", err)
@@ -519,10 +520,14 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	// 判断是否为流式响应（基于最终的Content-Type）
 	isStreaming := strings.Contains(strings.ToLower(finalContentType), "text/event-stream")
 
-	// 复制所有响应头，如果需要则覆盖Content-Type
+	// 复制响应头，但跳过可能需要重新计算的头部
 	for key, values := range resp.Header {
-		if strings.ToLower(key) == "content-type" && newContentType != "" {
+		keyLower := strings.ToLower(key)
+		if keyLower == "content-type" && newContentType != "" {
 			c.Header(key, finalContentType)
+		} else if keyLower == "content-length" || keyLower == "content-encoding" {
+			// 这些头部会在后面根据最终响应体重新设置
+			continue
 		} else {
 			for _, value := range values {
 				c.Header(key, value)
@@ -558,12 +563,14 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	// 格式转换（在模型重写之前）
 	convertedResponseBody := decompressedBody
 	if conversionContext != nil {
+		s.logger.Info(fmt.Sprintf("Starting response conversion. Streaming: %v, OriginalSize: %d", isStreaming, len(decompressedBody)))
 		convertedResp, err := s.converter.ConvertResponse(decompressedBody, conversionContext, isStreaming)
 		if err != nil {
 			s.logger.Error("Response format conversion failed", err)
 			// 转换失败，使用原始响应体
 		} else {
 			convertedResponseBody = convertedResp
+			s.logger.Info(fmt.Sprintf("Response conversion successful! Original: %d bytes -> Converted: %d bytes", len(decompressedBody), len(convertedResp)))
 			s.logger.Debug("Response format converted successfully", map[string]interface{}{
 				"endpoint_type": conversionContext.EndpointType,
 				"original_size": len(decompressedBody),
@@ -573,7 +580,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	}
 	
 	// 应用响应模型重写（如果进行了请求模型重写）
-	finalResponseBody := responseBody
+	finalResponseBody := convertedResponseBody
 	if originalModel != "" && rewrittenModel != "" {
 		rewrittenResponseBody, err := s.modelRewriter.RewriteResponse(convertedResponseBody, originalModel, rewrittenModel)
 		if err != nil {
@@ -592,6 +599,25 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	} else if conversionContext != nil {
 		// 只有格式转换没有模型重写的情况
 		finalResponseBody = convertedResponseBody
+	}
+	
+	// 设置正确的响应头部
+	if conversionContext != nil || (originalModel != "" && rewrittenModel != "") {
+		// 如果进行了转换或模型重写，需要重新设置头部
+		// 移除压缩编码（因为我们发送的是解压后的数据）
+		c.Header("Content-Encoding", "")
+		// 设置正确的内容长度
+		c.Header("Content-Length", fmt.Sprintf("%d", len(finalResponseBody)))
+	}
+	
+	// 如果是流式响应，确保设置正确的SSE头部
+	if isStreaming {
+		c.Header("Content-Type", "text/event-stream; charset=utf-8")
+		c.Header("Cache-Control", "no-cache")
+		c.Header("Connection", "keep-alive")
+		c.Header("X-Accel-Buffering", "no") // 防止中间层缓冲
+		// 移除Content-Length头部（SSE不应该设置这个）
+		c.Header("Content-Length", "")
 	}
 	
 	// 发送最终响应体给客户端

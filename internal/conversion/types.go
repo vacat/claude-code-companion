@@ -28,6 +28,8 @@ type StreamState struct {
 	ContentBlockIndex int                         // 当前内容块索引
 	ToolCallStates    map[string]*ToolCallState   // 工具调用状态
 	NextBlockIndex    int                         // 下一个块索引
+	TextBlockStarted  bool                        // 文本块是否已开始
+	MessageStarted    bool                        // 消息是否已开始
 }
 
 // ToolCallState 工具调用状态
@@ -37,6 +39,7 @@ type ToolCallState struct {
 	Name             string // 工具名称
 	ArgumentsBuffer  string // 参数缓冲区
 	Completed        bool   // 是否已完成
+	Started          bool   // 是否已发送 content_block_start
 }
 
 // ConversionError 转换错误

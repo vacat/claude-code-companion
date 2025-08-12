@@ -95,6 +95,7 @@ type OpenAIStreamChunk struct {
 	ID      string           `json:"id"`
 	Model   string           `json:"model"`
 	Choices []OpenAIStreamChoice `json:"choices"`
+	Usage   *OpenAIUsage     `json:"usage,omitempty"` // 可能在最后一个chunk中包含
 }
 
 // OpenAIStreamChoice 流式选择

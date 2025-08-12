@@ -10,13 +10,15 @@ import (
 
 // ResponseConverter 响应转换器 - 基于参考实现
 type ResponseConverter struct {
-	logger *logger.Logger
+	logger    *logger.Logger
+	sseParser *SSEParser
 }
 
 // NewResponseConverter 创建响应转换器
 func NewResponseConverter(logger *logger.Logger) *ResponseConverter {
 	return &ResponseConverter{
-		logger: logger,
+		logger:    logger,
+		sseParser: NewSSEParser(logger),
 	}
 }
 
@@ -84,12 +86,21 @@ func (c *ResponseConverter) convertNonStreamingResponse(openaiResp []byte, ctx *
 		})
 	}
 
+	// 转换 OpenAI finish_reason 到 Anthropic stop_reason
+	stopReason := "end_turn" // 默认值
+	if choice.FinishReason == "tool_calls" {
+		stopReason = "tool_use"
+	} else if choice.FinishReason == "length" {
+		stopReason = "max_tokens"
+	}
+	// 其他情况（包括 "stop"）都映射为 "end_turn"
+
 	out := AnthropicResponse{
 		Type:       "message",
 		Role:       "assistant",
 		Model:      in.Model,
 		Content:    blocks,
-		StopReason: choice.FinishReason, // "stop" | "tool_calls"...
+		StopReason: stopReason,
 	}
 	if in.Usage != nil {
 		out.Usage = &AnthropicUsage{
@@ -111,8 +122,166 @@ func (c *ResponseConverter) convertNonStreamingResponse(openaiResp []byte, ctx *
 	return result, nil
 }
 
-// convertStreamingResponse 转换流式响应 - 基于参考实现
+// convertStreamingResponse 转换流式响应 - 处理完整的 SSE 流
 func (c *ResponseConverter) convertStreamingResponse(openaiResp []byte, ctx *ConversionContext) ([]byte, error) {
+	// 检查是否为SSE格式
+	if !c.sseParser.ValidateSSEFormat(openaiResp) {
+		// 如果不是SSE格式，尝试作为单个chunk处理（向后兼容）
+		return c.convertSingleChunk(openaiResp, ctx)
+	}
+
+	// 解析完整的 SSE 流
+	chunks, err := c.sseParser.ParseSSEStream(openaiResp)
+	if err != nil {
+		return nil, NewConversionError("sse_parse_error", "Failed to parse SSE stream", err)
+	}
+
+	if len(chunks) == 0 {
+		return nil, NewConversionError("empty_stream", "No valid chunks found in SSE stream", nil)
+	}
+
+	// 初始化流状态
+	if ctx.StreamState == nil {
+		ctx.StreamState = &StreamState{
+			ContentBlockIndex: 0,
+			ToolCallStates:    make(map[string]*ToolCallState),
+			NextBlockIndex:    0,
+			TextBlockStarted:  false,
+			MessageStarted:    false,
+		}
+	}
+
+	var allEvents []string
+
+	// 添加 message_start 事件（只在第一次）
+	if !ctx.StreamState.MessageStarted {
+		messageStartEvent := map[string]interface{}{
+			"type": "message_start",
+			"message": map[string]interface{}{
+				"id":      "msg_" + chunks[0].ID, // 使用第一个chunk的ID
+				"type":    "message",
+				"role":    "assistant",
+				"content": []interface{}{},
+				"model":   chunks[0].Model,
+				"stop_reason": nil,
+				"stop_sequence": nil,
+			},
+		}
+		messageStartData, _ := json.Marshal(messageStartEvent)
+		allEvents = append(allEvents, "event: message_start")
+		allEvents = append(allEvents, "data: "+string(messageStartData))
+		allEvents = append(allEvents, "")
+		ctx.StreamState.MessageStarted = true
+	}
+
+	// 逐个转换每个chunk
+	var finalStopReason string
+	var finalUsage *OpenAIUsage
+	
+	for i, chunk := range chunks {
+		events := c.convertSingleChunkToEvents(chunk, ctx.StreamState)
+		allEvents = append(allEvents, events...)
+		
+		// 记录最后的 stop_reason 和 usage 信息
+		for _, choice := range chunk.Choices {
+			if choice.FinishReason != "" {
+				finalStopReason = choice.FinishReason
+			}
+		}
+		if chunk.Usage != nil {
+			finalUsage = chunk.Usage
+		}
+		
+		if c.logger != nil {
+			c.logger.Debug("Converted chunk", map[string]interface{}{
+				"chunk_index": i,
+				"events_generated": len(events),
+			})
+		}
+	}
+	
+	// 在所有chunks处理完后，统一发送结束事件
+	if finalStopReason != "" {
+		// 结束所有活跃的工具调用块
+		for _, state := range ctx.StreamState.ToolCallStates {
+			if !state.Completed {
+				stopEvent := map[string]interface{}{
+					"type":  "content_block_stop",
+					"index": state.BlockIndex,
+				}
+				stopData, _ := json.Marshal(stopEvent)
+				allEvents = append(allEvents, "event: content_block_stop")
+				allEvents = append(allEvents, "data: "+string(stopData))
+				allEvents = append(allEvents, "")
+				state.Completed = true
+			}
+		}
+
+		// 结束文本块（如果有）
+		if ctx.StreamState.TextBlockStarted {
+			stopEvent := map[string]interface{}{
+				"type":  "content_block_stop",
+				"index": 0,
+			}
+			stopData, _ := json.Marshal(stopEvent)
+			allEvents = append(allEvents, "event: content_block_stop")
+			allEvents = append(allEvents, "data: "+string(stopData))
+			allEvents = append(allEvents, "")
+		}
+
+		// 发送 message_delta（如果有usage信息）
+		if finalUsage != nil {
+			// 转换 OpenAI 的 finish_reason 到 Anthropic 格式
+			stopReason := "end_turn"  // 默认值
+			if finalStopReason == "tool_calls" {
+				stopReason = "tool_use"
+			} else if finalStopReason == "length" {
+				stopReason = "max_tokens"
+			}
+			// 其他情况（包括 "stop"）都映射为 "end_turn"
+			
+			messageDeltaEvent := map[string]interface{}{
+				"type": "message_delta",
+				"delta": map[string]interface{}{
+					"stop_reason": stopReason,
+					"stop_sequence": nil,
+				},
+				"usage": map[string]interface{}{
+					"output_tokens": finalUsage.CompletionTokens,
+				},
+			}
+			messageDeltaData, _ := json.Marshal(messageDeltaEvent)
+			allEvents = append(allEvents, "event: message_delta")
+			allEvents = append(allEvents, "data: "+string(messageDeltaData))
+			allEvents = append(allEvents, "")
+		}
+
+		// 发送最终的消息结束事件
+		messageStopEvent := map[string]interface{}{
+			"type": "message_stop",
+		}
+		stopData, _ := json.Marshal(messageStopEvent)
+		allEvents = append(allEvents, "event: message_stop")
+		allEvents = append(allEvents, "data: "+string(stopData))
+		allEvents = append(allEvents, "")
+	}
+
+	// 重新组装成 SSE 格式
+	result := c.sseParser.BuildAnthropicSSEStream(allEvents)
+
+	if c.logger != nil {
+		c.logger.Debug("Stream conversion completed", map[string]interface{}{
+			"total_chunks": len(chunks),
+			"total_events": len(allEvents),
+			"output_size": len(result),
+		})
+	}
+
+	return result, nil
+}
+
+// convertSingleChunk 转换单个chunk（向后兼容）
+func (c *ResponseConverter) convertSingleChunk(openaiResp []byte, ctx *ConversionContext) ([]byte, error) {
 	// 解析单个流式chunk
 	var chunk OpenAIStreamChunk
 	if err := json.Unmarshal(openaiResp, &chunk); err != nil {
@@ -128,133 +297,7 @@ func (c *ResponseConverter) convertStreamingResponse(openaiResp []byte, ctx *Con
 		}
 	}
 
-	var events []string
-
-	for _, choice := range chunk.Choices {
-		if choice.Delta.Content != nil {
-			// 文本内容增量
-			switch content := choice.Delta.Content.(type) {
-			case string:
-				if content != "" {
-					// 如果是第一个文本块，先发送content_block_start
-					if ctx.StreamState.ContentBlockIndex == 0 {
-						startEvent := map[string]interface{}{
-							"type":  "content_block_start",
-							"index": 0,
-							"content_block": map[string]interface{}{
-								"type": "text",
-								"text": "",
-							},
-						}
-						startData, _ := json.Marshal(startEvent)
-						events = append(events, "data: "+string(startData))
-					}
-
-					// 发送文本增量
-					deltaEvent := map[string]interface{}{
-						"type":  "content_block_delta",
-						"index": ctx.StreamState.ContentBlockIndex,
-						"delta": map[string]interface{}{
-							"type": "text_delta",
-							"text": content,
-						},
-					}
-					deltaData, _ := json.Marshal(deltaEvent)
-					events = append(events, "data: "+string(deltaData))
-				}
-			}
-		}
-
-		// 处理工具调用增量
-		for _, tc := range choice.Delta.ToolCalls {
-			state, exists := ctx.StreamState.ToolCallStates[tc.ID]
-			if !exists {
-				// 新的工具调用
-				state = &ToolCallState{
-					BlockIndex:      ctx.StreamState.NextBlockIndex,
-					ID:              tc.ID,
-					ArgumentsBuffer: "",
-					Completed:       false,
-				}
-				ctx.StreamState.ToolCallStates[tc.ID] = state
-				ctx.StreamState.NextBlockIndex++
-
-				// 发送tool_use块开始事件
-				startEvent := map[string]interface{}{
-					"type":  "content_block_start",
-					"index": state.BlockIndex,
-					"content_block": map[string]interface{}{
-						"type": "tool_use",
-						"id":   tc.ID,
-					},
-				}
-				startData, _ := json.Marshal(startEvent)
-				events = append(events, "data: "+string(startData))
-			}
-
-			// 更新工具调用状态
-			if tc.Function.Name != "" {
-				state.Name = tc.Function.Name
-			}
-			if tc.Function.Arguments != "" {
-				state.ArgumentsBuffer += tc.Function.Arguments
-			}
-
-			// 发送工具调用增量
-			if tc.Function.Name != "" || tc.Function.Arguments != "" {
-				deltaEvent := map[string]interface{}{
-					"type":  "content_block_delta",
-					"index": state.BlockIndex,
-					"delta": map[string]interface{}{
-						"type": "input_json_delta",
-					},
-				}
-
-				if tc.Function.Name != "" {
-					deltaEvent["delta"].(map[string]interface{})["partial_json"] = `{"name":"` + tc.Function.Name + `"`
-				}
-				if tc.Function.Arguments != "" {
-					deltaEvent["delta"].(map[string]interface{})["partial_json"] = tc.Function.Arguments
-				}
-
-				deltaData, _ := json.Marshal(deltaEvent)
-				events = append(events, "data: "+string(deltaData))
-			}
-		}
-
-		// 处理完成事件
-		if choice.FinishReason != "" {
-			// 结束所有活跃的内容块
-			for _, state := range ctx.StreamState.ToolCallStates {
-				if !state.Completed {
-					stopEvent := map[string]interface{}{
-						"type":  "content_block_stop",
-						"index": state.BlockIndex,
-					}
-					stopData, _ := json.Marshal(stopEvent)
-					events = append(events, "data: "+string(stopData))
-					state.Completed = true
-				}
-			}
-
-			// 如果有文本内容，结束文本块
-			if ctx.StreamState.ContentBlockIndex == 0 {
-				stopEvent := map[string]interface{}{
-					"type":  "content_block_stop",
-					"index": 0,
-				}
-				stopData, _ := json.Marshal(stopEvent)
-				events = append(events, "data: "+string(stopData))
-			}
-
-			// 发送消息结束事件
-			messageStopEvent := map[string]interface{}{
-				"type": "message_stop",
-			}
-			stopData, _ := json.Marshal(messageStopEvent)
-			events = append(events, "data: "+string(stopData))
-		}
-	}
+	events := c.convertSingleChunkToEvents(chunk, ctx.StreamState)
 
 	// 组合所有事件
 	result := strings.Join(events, "\n")
@@ -263,10 +306,119 @@ func (c *ResponseConverter) convertStreamingResponse(openaiResp []byte, ctx *Con
 	}
 
 	if c.logger != nil {
-		c.logger.Debug("Stream conversion completed")
+		c.logger.Debug("Single chunk conversion completed")
 	}
 
 	return []byte(result), nil
+}
+
+// convertSingleChunkToEvents 将单个OpenAI chunk转换为Anthropic事件列表
+func (c *ResponseConverter) convertSingleChunkToEvents(chunk OpenAIStreamChunk, streamState *StreamState) []string {
+	var events []string
+
+	for _, choice := range chunk.Choices {
+		// 处理文本内容
+		if choice.Delta.Content != nil {
+			switch content := choice.Delta.Content.(type) {
+			case string:
+				if content != "" {
+					// 如果文本块还没开始，先发送 content_block_start
+					if !streamState.TextBlockStarted {
+						startEvent := map[string]interface{}{
+							"type":  "content_block_start",
+							"index": 0, // 文本块总是 index 0
+							"content_block": map[string]interface{}{
+								"type": "text",
+								"text": "",
+							},
+						}
+						startData, _ := json.Marshal(startEvent)
+						events = append(events, "event: content_block_start")
+						events = append(events, "data: "+string(startData))
+						events = append(events, "")
+						streamState.TextBlockStarted = true
+						streamState.NextBlockIndex = 1 // 下一个块从 index 1 开始
+					}
+
+					// 发送文本增量
+					deltaEvent := map[string]interface{}{
+						"type":  "content_block_delta",
+						"index": 0,
+						"delta": map[string]interface{}{
+							"type": "text_delta",
+							"text": content,
+						},
+					}
+					deltaData, _ := json.Marshal(deltaEvent)
+					events = append(events, "event: content_block_delta")
+					events = append(events, "data: "+string(deltaData))
+					events = append(events, "")
+				}
+			}
+		}
+
+		// 处理工具调用
+		for _, tc := range choice.Delta.ToolCalls {
+			state, exists := streamState.ToolCallStates[tc.ID]
+			if !exists {
+				// 新的工具调用块 - 等待收集到工具名称后再发送 content_block_start
+				blockIndex := streamState.NextBlockIndex
+				state = &ToolCallState{
+					BlockIndex:      blockIndex,
+					ID:              tc.ID,
+					ArgumentsBuffer: "",
+					Completed:       false,
+				}
+				streamState.ToolCallStates[tc.ID] = state
+				streamState.NextBlockIndex++
+			}
+
+			// 更新工具调用状态
+			if tc.Function.Name != "" {
+				state.Name = tc.Function.Name
+				
+				// 如果这是第一次收到工具名称，发送 content_block_start（包含 name）
+				if state.Name != "" && !state.Started {
+					startEvent := map[string]interface{}{
+						"type":  "content_block_start",
+						"index": state.BlockIndex,
+						"content_block": map[string]interface{}{
+							"type":  "tool_use",
+							"id":    tc.ID,
+							"name":  state.Name,
+							"input": map[string]interface{}{},
+						},
+					}
+					startData, _ := json.Marshal(startEvent)
+					events = append(events, "event: content_block_start")
+					events = append(events, "data: "+string(startData))
+					events = append(events, "")
+					state.Started = true
+				}
+			}
+			
+			if tc.Function.Arguments != "" {
+				state.ArgumentsBuffer += tc.Function.Arguments
+				// 发送工具参数增量 - 只发送 input 内容，不包含 name
+				deltaEvent := map[string]interface{}{
+					"type":  "content_block_delta",
+					"index": state.BlockIndex,
+					"delta": map[string]interface{}{
+						"type": "input_json_delta",
+						"partial_json": tc.Function.Arguments,
+					},
+				}
+				deltaData, _ := json.Marshal(deltaEvent)
+				events = append(events, "event: content_block_delta")
+				events = append(events, "data: "+string(deltaData))
+				events = append(events, "")
+			}
+		}
+
+		// 不在这里处理结束事件，改为在最后统一处理
+	}
+
+	return events
 }
 
 // ConvertOpenAIStreamToAnthropic 将一组已收集的 OpenAI 流式片段组装成"完整的一条 Anthropic assistant 消息"
@@ -344,12 +496,21 @@ func ConvertOpenAIStreamToAnthropic(chunks []OpenAIStreamChunk) (AnthropicRespon
 		})
 	}
 
+	// 转换 OpenAI finish_reason 到 Anthropic stop_reason
+	stopReason := "end_turn" // 默认值
+	if finishReason == "tool_calls" {
+		stopReason = "tool_use"
+	} else if finishReason == "length" {
+		stopReason = "max_tokens"
+	}
+	// 其他情况（包括 "stop"）都映射为 "end_turn"
+
 	return AnthropicResponse{
 		Type:       "message",
 		Role:       "assistant",
 		Model:      model,
 		Content:    blocks,
-		StopReason: finishReason,
+		StopReason: stopReason,
 	}, nil
 }
 
