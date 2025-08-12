@@ -165,9 +165,21 @@ func (c *ResponseConverter) convertStreamingResponse(openaiResp []byte, ctx *Con
 				"model":   chunks[0].Model,
 				"stop_reason": nil,
 				"stop_sequence": nil,
+				"usage": map[string]interface{}{
+					"input_tokens":        0,
+					"output_tokens":       0,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens":     0,
+				},
 			},
 		}
 		messageStartData, _ := json.Marshal(messageStartEvent)
+		
+		// 添加心跳帧
+		allEvents = append(allEvents, "event: ping")
+		allEvents = append(allEvents, "data: {}")
+		allEvents = append(allEvents, "")
+		
 		allEvents = append(allEvents, "event: message_start")
 		allEvents = append(allEvents, "data: "+string(messageStartData))
 		allEvents = append(allEvents, "")

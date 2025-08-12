@@ -647,11 +647,15 @@ func TestBuildAnthropicToolResultMessage(t *testing.T) {
 		t.Errorf("Expected role 'user', got '%s'", result.Role)
 	}
 
-	if len(result.Content) != 1 {
-		t.Fatalf("Expected 1 content block, got %d", len(result.Content))
+	contentBlocks, ok := result.Content.([]AnthropicContentBlock)
+	if !ok {
+		t.Fatalf("Expected Content to be []AnthropicContentBlock")
+	}
+	if len(contentBlocks) != 1 {
+		t.Fatalf("Expected 1 content block, got %d", len(contentBlocks))
 	}
 
-	block := result.Content[0]
+	block := contentBlocks[0]
 	if block.Type != "tool_result" {
 		t.Errorf("Expected type 'tool_result', got '%s'", block.Type)
 	}
