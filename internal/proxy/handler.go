@@ -27,6 +27,11 @@ func (s *Server) handleProxy(c *gin.Context) {
 		return
 	}
 
+	// 提取原始模型名（在任何重写之前）
+	originalModel := s.extractModelFromRequest(requestBody)
+	// 存储到context中，供后续使用
+	c.Set("original_model", originalModel)
+
 	// 处理请求标签
 	taggedRequest := s.processRequestTags(c.Request)
 
@@ -308,6 +313,14 @@ func (s *Server) sendFailureResponse(c *gin.Context, requestID string, startTime
 	s.sendProxyError(c, http.StatusBadGateway, errorType, requestLog.Error, requestID)
 }
 
+// extractModelFromRequest extracts the model name from the request body
+func (s *Server) extractModelFromRequest(requestBody []byte) string {
+	if len(requestBody) == 0 {
+		return ""
+	}
+	return utils.ExtractModelFromRequestBody(string(requestBody))
+}
+
 func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path string, requestBody []byte, requestID string, startTime time.Time, taggedRequest *tagging.TaggedRequest) (bool, bool) {
 	targetURL := ep.GetFullURL(path)
 	
@@ -317,13 +330,49 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		tags = taggedRequest.Tags
 	}
 	
-	req, err := http.NewRequest(c.Request.Method, targetURL, bytes.NewReader(requestBody))
+	// 创建HTTP请求用于模型重写处理
+	tempReq, err := http.NewRequest(c.Request.Method, targetURL, bytes.NewReader(requestBody))
 	if err != nil {
 		s.logger.Error("Failed to create request", err)
 		// 记录创建请求失败的日志
 		duration := time.Since(startTime)
 		createRequestError := fmt.Sprintf("Failed to create request: %v", err)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "")
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "", "", "")
+		return false, false
+	}
+
+	// 应用模型重写（如果配置了）
+	originalModel, rewrittenModel, err := s.modelRewriter.RewriteRequest(tempReq, ep.ModelRewrite)
+	if err != nil {
+		s.logger.Error("Model rewrite failed", err)
+		// 记录模型重写失败的日志
+		duration := time.Since(startTime)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, nil, nil, nil, duration, err, false, tags, "", "", "")
+		return false, false
+	}
+
+	// 如果进行了模型重写，获取重写后的请求体
+	var finalRequestBody []byte
+	if originalModel != "" && rewrittenModel != "" {
+		finalRequestBody, err = io.ReadAll(tempReq.Body)
+		if err != nil {
+			s.logger.Error("Failed to read rewritten request body", err)
+			duration := time.Since(startTime)
+			s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, nil, nil, nil, duration, err, false, tags, "", originalModel, rewrittenModel)
+			return false, false
+		}
+	} else {
+		finalRequestBody = requestBody // 使用原始请求体
+	}
+
+	// 创建最终的HTTP请求
+	req, err := http.NewRequest(c.Request.Method, targetURL, bytes.NewReader(finalRequestBody))
+	if err != nil {
+		s.logger.Error("Failed to create final request", err)
+		// 记录创建请求失败的日志
+		duration := time.Since(startTime)
+		createRequestError := fmt.Sprintf("Failed to create final request: %v", err)
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, finalRequestBody, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "", originalModel, rewrittenModel)
 		return false, false
 	}
 
@@ -352,7 +401,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	resp, err := client.Do(req)
 	if err != nil {
 		duration := time.Since(startTime)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags, "")
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
 		return false, true
 	}
 	defer resp.Body.Close()
@@ -369,7 +418,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			decompressedBody = body // 如果解压失败，使用原始数据
 		}
 		
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil, s.isRequestExpectingStream(req), tags, "")
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
 		s.logger.Debug(fmt.Sprintf("HTTP error %d from endpoint %s, trying next endpoint", resp.StatusCode, ep.Name))
 		return false, true
 	}
@@ -380,7 +429,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		// 记录读取响应体失败的日志
 		duration := time.Since(startTime)
 		readError := fmt.Sprintf("Failed to read response body: %v", err)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, nil, duration, fmt.Errorf(readError), s.isRequestExpectingStream(req), tags, "")
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, nil, duration, fmt.Errorf(readError), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
 		return false, false
 	}
 
@@ -392,7 +441,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		// 记录解压响应体失败的日志
 		duration := time.Since(startTime)
 		decompressError := fmt.Sprintf("Failed to decompress response body: %v", err)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, responseBody, duration, fmt.Errorf(decompressError), s.isRequestExpectingStream(req), tags, "")
+		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, responseBody, duration, fmt.Errorf(decompressError), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
 		return false, false
 	}
 
@@ -427,7 +476,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 				s.logger.Info(fmt.Sprintf("Usage validation failed for endpoint %s: %v", ep.Name, err))
 				duration := time.Since(startTime)
 				errorLog := fmt.Sprintf("Usage validation failed: %v", err)
-				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "")
+				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
 				return false, true // 验证失败，尝试下一个endpoint
 			}
 			
@@ -436,7 +485,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 				// 记录验证失败的请求日志
 				duration := time.Since(startTime)
 				validationError := fmt.Sprintf("Response validation failed: %v", err)
-				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags, "")
+				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags, "", originalModel, rewrittenModel)
 				c.Header("Connection", "close")
 				c.AbortWithStatus(http.StatusBadGateway)
 				return false, false
@@ -445,11 +494,28 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	}
 
 	c.Status(resp.StatusCode)
-	// 发送原始响应体给客户端（保持压缩状态）
-	c.Writer.Write(responseBody)
+	
+	// 应用响应模型重写（如果进行了请求模型重写）
+	finalResponseBody := responseBody
+	if originalModel != "" && rewrittenModel != "" {
+		rewrittenResponseBody, err := s.modelRewriter.RewriteResponse(decompressedBody, originalModel, rewrittenModel)
+		if err != nil {
+			s.logger.Error("Failed to rewrite response model", err)
+			// 如果响应重写失败，使用原始响应体，不中断请求
+		} else if len(rewrittenResponseBody) > 0 && !bytes.Equal(rewrittenResponseBody, decompressedBody) {
+			// 如果响应重写成功且内容发生了变化，发送重写后的未压缩响应
+			// 并移除Content-Encoding头（因为我们发送的是未压缩数据）
+			c.Header("Content-Encoding", "")
+			c.Header("Content-Length", fmt.Sprintf("%d", len(rewrittenResponseBody)))
+			finalResponseBody = rewrittenResponseBody
+		}
+	}
+	
+	// 发送最终响应体给客户端
+	c.Writer.Write(finalResponseBody)
 
 	duration := time.Since(startTime)
-	s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil, isStreaming, tags, overrideInfo)
+	s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, finalRequestBody, req, resp, decompressedBody, duration, nil, isStreaming, tags, overrideInfo, originalModel, rewrittenModel)
 
 	return true, false
 }
@@ -476,7 +542,7 @@ func (s *Server) isRequestExpectingStream(req *http.Request) bool {
 }
 
 // createAndLogRequest creates a request log entry, populates common fields, and logs it
-func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, requestBody []byte, req *http.Request, resp *http.Response, responseBody []byte, duration time.Duration, err error, isStreaming bool, tags []string, contentTypeOverride string) {
+func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, requestBody []byte, req *http.Request, resp *http.Response, responseBody []byte, duration time.Duration, err error, isStreaming bool, tags []string, contentTypeOverride string, originalModel, rewrittenModel string) {
 	requestLog := s.logger.CreateRequestLog(requestID, endpoint, method, path)
 	requestLog.RequestBodySize = len(requestBody)
 	requestLog.Tags = tags
@@ -491,9 +557,24 @@ func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, r
 		}
 	}
 	
-	// 提取模型信息
+	// 提取模型信息并设置模型重写相关字段
 	if len(requestBody) > 0 {
-		requestLog.Model = utils.ExtractModelFromRequestBody(string(requestBody))
+		extractedModel := utils.ExtractModelFromRequestBody(string(requestBody))
+		
+		// 如果提供了原始模型名，使用它；否则使用提取的模型名
+		if originalModel != "" {
+			requestLog.Model = originalModel
+			requestLog.OriginalModel = originalModel
+		} else {
+			requestLog.Model = extractedModel
+			requestLog.OriginalModel = extractedModel
+		}
+		
+		// 设置重写后的模型名和重写标志
+		if rewrittenModel != "" {
+			requestLog.RewrittenModel = rewrittenModel
+			requestLog.ModelRewriteApplied = rewrittenModel != requestLog.OriginalModel
+		}
 	}
 	
 	// 更新并记录日志

@@ -42,6 +42,20 @@
             max-height: 400px;
             overflow-y: auto;
         }
+        /* 模型重写相关样式 */
+        .model-rewritten {
+            position: relative;
+            display: inline-block;
+        }
+        .model-rewritten::after {
+            content: '🔄';
+            font-size: 0.7em;
+            color: #28a745;
+            margin-left: 3px;
+        }
+        .model-original {
+            color: #6c757d;
+        }
     </style>
 </head>
 <body>
@@ -105,7 +119,24 @@
                                         <td>{{.Timestamp.Format "15:04:05"}}</td>
                                         <td><small>{{.RequestID}}</small></td>
                                         <td><small>{{.Endpoint}}</small></td>
-                                        <td><small>{{if .Model}}{{.Model}}{{else}}-{{end}}</small></td>
+                                        <td>
+                                            <small>
+                                                {{if .Model}}
+                                                    {{if .ModelRewriteApplied}}
+                                                        <span class="model-rewritten" 
+                                                              data-bs-toggle="tooltip" 
+                                                              data-bs-placement="top" 
+                                                              title="→ {{.RewrittenModel}}">
+                                                            {{.Model}}
+                                                        </span>
+                                                    {{else}}
+                                                        <span class="model-original">{{.Model}}</span>
+                                                    {{end}}
+                                                {{else}}
+                                                    -
+                                                {{end}}
+                                            </small>
+                                        </td>
                                         <td>
                                             {{if .Tags}}
                                                 {{range $i, $tag := .Tags}}
@@ -243,6 +274,12 @@
                 const bytes = parseInt(cell.getAttribute('data-bytes'));
                 cell.textContent = formatFileSize(bytes);
             });
+            
+            // Initialize Bootstrap tooltips for model rewrite indicators
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
         });
         
         function toggleFailedOnly() {
@@ -301,6 +338,12 @@
                                     尝试 ${attemptNum}: ${escapeHtml(log.endpoint)} 
                                     <span class="badge ${badgeClass}">${log.status_code}</span>
                                     <span class="badge bg-secondary">${log.duration_ms}ms</span>
+                                    ${log.model ? 
+                                        (log.model_rewrite_applied ? 
+                                            `<span class="badge bg-success model-rewritten" title="→ ${escapeHtml(log.rewritten_model)}">${escapeHtml(log.model)}</span>` :
+                                            `<span class="badge bg-primary">${escapeHtml(log.model)}</span>`
+                                        ) : ''
+                                    }
                                     ${log.is_streaming ? '<span class="badge bg-info">SSE</span>' : ''}
                                     ${log.content_type_override ? `<span class="badge bg-warning text-dark" title="Content-Type覆盖: ${escapeHtml(log.content_type_override)}">${escapeHtml(log.content_type_override)}</span>` : ''}
                                 </h6>
@@ -382,6 +425,13 @@
             });
             
             modalBody.innerHTML = html;
+            
+            // 重新初始化tooltips for dynamic content
+            var tooltipTriggerList = [].slice.call(modalBody.querySelectorAll('[title]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+            
             const modal = new bootstrap.Modal(document.getElementById('logModal'));
             modal.show();
         }
@@ -399,6 +449,15 @@
                             <tr><th>请求方法:</th><td>${escapeHtml(log.method)}</td></tr>
                             <tr><th>路径:</th><td>${escapeHtml(log.path)}</td></tr>
                             <tr><th>状态码:</th><td>${log.status_code}</td></tr>
+                            <tr><th>模型:</th><td>
+                                ${log.model ? 
+                                    (log.model_rewrite_applied ? 
+                                        `<span class="model-rewritten" title="→ ${escapeHtml(log.rewritten_model)}">${escapeHtml(log.model)}</span>` : 
+                                        `<span class="model-original">${escapeHtml(log.model)}</span>`
+                                    ) : 
+                                    '<small class="text-muted">无</small>'
+                                }
+                            </td></tr>
                             <tr><th>耗时:</th><td>${log.duration_ms}ms</td></tr>
                             <tr><th>请求体大小:</th><td>${log.request_body_size} 字节</td></tr>
                             <tr><th>响应体大小:</th><td>${log.response_body_size} 字节</td></tr>
@@ -470,6 +529,12 @@
                     </div>` : ''}
                 </div>
             `;
+            
+            // 重新初始化tooltips for dynamic content
+            var tooltipTriggerList = [].slice.call(modalBody.querySelectorAll('[title]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
             
             const modal = new bootstrap.Modal(document.getElementById('logModal'));
             modal.show();

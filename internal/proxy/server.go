@@ -7,6 +7,7 @@ import (
 	"claude-proxy/internal/endpoint"
 	"claude-proxy/internal/health"
 	"claude-proxy/internal/logger"
+	"claude-proxy/internal/modelrewrite"
 	"claude-proxy/internal/tagging"
 	"claude-proxy/internal/validator"
 	"claude-proxy/internal/web"
@@ -22,6 +23,7 @@ type Server struct {
 	healthChecker   *health.Checker
 	adminServer     *web.AdminServer
 	taggingManager  *tagging.Manager  // 新增：tagging系统管理器
+	modelRewriter   *modelrewrite.Rewriter // 新增：模型重写器
 	router          *gin.Engine
 	configFilePath  string
 }
@@ -50,6 +52,9 @@ func NewServer(cfg *config.Config, configFilePath string) (*Server, error) {
 		return nil, fmt.Errorf("failed to initialize tagging system: %v", err)
 	}
 
+	// 初始化模型重写器
+	modelRewriter := modelrewrite.NewRewriter(*log)
+
 	// 创建管理界面服务器（如果启用）
 	var adminServer *web.AdminServer
 	if cfg.WebAdmin.Enabled {
@@ -64,6 +69,7 @@ func NewServer(cfg *config.Config, configFilePath string) (*Server, error) {
 		healthChecker:   healthChecker,
 		adminServer:     adminServer,
 		taggingManager:  taggingManager,  // 新增：设置tagging管理器
+		modelRewriter:   modelRewriter,   // 新增：设置模型重写器
 		configFilePath:  configFilePath,
 	}
 	

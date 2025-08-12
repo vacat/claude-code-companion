@@ -12,24 +12,27 @@ import (
 )
 
 type RequestLog struct {
-	Timestamp       time.Time         `json:"timestamp"`
-	RequestID       string            `json:"request_id"`
-	Endpoint        string            `json:"endpoint"`
-	Method          string            `json:"method"`
-	Path            string            `json:"path"`
-	StatusCode      int               `json:"status_code"`
-	DurationMs      int64             `json:"duration_ms"`
-	RequestHeaders  map[string]string `json:"request_headers"`
-	RequestBody     string            `json:"request_body"`
-	ResponseHeaders map[string]string `json:"response_headers"`
-	ResponseBody    string            `json:"response_body"`
-	Error           string            `json:"error,omitempty"`
-	RequestBodySize int               `json:"request_body_size"`
-	ResponseBodySize int              `json:"response_body_size"`
-	IsStreaming     bool              `json:"is_streaming"`
-	Model           string            `json:"model,omitempty"`
-	Tags            []string          `json:"tags,omitempty"`
-	ContentTypeOverride string        `json:"content_type_override,omitempty"`
+	Timestamp            time.Time         `json:"timestamp"`
+	RequestID            string            `json:"request_id"`
+	Endpoint             string            `json:"endpoint"`
+	Method               string            `json:"method"`
+	Path                 string            `json:"path"`
+	StatusCode           int               `json:"status_code"`
+	DurationMs           int64             `json:"duration_ms"`
+	RequestHeaders       map[string]string `json:"request_headers"`
+	RequestBody          string            `json:"request_body"`
+	ResponseHeaders      map[string]string `json:"response_headers"`
+	ResponseBody         string            `json:"response_body"`
+	Error                string            `json:"error,omitempty"`
+	RequestBodySize      int               `json:"request_body_size"`
+	ResponseBodySize     int               `json:"response_body_size"`
+	IsStreaming          bool              `json:"is_streaming"`
+	Model                string            `json:"model,omitempty"`                // 显示的模型名（原始模型名）
+	OriginalModel        string            `json:"original_model,omitempty"`       // 新增：客户端请求的原始模型名
+	RewrittenModel       string            `json:"rewritten_model,omitempty"`      // 新增：重写后发送给上游的模型名
+	ModelRewriteApplied  bool              `json:"model_rewrite_applied"`          // 新增：是否发生了模型重写
+	Tags                 []string          `json:"tags,omitempty"`
+	ContentTypeOverride  string            `json:"content_type_override,omitempty"`
 }
 
 // StorageInterface defines the interface for log storage backends

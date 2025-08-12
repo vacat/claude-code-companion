@@ -58,6 +58,8 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 		api.PUT("/endpoints", s.handleUpdateEndpoints)
 		api.POST("/endpoints", s.handleCreateEndpoint)
 		api.PUT("/endpoints/:id", s.handleUpdateEndpoint)
+		api.PUT("/endpoints/:id/model-rewrite", s.handleUpdateEndpointModelRewrite)
+		api.POST("/endpoints/:id/test-model-rewrite", s.handleTestModelRewrite)
 		api.DELETE("/endpoints/:id", s.handleDeleteEndpoint)
 		api.POST("/endpoints/reorder", s.handleReorderEndpoints)
 		

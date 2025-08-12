@@ -107,6 +107,21 @@ func (s *SQLiteStorage) initDatabase() error {
 		fmt.Printf("Note: %v (this is expected if upgrading from older version)\n", err2)
 	}
 
+	// Add model rewrite fields to existing tables if they don't exist
+	modelRewriteColumns := []string{
+		`ALTER TABLE request_logs ADD COLUMN original_model TEXT DEFAULT '';`,
+		`ALTER TABLE request_logs ADD COLUMN rewritten_model TEXT DEFAULT '';`,
+		`ALTER TABLE request_logs ADD COLUMN model_rewrite_applied BOOLEAN DEFAULT FALSE;`,
+	}
+	
+	for _, alterSQL := range modelRewriteColumns {
+		_, err := s.db.Exec(alterSQL)
+		// Ignore error if column already exists
+		if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			fmt.Printf("Note: %v (this is expected if upgrading from older version)\n", err)
+		}
+	}
+
 	// Create indexes for better query performance
 	indexes := []string{
 		"CREATE INDEX IF NOT EXISTS idx_request_logs_timestamp ON request_logs(timestamp);",
@@ -143,8 +158,9 @@ func (s *SQLiteStorage) SaveLog(log *RequestLog) {
 		timestamp, request_id, endpoint, method, path, status_code, duration_ms,
 		request_headers, request_body, request_body_size,
 		response_headers, response_body, response_body_size,
-		is_streaming, model, error, tags, content_type_override
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		is_streaming, model, error, tags, content_type_override,
+		original_model, rewritten_model, model_rewrite_applied
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.Exec(insertSQL,
 		log.Timestamp, log.RequestID, log.Endpoint, log.Method, log.Path,
@@ -152,6 +168,7 @@ func (s *SQLiteStorage) SaveLog(log *RequestLog) {
 		string(requestHeaders), log.RequestBody, log.RequestBodySize,
 		string(responseHeaders), log.ResponseBody, log.ResponseBodySize,
 		log.IsStreaming, log.Model, log.Error, string(tags), log.ContentTypeOverride,
+		log.OriginalModel, log.RewrittenModel, log.ModelRewriteApplied,
 	)
 
 	if err != nil {
@@ -186,7 +203,8 @@ func (s *SQLiteStorage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestL
 		SELECT timestamp, request_id, endpoint, method, path, status_code, duration_ms,
 			   request_headers, request_body, request_body_size,
 			   response_headers, response_body, response_body_size,
-			   is_streaming, model, error, tags, content_type_override
+			   is_streaming, model, error, tags, content_type_override,
+			   original_model, rewritten_model, model_rewrite_applied
 		FROM request_logs %s
 		ORDER BY timestamp DESC
 		LIMIT ? OFFSET ?`, whereClause)
@@ -209,6 +227,7 @@ func (s *SQLiteStorage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestL
 			&requestHeaders, &log.RequestBody, &log.RequestBodySize,
 			&responseHeaders, &log.ResponseBody, &log.ResponseBodySize,
 			&log.IsStreaming, &log.Model, &log.Error, &tagsJSON, &log.ContentTypeOverride,
+			&log.OriginalModel, &log.RewrittenModel, &log.ModelRewriteApplied,
 		)
 		if err != nil {
 			continue // Skip invalid rows
@@ -238,7 +257,8 @@ func (s *SQLiteStorage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, 
 		SELECT timestamp, request_id, endpoint, method, path, status_code, duration_ms,
 			   request_headers, request_body, request_body_size,
 			   response_headers, response_body, response_body_size,
-			   is_streaming, model, error, tags, content_type_override
+			   is_streaming, model, error, tags, content_type_override,
+			   original_model, rewritten_model, model_rewrite_applied
 		FROM request_logs
 		WHERE request_id = ?
 		ORDER BY timestamp ASC`
@@ -260,6 +280,7 @@ func (s *SQLiteStorage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, 
 			&requestHeaders, &log.RequestBody, &log.RequestBodySize,
 			&responseHeaders, &log.ResponseBody, &log.ResponseBodySize,
 			&log.IsStreaming, &log.Model, &log.Error, &tagsJSON, &log.ContentTypeOverride,
+			&log.OriginalModel, &log.RewrittenModel, &log.ModelRewriteApplied,
 		)
 		if err != nil {
 			continue // Skip invalid rows

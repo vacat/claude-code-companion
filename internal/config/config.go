@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"claude-proxy/internal/utils"
@@ -26,14 +27,27 @@ type ServerConfig struct {
 }
 
 type EndpointConfig struct {
-	Name       string   `yaml:"name"`
-	URL        string   `yaml:"url"`
-	PathPrefix string   `yaml:"path_prefix"`
-	AuthType   string   `yaml:"auth_type"`
-	AuthValue  string   `yaml:"auth_value"`
-	Enabled    bool     `yaml:"enabled"`
-	Priority   int      `yaml:"priority"`
-	Tags       []string `yaml:"tags"`       // 新增：支持的tag列表
+	Name         string              `yaml:"name"`
+	URL          string              `yaml:"url"`
+	PathPrefix   string              `yaml:"path_prefix"`
+	AuthType     string              `yaml:"auth_type"`
+	AuthValue    string              `yaml:"auth_value"`
+	Enabled      bool                `yaml:"enabled"`
+	Priority     int                 `yaml:"priority"`
+	Tags         []string            `yaml:"tags"`         // 新增：支持的tag列表
+	ModelRewrite *ModelRewriteConfig `yaml:"model_rewrite,omitempty"` // 新增：模型重写配置
+}
+
+// 新增：模型重写配置结构
+type ModelRewriteConfig struct {
+	Enabled bool               `yaml:"enabled" json:"enabled"` // 是否启用模型重写
+	Rules   []ModelRewriteRule `yaml:"rules" json:"rules"`     // 重写规则列表
+}
+
+// 新增：模型重写规则
+type ModelRewriteRule struct {
+	SourcePattern string `yaml:"source_pattern" json:"source_pattern"` // 源模型通配符模式
+	TargetModel   string `yaml:"target_model" json:"target_model"`     // 目标模型名称
 }
 
 // 实现 EndpointConfig 接口，用于统一验证
@@ -205,6 +219,11 @@ func validateConfig(config *Config) error {
 		return fmt.Errorf("timeout configuration error: %v", err)
 	}
 
+	// 验证ModelRewrite配置
+	if err := validateModelRewriteConfigs(config.Endpoints); err != nil {
+		return fmt.Errorf("model rewrite configuration error: %v", err)
+	}
+
 	return nil
 }
 
@@ -357,5 +376,60 @@ func SaveConfig(config *Config, filename string) error {
 		return fmt.Errorf("failed to write config file: %v", err)
 	}
 
+	return nil
+}
+
+// validateModelRewriteConfigs 验证端点的模型重写配置
+func validateModelRewriteConfigs(endpoints []EndpointConfig) error {
+	for i, endpoint := range endpoints {
+		if endpoint.ModelRewrite == nil {
+			continue // 没有配置模型重写，跳过验证
+		}
+		
+		if err := validateModelRewriteConfig(endpoint.ModelRewrite, fmt.Sprintf("endpoint[%d] '%s'", i, endpoint.Name)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ValidateModelRewriteConfig 验证单个模型重写配置（导出函数）
+func ValidateModelRewriteConfig(config *ModelRewriteConfig, context string) error {
+	return validateModelRewriteConfig(config, context)
+}
+
+// validateModelRewriteConfig 验证单个模型重写配置
+func validateModelRewriteConfig(config *ModelRewriteConfig, context string) error {
+	if !config.Enabled {
+		return nil // 未启用，跳过规则验证
+	}
+	
+	if len(config.Rules) == 0 {
+		return fmt.Errorf("%s: model_rewrite is enabled but no rules configured", context)
+	}
+	
+	// 验证每个规则
+	seenPatterns := make(map[string]bool)
+	for i, rule := range config.Rules {
+		if rule.SourcePattern == "" {
+			return fmt.Errorf("%s: rule[%d] source_pattern is required", context, i)
+		}
+		
+		if rule.TargetModel == "" {
+			return fmt.Errorf("%s: rule[%d] target_model is required", context, i)
+		}
+		
+		// 检查重复的源模式
+		if seenPatterns[rule.SourcePattern] {
+			return fmt.Errorf("%s: rule[%d] duplicate source_pattern '%s'", context, i, rule.SourcePattern)
+		}
+		seenPatterns[rule.SourcePattern] = true
+		
+		// 验证通配符模式语法（尝试用一个测试字符串匹配）
+		if _, err := filepath.Match(rule.SourcePattern, "test-model"); err != nil {
+			return fmt.Errorf("%s: rule[%d] invalid source_pattern '%s': %v", context, i, rule.SourcePattern, err)
+		}
+	}
+	
 	return nil
 }

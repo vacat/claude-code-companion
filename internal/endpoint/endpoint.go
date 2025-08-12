@@ -21,22 +21,23 @@ const (
 // 删除不再需要的 RequestRecord 定义，因为已经移到 utils 包
 
 type Endpoint struct {
-	ID              string          `json:"id"`
-	Name            string          `json:"name"`
-	URL             string          `json:"url"`
-	PathPrefix      string          `json:"path_prefix"`
-	AuthType        string          `json:"auth_type"`
-	AuthValue       string          `json:"auth_value"`
-	Enabled         bool            `json:"enabled"`
-	Priority        int             `json:"priority"`
-	Tags            []string        `json:"tags"`           // 新增：支持的tag列表
-	Status          Status          `json:"status"`
-	LastCheck       time.Time       `json:"last_check"`
-	FailureCount    int             `json:"failure_count"`
-	TotalRequests   int             `json:"total_requests"`
-	SuccessRequests int             `json:"success_requests"`
-	LastFailure     time.Time       `json:"last_failure"`
-	RequestHistory  *utils.CircularBuffer `json:"-"` // 使用环形缓冲区，不导出到JSON
+	ID              string                   `json:"id"`
+	Name            string                   `json:"name"`
+	URL             string                   `json:"url"`
+	PathPrefix      string                   `json:"path_prefix"`
+	AuthType        string                   `json:"auth_type"`
+	AuthValue       string                   `json:"auth_value"`
+	Enabled         bool                     `json:"enabled"`
+	Priority        int                      `json:"priority"`
+	Tags            []string                 `json:"tags"`           // 新增：支持的tag列表
+	ModelRewrite    *config.ModelRewriteConfig `json:"model_rewrite,omitempty"` // 新增：模型重写配置
+	Status          Status                   `json:"status"`
+	LastCheck       time.Time                `json:"last_check"`
+	FailureCount    int                      `json:"failure_count"`
+	TotalRequests   int                      `json:"total_requests"`
+	SuccessRequests int                      `json:"success_requests"`
+	LastFailure     time.Time                `json:"last_failure"`
+	RequestHistory  *utils.CircularBuffer    `json:"-"` // 使用环形缓冲区，不导出到JSON
 	mutex           sync.RWMutex
 }
 
@@ -51,6 +52,7 @@ func NewEndpoint(config config.EndpointConfig) *Endpoint {
 		Enabled:        config.Enabled,
 		Priority:       config.Priority,
 		Tags:           config.Tags,       // 新增：从配置中复制tags
+		ModelRewrite:   config.ModelRewrite, // 新增：从配置中复制模型重写配置
 		Status:         StatusActive,
 		LastCheck:      time.Now(),
 		RequestHistory: utils.NewCircularBuffer(100, 140*time.Second), // 100个记录，140秒窗口
