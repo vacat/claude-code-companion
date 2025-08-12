@@ -8,7 +8,7 @@ server:
 endpoints:
     - name: anthropic-primary
       url: https://api.anthropic.com
-      path_prefix: /v1
+      endpoint_type: anthropic         # 类型："anthropic" | "openai"
       auth_type: api_key
       auth_value: sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
       enabled: true
@@ -16,7 +16,7 @@ endpoints:
 
     - name: anthropic-backup
       url: https://backup-api.example.com
-      path_prefix: /v1
+      endpoint_type: anthropic         # 类型："anthropic" | "openai"
       auth_type: auth_token
       auth_value: your-bearer-token-here
       enabled: true

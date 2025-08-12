@@ -135,7 +135,7 @@ server:
 endpoints:
     - name: primary-endpoint
       url: https://api.anthropic.com
-      path_prefix: /v1
+      endpoint_type: anthropic   # 端点类型：anthropic | openai
       auth_type: api_key
       auth_value: sk-ant-api03-your-api-key
       enabled: true
@@ -184,7 +184,7 @@ server:
 endpoints:
     - name: endpoint-name         # 端点名称（用于日志和管理）
       url: https://api.example.com # 上游 API 基础URL
-      path_prefix: /v1            # 路径前缀
+      endpoint_type: anthropic   # 端点类型：anthropic | openai
       auth_type: api_key          # 认证类型: api_key | auth_token
       auth_value: your-key        # 认证值
       enabled: true               # 是否启用
@@ -539,7 +539,7 @@ Content-Type: application/json
     {
       "name": "primary",
       "url": "https://api.anthropic.com",
-      "path_prefix": "/v1",
+      "endpoint_type": "anthropic",
       "auth_type": "api_key",
       "auth_value": "sk-ant-xxx",
       "enabled": true,

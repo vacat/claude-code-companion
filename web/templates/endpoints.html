@@ -601,7 +601,7 @@
             const data = {
                 name: document.getElementById('endpoint-name').value,
                 url: document.getElementById('endpoint-url').value,
-                path_prefix: '/v1', // 固定为 /v1
+                endpoint_type: 'anthropic', // 默认为 anthropic 类型
                 auth_type: document.getElementById('endpoint-auth-type').value,
                 auth_value: authValue,
                 enabled: document.getElementById('endpoint-enabled').checked,

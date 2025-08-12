@@ -255,29 +255,34 @@ func (s *AdminServer) saveEndpointsToConfig(endpointConfigs []config.EndpointCon
 }
 
 // createEndpointConfigFromRequest 从请求创建端点配置，自动设置优先级
-func createEndpointConfigFromRequest(name, url, pathPrefix, authType, authValue string, enabled bool, priority int, tags []string) config.EndpointConfig {
+func createEndpointConfigFromRequest(name, url, endpointType, authType, authValue string, enabled bool, priority int, tags []string) config.EndpointConfig {
+	// 如果没有指定endpoint_type，默认为anthropic（向后兼容）
+	if endpointType == "" {
+		endpointType = "anthropic"
+	}
+	
 	return config.EndpointConfig{
-		Name:       name,
-		URL:        url,
-		PathPrefix: pathPrefix,
-		AuthType:   authType,
-		AuthValue:  authValue,
-		Enabled:    enabled,
-		Priority:   priority,
-		Tags:       tags,
+		Name:         name,
+		URL:          url,
+		EndpointType: endpointType,
+		AuthType:     authType,
+		AuthValue:    authValue,
+		Enabled:      enabled,
+		Priority:     priority,
+		Tags:         tags,
 	}
 }
 
 // handleCreateEndpoint 创建新端点
 func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 	var request struct {
-		Name       string   `json:"name" binding:"required"`
-		URL        string   `json:"url" binding:"required"`
-		PathPrefix string   `json:"path_prefix"`
-		AuthType   string   `json:"auth_type" binding:"required"`
-		AuthValue  string   `json:"auth_value" binding:"required"`
-		Enabled    bool     `json:"enabled"`
-		Tags       []string `json:"tags"`
+		Name         string   `json:"name" binding:"required"`
+		URL          string   `json:"url" binding:"required"`
+		EndpointType string   `json:"endpoint_type"` // "anthropic" | "openai"
+		AuthType     string   `json:"auth_type" binding:"required"`
+		AuthValue    string   `json:"auth_value" binding:"required"`
+		Enabled      bool     `json:"enabled"`
+		Tags         []string `json:"tags"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -306,7 +311,7 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 
 	// 创建新端点配置
 	newEndpoint := createEndpointConfigFromRequest(
-		request.Name, request.URL, request.PathPrefix, 
+		request.Name, request.URL, request.EndpointType, 
 		request.AuthType, request.AuthValue, 
 		request.Enabled, maxPriority+1, request.Tags)
 	currentEndpoints = append(currentEndpoints, newEndpoint)
@@ -351,13 +356,13 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 	endpointName := c.Param("id") // 使用名称作为ID
 
 	var request struct {
-		Name       string   `json:"name"`
-		URL        string   `json:"url"`
-		PathPrefix string   `json:"path_prefix"`
-		AuthType   string   `json:"auth_type"`
-		AuthValue  string   `json:"auth_value"`
-		Enabled    bool     `json:"enabled"`
-		Tags       []string `json:"tags"`
+		Name         string   `json:"name"`
+		URL          string   `json:"url"`
+		EndpointType string   `json:"endpoint_type"`
+		AuthType     string   `json:"auth_type"`
+		AuthValue    string   `json:"auth_value"`
+		Enabled      bool     `json:"enabled"`
+		Tags         []string `json:"tags"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -378,8 +383,8 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 			if request.URL != "" {
 				currentEndpoints[i].URL = request.URL
 			}
-			if request.PathPrefix != "" {
-				currentEndpoints[i].PathPrefix = request.PathPrefix
+			if request.EndpointType != "" {
+				currentEndpoints[i].EndpointType = request.EndpointType
 			}
 			if request.AuthType != "" {
 				if request.AuthType != "api_key" && request.AuthType != "auth_token" {

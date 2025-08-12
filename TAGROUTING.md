@@ -191,7 +191,7 @@ server:
 endpoints:
     - name: mirrorcode
       url: https://mirrorapi.o3pro.pro/api/claude
-      path_prefix: /v1
+      endpoint_type: anthropic
       auth_type: auth_token
       auth_value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
       enabled: true
@@ -200,7 +200,7 @@ endpoints:
 
     - name: gac
       url: https://gaccode.com/claudecode
-      path_prefix: /v1
+      endpoint_type: anthropic
       auth_type: api_key
       auth_value: sk-ant-oat01-c99ab5665537b8b0...
       enabled: true

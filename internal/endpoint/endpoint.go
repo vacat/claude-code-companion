@@ -24,7 +24,7 @@ type Endpoint struct {
 	ID              string                   `json:"id"`
 	Name            string                   `json:"name"`
 	URL             string                   `json:"url"`
-	PathPrefix      string                   `json:"path_prefix"`
+	EndpointType    string                   `json:"endpoint_type"` // "anthropic" | "openai" 等
 	AuthType        string                   `json:"auth_type"`
 	AuthValue       string                   `json:"auth_value"`
 	Enabled         bool                     `json:"enabled"`
@@ -42,11 +42,17 @@ type Endpoint struct {
 }
 
 func NewEndpoint(config config.EndpointConfig) *Endpoint {
+	// 如果没有指定 endpoint_type，默认为 anthropic （向后兼容）
+	endpointType := config.EndpointType
+	if endpointType == "" {
+		endpointType = "anthropic"
+	}
+	
 	return &Endpoint{
 		ID:             generateID(config.Name),
 		Name:           config.Name,
 		URL:            config.URL,
-		PathPrefix:     config.PathPrefix,
+		EndpointType:   endpointType,
 		AuthType:       config.AuthType,
 		AuthValue:      config.AuthValue,
 		Enabled:        config.Enabled,
@@ -116,7 +122,17 @@ func (e *Endpoint) ToTaggedEndpoint() interfaces.TaggedEndpoint {
 func (e *Endpoint) GetFullURL(path string) string {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	return e.URL + e.PathPrefix + path
+	
+	// 根据端点类型自动添加正确的路径前缀
+	switch e.EndpointType {
+	case "anthropic":
+		return e.URL + "/v1" + path
+	case "openai":
+		return e.URL + "/v1" + path // OpenAI 也使用 /v1 前缀
+	default:
+		// 向后兼容：默认使用 anthropic 格式
+		return e.URL + "/v1" + path
+	}
 }
 
 // 优化 IsAvailable 方法，减少锁的持有时间

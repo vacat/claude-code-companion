@@ -29,7 +29,7 @@ type ServerConfig struct {
 type EndpointConfig struct {
 	Name         string              `yaml:"name"`
 	URL          string              `yaml:"url"`
-	PathPrefix   string              `yaml:"path_prefix"`
+	EndpointType string              `yaml:"endpoint_type"` // "anthropic" | "openai" 等
 	AuthType     string              `yaml:"auth_type"`
 	AuthValue    string              `yaml:"auth_value"`
 	Enabled      bool                `yaml:"enabled"`
