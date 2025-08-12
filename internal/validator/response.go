@@ -22,23 +22,27 @@ func NewResponseValidator(strictMode, validateStream bool) *ResponseValidator {
 }
 
 func (v *ResponseValidator) ValidateAnthropicResponse(body []byte, isStreaming bool) error {
+	return v.ValidateResponse(body, isStreaming, "anthropic")
+}
+
+func (v *ResponseValidator) ValidateResponse(body []byte, isStreaming bool, endpointType string) error {
 	if isStreaming && !v.validateStream {
 		// 如果禁用了流式验证，直接返回成功
 		return nil
 	}
 	if isStreaming {
-		return v.ValidateSSEChunk(body)
+		return v.ValidateSSEChunk(body, endpointType)
 	}
-	return v.ValidateStandardResponse(body)
+	return v.ValidateStandardResponse(body, endpointType)
 }
 
-func (v *ResponseValidator) ValidateStandardResponse(body []byte) error {
+func (v *ResponseValidator) ValidateStandardResponse(body []byte, endpointType string) error {
 	var response map[string]interface{}
 	if err := json.Unmarshal(body, &response); err != nil {
 		return fmt.Errorf("invalid JSON response: %v", err)
 	}
 
-	if v.strictMode {
+	if v.strictMode && endpointType == "anthropic" {
 		requiredFields := []string{"id", "type", "content", "model"}
 		for _, field := range requiredFields {
 			if _, exists := response[field]; !exists {
@@ -55,6 +59,28 @@ func (v *ResponseValidator) ValidateStandardResponse(body []byte) error {
 				return fmt.Errorf("invalid role: expected 'assistant', got '%v'", role)
 			}
 		}
+	} else if v.strictMode && endpointType == "openai" {
+		// OpenAI格式验证：检查基本结构
+		requiredFields := []string{"id", "model"}
+		for _, field := range requiredFields {
+			if _, exists := response[field]; !exists {
+				return fmt.Errorf("missing required field for OpenAI format: %s", field)
+			}
+		}
+		
+		// 验证是否有choices或error字段
+		_, hasChoices := response["choices"]
+		_, hasError := response["error"]
+		if !hasChoices && !hasError {
+			return fmt.Errorf("OpenAI response missing both 'choices' and 'error' fields")
+		}
+		
+		// 如果有object字段，验证其值（可选）
+		if objectType, ok := response["object"].(string); ok {
+			if objectType != "chat.completion" && objectType != "chat.completion.chunk" {
+				return fmt.Errorf("invalid object type for OpenAI: expected 'chat.completion' or 'chat.completion.chunk', got '%v'", objectType)
+			}
+		}
 	} else {
 		// 非严格模式：只要是有效JSON且包含content或error字段之一即可
 		if _, hasContent := response["content"]; hasContent {
@@ -63,14 +89,17 @@ func (v *ResponseValidator) ValidateStandardResponse(body []byte) error {
 		if _, hasError := response["error"]; hasError {
 			return nil
 		}
-		// 如果既没有content也没有error，认为是无效响应
-		return fmt.Errorf("response missing both 'content' and 'error' fields")
+		if _, hasChoices := response["choices"]; hasChoices {
+			return nil // OpenAI格式通常有choices字段
+		}
+		// 如果既没有content也没有error也没有choices，认为是无效响应
+		return fmt.Errorf("response missing both 'content', 'error' and 'choices' fields")
 	}
 
 	return nil
 }
 
-func (v *ResponseValidator) ValidateSSEChunk(chunk []byte) error {
+func (v *ResponseValidator) ValidateSSEChunk(chunk []byte, endpointType string) error {
 	lines := bytes.Split(chunk, []byte("\n"))
 
 	for _, line := range lines {
@@ -81,23 +110,27 @@ func (v *ResponseValidator) ValidateSSEChunk(chunk []byte) error {
 
 		if bytes.HasPrefix(line, []byte("event: ")) {
 			eventType := string(line[7:])
-			validEvents := []string{
-				"message_start", "content_block_start", "ping",
-				"content_block_delta", "content_block_stop", "message_stop",
-				"message_delta", "error",
-			}
+			
+			if endpointType == "anthropic" {
+				validEvents := []string{
+					"message_start", "content_block_start", "ping",
+					"content_block_delta", "content_block_stop", "message_stop",
+					"message_delta", "error",
+				}
 
-			valid := false
-			for _, validEvent := range validEvents {
-				if eventType == validEvent {
-					valid = true
-					break
+				valid := false
+				for _, validEvent := range validEvents {
+					if eventType == validEvent {
+						valid = true
+						break
+					}
+				}
+
+				if !valid {
+					return fmt.Errorf("invalid SSE event type for Anthropic: %s", eventType)
 				}
 			}
-
-			if !valid {
-				return fmt.Errorf("invalid SSE event type: %s", eventType)
-			}
+			// OpenAI格式通常不使用event字段，或者使用不同的事件类型，这里不做严格验证
 		}
 
 		if bytes.HasPrefix(line, []byte("data: ")) {
@@ -111,7 +144,7 @@ func (v *ResponseValidator) ValidateSSEChunk(chunk []byte) error {
 				return fmt.Errorf("invalid JSON in SSE data: %v", err)
 			}
 
-			if v.strictMode {
+			if v.strictMode && endpointType == "anthropic" {
 				if _, hasType := data["type"]; !hasType {
 					return fmt.Errorf("missing 'type' field in SSE data")
 				}
@@ -120,6 +153,15 @@ func (v *ResponseValidator) ValidateSSEChunk(chunk []byte) error {
 				if err := v.ValidateMessageStartUsage(data); err != nil {
 					return err
 				}
+			} else if v.strictMode && endpointType == "openai" {
+				// OpenAI格式验证：检查基本字段
+				if _, hasId := data["id"]; !hasId {
+					return fmt.Errorf("missing 'id' field in OpenAI SSE data")
+				}
+				if _, hasModel := data["model"]; !hasModel {
+					return fmt.Errorf("missing 'model' field in OpenAI SSE data")
+				}
+				// OpenAI格式不要求type和object字段
 			}
 		}
 	}

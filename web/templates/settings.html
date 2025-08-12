@@ -197,6 +197,7 @@
                                             <th>优先级</th>
                                             <th>名称</th>
                                             <th>URL</th>
+                                            <th>类型</th>
                                             <th>路径前缀</th>
                                             <th>认证类型</th>
                                             <th>启用</th>
@@ -208,7 +209,18 @@
                                             <td><span class="badge bg-info">{{.Priority}}</span></td>
                                             <td><strong>{{.Name}}</strong></td>
                                             <td><code>{{.URL}}</code></td>
-                                            <td><code>{{.PathPrefix}}</code></td>
+                                            <td>
+                                                <span class="badge {{if eq .EndpointType "openai"}}bg-warning{{else}}bg-primary{{end}}">
+                                                    {{if .EndpointType}}{{.EndpointType}}{{else}}anthropic{{end}}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {{if eq .EndpointType "openai"}}
+                                                    <code>{{.PathPrefix}}</code>
+                                                {{else}}
+                                                    <span class="text-muted">/v1/messages</span>
+                                                {{end}}
+                                            </td>
                                             <td>
                                                 <span class="badge {{if eq .AuthType "api_key"}}bg-primary{{else}}bg-secondary{{end}}">
                                                     {{.AuthType}}

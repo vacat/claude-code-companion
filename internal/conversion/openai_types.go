@@ -1,0 +1,105 @@
+package conversion
+
+// OpenAI API 结构定义 - 基于参考实现
+
+// OpenAIRequest OpenAI Chat Completions 请求（2025 以后官方推荐字段名）
+type OpenAIRequest struct {
+	Model               string      `json:"model"`
+	Messages            []OpenAIMessage `json:"messages"`
+	Tools               []OpenAITool    `json:"tools,omitempty"`       // functions
+	ToolChoice          interface{}     `json:"tool_choice,omitempty"` // "none"|"auto"|{"type":"function","function":{"name":...}}|"required"
+	Temperature         *float64    `json:"temperature,omitempty"`
+	TopP                *float64    `json:"top_p,omitempty"`
+	MaxCompletionTokens *int        `json:"max_completion_tokens,omitempty"` // OpenAI: 输出最大 token
+	// 兼容保留：
+	MaxTokens           *int        `json:"max_tokens,omitempty"` // 老字段，有些代理仍在用
+	Stream              *bool       `json:"stream,omitempty"`
+	Stop                []string    `json:"stop,omitempty"`
+	User                string      `json:"user,omitempty"`
+	ParallelToolCalls   *bool       `json:"parallel_tool_calls,omitempty"`
+}
+
+// OpenAIMessage OpenAI 消息结构
+type OpenAIMessage struct {
+	Role       string `json:"role"`              // "system" | "user" | "assistant" | "tool"
+	Content    interface{} `json:"content,omitempty"` // string | []OpenAIMessageContent
+	Name       string `json:"name,omitempty"`    // 对 "tool" 角色无须设置
+	ToolCallID string `json:"tool_call_id,omitempty"`
+	// 仅 assistant 会用到
+	ToolCalls []OpenAIToolCall `json:"tool_calls,omitempty"`
+}
+
+// OpenAIMessageContent 复合内容：text / image_url
+type OpenAIMessageContent struct {
+	Type     string      `json:"type"` // "text" | "image_url"
+	Text     string      `json:"text,omitempty"`
+	ImageURL *OpenAIImageURL `json:"image_url,omitempty"`
+}
+
+// OpenAIImageURL 图片URL结构
+type OpenAIImageURL struct {
+	// OpenAI 支持 "data:image/png;base64,..." 形式
+	URL string `json:"url"`
+}
+
+// OpenAITool 工具（function）
+type OpenAITool struct {
+	Type     string        `json:"type"` // "function"
+	Function OpenAIFunctionDef `json:"function"`
+}
+
+// OpenAIFunctionDef 函数定义
+type OpenAIFunctionDef struct {
+	Name        string         `json:"name"`
+	Description string         `json:"description,omitempty"`
+	Parameters  map[string]interface{} `json:"parameters"` // JSON Schema
+}
+
+// OpenAIToolCall 工具调用
+type OpenAIToolCall struct {
+	ID       string           `json:"id"`
+	Type     string           `json:"type"` // "function"
+	Function OpenAIToolCallDetail `json:"function"`
+}
+
+// OpenAIToolCallDetail 工具调用详情
+type OpenAIToolCallDetail struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"` // JSON text
+}
+
+// OpenAIResponse OpenAI 响应（非流式）
+type OpenAIResponse struct {
+	ID      string     `json:"id"`
+	Model   string     `json:"model"`
+	Choices []OpenAIChoice `json:"choices"`
+	Usage   *OpenAIUsage   `json:"usage,omitempty"`
+}
+
+// OpenAIChoice 选择结构
+type OpenAIChoice struct {
+	Index        int       `json:"index"`
+	FinishReason string    `json:"finish_reason"` // "stop"|"tool_calls"|...
+	Message      OpenAIMessage `json:"message"`
+}
+
+// OpenAIUsage 使用统计
+type OpenAIUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
+// OpenAIStreamChunk OpenAI 流式片段（SSE 的 delta 合并结果；这里假定你已收集完所有 chunk）
+type OpenAIStreamChunk struct {
+	ID      string           `json:"id"`
+	Model   string           `json:"model"`
+	Choices []OpenAIStreamChoice `json:"choices"`
+}
+
+// OpenAIStreamChoice 流式选择
+type OpenAIStreamChoice struct {
+	Index        int       `json:"index"`
+	Delta        OpenAIMessage `json:"delta"`         // 增量：content 片段、或 tool_calls 的增量
+	FinishReason string    `json:"finish_reason"` // 片段可能为空，最后一个包含 finish_reason
+}

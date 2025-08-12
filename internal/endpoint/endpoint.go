@@ -25,6 +25,7 @@ type Endpoint struct {
 	Name            string                   `json:"name"`
 	URL             string                   `json:"url"`
 	EndpointType    string                   `json:"endpoint_type"` // "anthropic" | "openai" 等
+	PathPrefix      string                   `json:"path_prefix,omitempty"` // OpenAI端点的路径前缀
 	AuthType        string                   `json:"auth_type"`
 	AuthValue       string                   `json:"auth_value"`
 	Enabled         bool                     `json:"enabled"`
@@ -53,6 +54,7 @@ func NewEndpoint(config config.EndpointConfig) *Endpoint {
 		Name:           config.Name,
 		URL:            config.URL,
 		EndpointType:   endpointType,
+		PathPrefix:     config.PathPrefix,  // 新增：复制PathPrefix
 		AuthType:       config.AuthType,
 		AuthValue:      config.AuthValue,
 		Enabled:        config.Enabled,
@@ -126,12 +128,14 @@ func (e *Endpoint) GetFullURL(path string) string {
 	// 根据端点类型自动添加正确的路径前缀
 	switch e.EndpointType {
 	case "anthropic":
-		return e.URL + "/v1" + path
+		// Anthropic 端点固定使用 /v1/messages
+		return e.URL + "/v1/messages"
 	case "openai":
-		return e.URL + "/v1" + path // OpenAI 也使用 /v1 前缀
+		// OpenAI 端点使用配置的路径前缀（不需要路径转换）
+		return e.URL + e.PathPrefix
 	default:
 		// 向后兼容：默认使用 anthropic 格式
-		return e.URL + "/v1" + path
+		return e.URL + "/v1/messages"
 	}
 }
 

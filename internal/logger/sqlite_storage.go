@@ -122,6 +122,28 @@ func (s *SQLiteStorage) initDatabase() error {
 		}
 	}
 
+	// Add original/final request/response fields for before/after comparison
+	beforeAfterColumns := []string{
+		`ALTER TABLE request_logs ADD COLUMN original_request_url TEXT DEFAULT '';`,
+		`ALTER TABLE request_logs ADD COLUMN original_request_headers TEXT DEFAULT '{}';`,
+		`ALTER TABLE request_logs ADD COLUMN original_request_body TEXT DEFAULT '';`,
+		`ALTER TABLE request_logs ADD COLUMN original_response_headers TEXT DEFAULT '{}';`,
+		`ALTER TABLE request_logs ADD COLUMN original_response_body TEXT DEFAULT '';`,
+		`ALTER TABLE request_logs ADD COLUMN final_request_url TEXT DEFAULT '';`,
+		`ALTER TABLE request_logs ADD COLUMN final_request_headers TEXT DEFAULT '{}';`,
+		`ALTER TABLE request_logs ADD COLUMN final_request_body TEXT DEFAULT '';`,
+		`ALTER TABLE request_logs ADD COLUMN final_response_headers TEXT DEFAULT '{}';`,
+		`ALTER TABLE request_logs ADD COLUMN final_response_body TEXT DEFAULT '';`,
+	}
+	
+	for _, alterSQL := range beforeAfterColumns {
+		_, err := s.db.Exec(alterSQL)
+		// Ignore error if column already exists
+		if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			fmt.Printf("Note: %v (this is expected if upgrading from older version)\n", err)
+		}
+	}
+
 	// Create indexes for better query performance
 	indexes := []string{
 		"CREATE INDEX IF NOT EXISTS idx_request_logs_timestamp ON request_logs(timestamp);",
@@ -149,6 +171,10 @@ func (s *SQLiteStorage) SaveLog(log *RequestLog) {
 	// Marshal headers to JSON
 	requestHeaders, _ := json.Marshal(log.RequestHeaders)
 	responseHeaders, _ := json.Marshal(log.ResponseHeaders)
+	originalRequestHeaders, _ := json.Marshal(log.OriginalRequestHeaders)
+	originalResponseHeaders, _ := json.Marshal(log.OriginalResponseHeaders)
+	finalRequestHeaders, _ := json.Marshal(log.FinalRequestHeaders)
+	finalResponseHeaders, _ := json.Marshal(log.FinalResponseHeaders)
 	
 	// Marshal tags to JSON
 	tags, _ := json.Marshal(log.Tags)
@@ -159,8 +185,12 @@ func (s *SQLiteStorage) SaveLog(log *RequestLog) {
 		request_headers, request_body, request_body_size,
 		response_headers, response_body, response_body_size,
 		is_streaming, model, error, tags, content_type_override,
-		original_model, rewritten_model, model_rewrite_applied
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		original_model, rewritten_model, model_rewrite_applied,
+		original_request_url, original_request_headers, original_request_body,
+		original_response_headers, original_response_body,
+		final_request_url, final_request_headers, final_request_body,
+		final_response_headers, final_response_body
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.Exec(insertSQL,
 		log.Timestamp, log.RequestID, log.Endpoint, log.Method, log.Path,
@@ -169,6 +199,10 @@ func (s *SQLiteStorage) SaveLog(log *RequestLog) {
 		string(responseHeaders), log.ResponseBody, log.ResponseBodySize,
 		log.IsStreaming, log.Model, log.Error, string(tags), log.ContentTypeOverride,
 		log.OriginalModel, log.RewrittenModel, log.ModelRewriteApplied,
+		log.OriginalRequestURL, string(originalRequestHeaders), log.OriginalRequestBody,
+		string(originalResponseHeaders), log.OriginalResponseBody,
+		log.FinalRequestURL, string(finalRequestHeaders), log.FinalRequestBody,
+		string(finalResponseHeaders), log.FinalResponseBody,
 	)
 
 	if err != nil {
@@ -204,7 +238,11 @@ func (s *SQLiteStorage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestL
 			   request_headers, request_body, request_body_size,
 			   response_headers, response_body, response_body_size,
 			   is_streaming, model, error, tags, content_type_override,
-			   original_model, rewritten_model, model_rewrite_applied
+			   original_model, rewritten_model, model_rewrite_applied,
+			   original_request_url, original_request_headers, original_request_body,
+			   original_response_headers, original_response_body,
+			   final_request_url, final_request_headers, final_request_body,
+			   final_response_headers, final_response_body
 		FROM request_logs %s
 		ORDER BY timestamp DESC
 		LIMIT ? OFFSET ?`, whereClause)
@@ -220,6 +258,8 @@ func (s *SQLiteStorage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestL
 	for rows.Next() {
 		log := &RequestLog{}
 		var requestHeaders, responseHeaders, tagsJSON string
+		var originalRequestHeaders, originalResponseHeaders string
+		var finalRequestHeaders, finalResponseHeaders string
 
 		err := rows.Scan(
 			&log.Timestamp, &log.RequestID, &log.Endpoint, &log.Method, &log.Path,
@@ -228,6 +268,10 @@ func (s *SQLiteStorage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestL
 			&responseHeaders, &log.ResponseBody, &log.ResponseBodySize,
 			&log.IsStreaming, &log.Model, &log.Error, &tagsJSON, &log.ContentTypeOverride,
 			&log.OriginalModel, &log.RewrittenModel, &log.ModelRewriteApplied,
+			&log.OriginalRequestURL, &originalRequestHeaders, &log.OriginalRequestBody,
+			&originalResponseHeaders, &log.OriginalResponseBody,
+			&log.FinalRequestURL, &finalRequestHeaders, &log.FinalRequestBody,
+			&finalResponseHeaders, &log.FinalResponseBody,
 		)
 		if err != nil {
 			continue // Skip invalid rows
@@ -236,6 +280,10 @@ func (s *SQLiteStorage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestL
 		// Unmarshal JSON headers
 		json.Unmarshal([]byte(requestHeaders), &log.RequestHeaders)
 		json.Unmarshal([]byte(responseHeaders), &log.ResponseHeaders)
+		json.Unmarshal([]byte(originalRequestHeaders), &log.OriginalRequestHeaders)
+		json.Unmarshal([]byte(originalResponseHeaders), &log.OriginalResponseHeaders)
+		json.Unmarshal([]byte(finalRequestHeaders), &log.FinalRequestHeaders)
+		json.Unmarshal([]byte(finalResponseHeaders), &log.FinalResponseHeaders)
 		
 		// Unmarshal JSON tags
 		if tagsJSON != "" && tagsJSON != "null" {
@@ -258,7 +306,11 @@ func (s *SQLiteStorage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, 
 			   request_headers, request_body, request_body_size,
 			   response_headers, response_body, response_body_size,
 			   is_streaming, model, error, tags, content_type_override,
-			   original_model, rewritten_model, model_rewrite_applied
+			   original_model, rewritten_model, model_rewrite_applied,
+			   original_request_url, original_request_headers, original_request_body,
+			   original_response_headers, original_response_body,
+			   final_request_url, final_request_headers, final_request_body,
+			   final_response_headers, final_response_body
 		FROM request_logs
 		WHERE request_id = ?
 		ORDER BY timestamp ASC`
@@ -273,6 +325,8 @@ func (s *SQLiteStorage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, 
 	for rows.Next() {
 		log := &RequestLog{}
 		var requestHeaders, responseHeaders, tagsJSON string
+		var originalRequestHeaders, originalResponseHeaders string
+		var finalRequestHeaders, finalResponseHeaders string
 
 		err := rows.Scan(
 			&log.Timestamp, &log.RequestID, &log.Endpoint, &log.Method, &log.Path,
@@ -281,6 +335,10 @@ func (s *SQLiteStorage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, 
 			&responseHeaders, &log.ResponseBody, &log.ResponseBodySize,
 			&log.IsStreaming, &log.Model, &log.Error, &tagsJSON, &log.ContentTypeOverride,
 			&log.OriginalModel, &log.RewrittenModel, &log.ModelRewriteApplied,
+			&log.OriginalRequestURL, &originalRequestHeaders, &log.OriginalRequestBody,
+			&originalResponseHeaders, &log.OriginalResponseBody,
+			&log.FinalRequestURL, &finalRequestHeaders, &log.FinalRequestBody,
+			&finalResponseHeaders, &log.FinalResponseBody,
 		)
 		if err != nil {
 			continue // Skip invalid rows
@@ -289,6 +347,10 @@ func (s *SQLiteStorage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, 
 		// Unmarshal JSON headers
 		json.Unmarshal([]byte(requestHeaders), &log.RequestHeaders)
 		json.Unmarshal([]byte(responseHeaders), &log.ResponseHeaders)
+		json.Unmarshal([]byte(originalRequestHeaders), &log.OriginalRequestHeaders)
+		json.Unmarshal([]byte(originalResponseHeaders), &log.OriginalResponseHeaders)
+		json.Unmarshal([]byte(finalRequestHeaders), &log.FinalRequestHeaders)
+		json.Unmarshal([]byte(finalResponseHeaders), &log.FinalResponseHeaders)
 		
 		// Unmarshal JSON tags
 		if tagsJSON != "" && tagsJSON != "null" {

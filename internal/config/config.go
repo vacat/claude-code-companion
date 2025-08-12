@@ -30,6 +30,7 @@ type EndpointConfig struct {
 	Name         string              `yaml:"name"`
 	URL          string              `yaml:"url"`
 	EndpointType string              `yaml:"endpoint_type"` // "anthropic" | "openai" 等
+	PathPrefix   string              `yaml:"path_prefix,omitempty"` // OpenAI端点的路径前缀，如 "/v1/chat/completions"
 	AuthType     string              `yaml:"auth_type"`
 	AuthValue    string              `yaml:"auth_value"`
 	Enabled      bool                `yaml:"enabled"`
@@ -134,6 +135,11 @@ func LoadConfig(filename string) (*Config, error) {
 	return &config, nil
 }
 
+// ValidateConfig 导出的配置验证函数
+func ValidateConfig(config *Config) error {
+	return validateConfig(config)
+}
+
 func validateConfig(config *Config) error {
 	// 设置服务器主机默认值
 	if config.Server.Host == "" {
@@ -222,6 +228,11 @@ func validateConfig(config *Config) error {
 	// 验证ModelRewrite配置
 	if err := validateModelRewriteConfigs(config.Endpoints); err != nil {
 		return fmt.Errorf("model rewrite configuration error: %v", err)
+	}
+
+	// 验证OpenAI端点配置
+	if err := validateOpenAIEndpoints(config.Endpoints); err != nil {
+		return fmt.Errorf("openai endpoint configuration error: %v", err)
 	}
 
 	return nil
@@ -431,5 +442,43 @@ func validateModelRewriteConfig(config *ModelRewriteConfig, context string) erro
 		}
 	}
 	
+	return nil
+}
+
+// validateOpenAIEndpoints 验证 OpenAI 端点配置
+func validateOpenAIEndpoints(endpoints []EndpointConfig) error {
+	for i, endpoint := range endpoints {
+		if endpoint.EndpointType == "openai" {
+			// OpenAI 端点不能使用 api_key 认证类型
+			if endpoint.AuthType == "api_key" {
+				return fmt.Errorf("endpoint[%d] '%s': OpenAI endpoints cannot use auth_type 'api_key', use 'auth_token' instead", i, endpoint.Name)
+			}
+			
+			// 确保 OpenAI 端点有正确的认证配置
+			if endpoint.AuthType == "" {
+				return fmt.Errorf("endpoint[%d] '%s': OpenAI endpoints require auth_type to be specified", i, endpoint.Name)
+			}
+			
+			if endpoint.AuthType != "auth_token" {
+				return fmt.Errorf("endpoint[%d] '%s': OpenAI endpoints should use auth_type 'auth_token'", i, endpoint.Name)
+			}
+			
+			if endpoint.AuthValue == "" {
+				return fmt.Errorf("endpoint[%d] '%s': OpenAI endpoints require auth_value to be specified", i, endpoint.Name)
+			}
+			
+			// OpenAI 端点必须配置 path_prefix
+			if endpoint.PathPrefix == "" {
+				return fmt.Errorf("endpoint[%d] '%s': OpenAI endpoints require path_prefix to be specified (e.g., '/v1/chat/completions')", i, endpoint.Name)
+			}
+		}
+		
+		// Anthropic 端点不应该配置 path_prefix，因为会被固定为 /v1/messages
+		if endpoint.EndpointType == "anthropic" || endpoint.EndpointType == "" {
+			if endpoint.PathPrefix != "" {
+				return fmt.Errorf("endpoint[%d] '%s': Anthropic endpoints cannot have custom path_prefix (automatically set to '/v1/messages')", i, endpoint.Name)
+			}
+		}
+	}
 	return nil
 }

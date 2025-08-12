@@ -255,7 +255,7 @@ func (s *AdminServer) saveEndpointsToConfig(endpointConfigs []config.EndpointCon
 }
 
 // createEndpointConfigFromRequest 从请求创建端点配置，自动设置优先级
-func createEndpointConfigFromRequest(name, url, endpointType, authType, authValue string, enabled bool, priority int, tags []string) config.EndpointConfig {
+func createEndpointConfigFromRequest(name, url, endpointType, pathPrefix, authType, authValue string, enabled bool, priority int, tags []string) config.EndpointConfig {
 	// 如果没有指定endpoint_type，默认为anthropic（向后兼容）
 	if endpointType == "" {
 		endpointType = "anthropic"
@@ -265,6 +265,7 @@ func createEndpointConfigFromRequest(name, url, endpointType, authType, authValu
 		Name:         name,
 		URL:          url,
 		EndpointType: endpointType,
+		PathPrefix:   pathPrefix, // 新增：支持路径前缀
 		AuthType:     authType,
 		AuthValue:    authValue,
 		Enabled:      enabled,
@@ -279,6 +280,7 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 		Name         string   `json:"name" binding:"required"`
 		URL          string   `json:"url" binding:"required"`
 		EndpointType string   `json:"endpoint_type"` // "anthropic" | "openai"
+		PathPrefix   string   `json:"path_prefix"`   // OpenAI 端点的路径前缀
 		AuthType     string   `json:"auth_type" binding:"required"`
 		AuthValue    string   `json:"auth_value" binding:"required"`
 		Enabled      bool     `json:"enabled"`
@@ -311,7 +313,7 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 
 	// 创建新端点配置
 	newEndpoint := createEndpointConfigFromRequest(
-		request.Name, request.URL, request.EndpointType, 
+		request.Name, request.URL, request.EndpointType, request.PathPrefix,
 		request.AuthType, request.AuthValue, 
 		request.Enabled, maxPriority+1, request.Tags)
 	currentEndpoints = append(currentEndpoints, newEndpoint)
@@ -321,6 +323,14 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 		// 创建新配置，只更新端点部分
 		newConfig := *s.config
 		newConfig.Endpoints = currentEndpoints
+
+		// 验证完整的配置（包括 OpenAI 特定的验证）
+		if err := config.ValidateConfig(&newConfig); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Configuration validation failed: " + err.Error(),
+			})
+			return
+		}
 
 		if err := s.hotUpdateHandler.HotUpdateConfig(&newConfig); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
@@ -359,6 +369,7 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 		Name         string   `json:"name"`
 		URL          string   `json:"url"`
 		EndpointType string   `json:"endpoint_type"`
+		PathPrefix   string   `json:"path_prefix"` // OpenAI 端点的路径前缀
 		AuthType     string   `json:"auth_type"`
 		AuthValue    string   `json:"auth_value"`
 		Enabled      bool     `json:"enabled"`
@@ -374,7 +385,7 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 	currentEndpoints := s.config.Endpoints
 	found := false
 
-	for i, ep := range currentEndpoints {
+		for i, ep := range currentEndpoints {
 		if ep.Name == endpointName {
 			// 更新端点，保持原有优先级
 			if request.Name != "" {
@@ -386,6 +397,8 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 			if request.EndpointType != "" {
 				currentEndpoints[i].EndpointType = request.EndpointType
 			}
+			// 处理 PathPrefix 字段，允许设置空值（对于 Anthropic 端点）
+			currentEndpoints[i].PathPrefix = request.PathPrefix
 			if request.AuthType != "" {
 				if request.AuthType != "api_key" && request.AuthType != "auth_token" {
 					c.JSON(http.StatusBadRequest, gin.H{"error": "auth_type must be 'api_key' or 'auth_token'"})
@@ -416,6 +429,14 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 		// 创建新配置，只更新端点部分
 		newConfig := *s.config
 		newConfig.Endpoints = currentEndpoints
+
+		// 验证完整的配置（包括 OpenAI 特定的验证）
+		if err := config.ValidateConfig(&newConfig); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Configuration validation failed: " + err.Error(),
+			})
+			return
+		}
 
 		if err := s.hotUpdateHandler.HotUpdateConfig(&newConfig); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{

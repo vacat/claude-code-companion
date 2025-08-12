@@ -33,6 +33,18 @@ type RequestLog struct {
 	ModelRewriteApplied  bool              `json:"model_rewrite_applied"`          // 新增：是否发生了模型重写
 	Tags                 []string          `json:"tags,omitempty"`
 	ContentTypeOverride  string            `json:"content_type_override,omitempty"`
+	// 修改前的原始数据
+	OriginalRequestURL      string            `json:"original_request_url,omitempty"`
+	OriginalRequestHeaders  map[string]string `json:"original_request_headers,omitempty"`
+	OriginalRequestBody     string            `json:"original_request_body,omitempty"`
+	OriginalResponseHeaders map[string]string `json:"original_response_headers,omitempty"`
+	OriginalResponseBody    string            `json:"original_response_body,omitempty"`
+	// 修改后的最终数据
+	FinalRequestURL         string            `json:"final_request_url,omitempty"`
+	FinalRequestHeaders     map[string]string `json:"final_request_headers,omitempty"`
+	FinalRequestBody        string            `json:"final_request_body,omitempty"`
+	FinalResponseHeaders    map[string]string `json:"final_response_headers,omitempty"`
+	FinalResponseBody       string            `json:"final_response_body,omitempty"`
 }
 
 // StorageInterface defines the interface for log storage backends

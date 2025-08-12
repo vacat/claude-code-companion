@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"claude-proxy/internal/config"
+	"claude-proxy/internal/conversion"
 	"claude-proxy/internal/endpoint"
 	"claude-proxy/internal/health"
 	"claude-proxy/internal/logger"
@@ -24,6 +25,7 @@ type Server struct {
 	adminServer     *web.AdminServer
 	taggingManager  *tagging.Manager  // 新增：tagging系统管理器
 	modelRewriter   *modelrewrite.Rewriter // 新增：模型重写器
+	converter       conversion.Converter   // 新增：格式转换器
 	router          *gin.Engine
 	configFilePath  string
 }
@@ -55,6 +57,9 @@ func NewServer(cfg *config.Config, configFilePath string) (*Server, error) {
 	// 初始化模型重写器
 	modelRewriter := modelrewrite.NewRewriter(*log)
 
+	// 初始化格式转换器
+	converter := conversion.NewConverter(log)
+
 	// 创建管理界面服务器（如果启用）
 	var adminServer *web.AdminServer
 	if cfg.WebAdmin.Enabled {
@@ -70,6 +75,7 @@ func NewServer(cfg *config.Config, configFilePath string) (*Server, error) {
 		adminServer:     adminServer,
 		taggingManager:  taggingManager,  // 新增：设置tagging管理器
 		modelRewriter:   modelRewriter,   // 新增：设置模型重写器
+		converter:       converter,       // 新增：设置格式转换器
 		configFilePath:  configFilePath,
 	}
 	

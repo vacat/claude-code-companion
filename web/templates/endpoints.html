@@ -105,6 +105,8 @@
                                         <th>优先级</th>
                                         <th>名称</th>
                                         <th>URL</th>
+                                        <th>类型</th>
+                                        <th>路径</th>
                                         <th>认证方式</th>
                                         <th>Tags</th>
                                         <th>状态</th>
@@ -124,6 +126,18 @@
                                         </td>
                                         <td><strong>{{.Name}}</strong></td>
                                         <td><code>{{.URL}}</code></td>
+                                        <td>
+                                            <span class="badge {{if eq .EndpointType "openai"}}bg-warning{{else}}bg-primary{{end}}">
+                                                {{if .EndpointType}}{{.EndpointType}}{{else}}anthropic{{end}}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {{if eq .EndpointType "openai"}}
+                                                <code>{{.PathPrefix}}</code>
+                                            {{else}}
+                                                <span class="text-muted">/v1/messages</span>
+                                            {{end}}
+                                        </td>
                                         <td>
                                             <span class="badge {{if eq .AuthType "api_key"}}bg-primary{{else}}bg-secondary{{end}}">
                                                 {{.AuthType}}
@@ -234,6 +248,22 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="endpoint-type" class="form-label">端点类型 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="endpoint-type" required onchange="togglePathPrefixField()">
+                                <option value="anthropic">Anthropic (Claude)</option>
+                                <option value="openai">OpenAI Compatible</option>
+                            </select>
+                            <small class="form-text text-muted">选择端点的API兼容类型</small>
+                        </div>
+
+                        <div class="mb-3" id="path-prefix-group" style="display: none;">
+                            <label for="endpoint-path-prefix" class="form-label">路径前缀 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="endpoint-path-prefix" 
+                                   placeholder="/v1/chat/completions">
+                            <small class="form-text text-muted">OpenAI兼容端点的API路径，如: /v1/chat/completions</small>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="endpoint-auth-type" class="form-label">认证方式 <span class="text-danger">*</span></label>
                             <select class="form-select" id="endpoint-auth-type" required>
                                 <option value="api_key">API Key (x-api-key 请求头)</option>
@@ -259,8 +289,6 @@
                                    placeholder="输入tags，用逗号分隔 (例: api-v1, claude-3)">
                             <small class="form-text text-muted">留空则为万能endpoint，支持所有tags的请求</small>
                         </div>
-
-                        <!-- Model Rewrite 配置区域 -->
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <label class="form-label mb-0">模型重写配置</label>
@@ -385,8 +413,8 @@
         }
 
         function updateEndpointRowStatus(row, endpoint) {
-            const statusCell = row.children[6]; // 调整索引，增加了Tags列
-            const statsCell = row.children[8];  // 调整索引
+            const statusCell = row.children[8]; // 调整索引：增加了类型和路径列
+            const statsCell = row.children[10];  // 调整索引
             
             // Update status
             let statusBadge = '';
@@ -442,6 +470,16 @@
                     ? '<span class="badge bg-success"><i class="fas fa-toggle-on"></i> 已启用</span>'
                     : '<span class="badge bg-secondary"><i class="fas fa-toggle-off"></i> 已禁用</span>';
                 
+                // 构建端点类型徽章
+                const endpointTypeBadge = endpoint.endpoint_type === 'openai' 
+                    ? '<span class="badge bg-warning">openai</span>'
+                    : '<span class="badge bg-primary">anthropic</span>';
+                
+                // 构建路径显示
+                const pathDisplay = endpoint.endpoint_type === 'openai' 
+                    ? `<code>${endpoint.path_prefix || ''}</code>`
+                    : '<span class="text-muted">/v1/messages</span>';
+                
                 // 构建认证类型徽章
                 const authTypeBadge = endpoint.auth_type === 'api_key' 
                     ? '<span class="badge bg-primary">api_key</span>'
@@ -469,6 +507,8 @@
                     </td>
                     <td><strong>${endpoint.name}</strong></td>
                     <td><code>${endpoint.url}</code></td>
+                    <td>${endpointTypeBadge}</td>
+                    <td>${pathDisplay}</td>
                     <td>${authTypeBadge}</td>
                     <td>${tagsDisplay}</td>
                     <td>${statusBadge}</td>
@@ -511,7 +551,11 @@
             document.getElementById('endpointModalTitle').textContent = '添加端点';
             document.getElementById('endpointForm').reset();
             document.getElementById('endpoint-enabled').checked = true;
+            document.getElementById('endpoint-type').value = 'anthropic'; // 默认为 Anthropic
             document.getElementById('endpoint-tags').value = ''; // 清理tags字段
+            
+            // 设置端点类型并切换路径前缀显示
+            togglePathPrefixField();
             
             // 重置auth visibility
             resetAuthVisibility();
@@ -538,8 +582,13 @@
             // Populate form
             document.getElementById('endpoint-name').value = endpoint.name;
             document.getElementById('endpoint-url').value = endpoint.url;
+            document.getElementById('endpoint-type').value = endpoint.endpoint_type || 'anthropic';
+            document.getElementById('endpoint-path-prefix').value = endpoint.path_prefix || '';
             document.getElementById('endpoint-auth-type').value = endpoint.auth_type;
             document.getElementById('endpoint-enabled').checked = endpoint.enabled;
+            
+            // 设置端点类型并切换路径前缀显示
+            togglePathPrefixField();
             
             // 设置tags字段
             const tagsValue = endpoint.tags && endpoint.tags.length > 0 ? endpoint.tags.join(', ') : '';
@@ -601,7 +650,8 @@
             const data = {
                 name: document.getElementById('endpoint-name').value,
                 url: document.getElementById('endpoint-url').value,
-                endpoint_type: 'anthropic', // 默认为 anthropic 类型
+                endpoint_type: document.getElementById('endpoint-type').value,
+                path_prefix: document.getElementById('endpoint-path-prefix').value || '', // PathPrefix 可以为空
                 auth_type: document.getElementById('endpoint-auth-type').value,
                 auth_value: authValue,
                 enabled: document.getElementById('endpoint-enabled').checked,
@@ -714,7 +764,27 @@
             });
         }
 
-        // ===== Model Rewrite Functions =====
+        // ===== Path Prefix Toggle Functions =====
+        
+        function togglePathPrefixField() {
+            const endpointType = document.getElementById('endpoint-type').value;
+            const pathPrefixGroup = document.getElementById('path-prefix-group');
+            const pathPrefixInput = document.getElementById('endpoint-path-prefix');
+            
+            if (endpointType === 'openai') {
+                pathPrefixGroup.style.display = 'block';
+                pathPrefixInput.required = true;
+                if (!pathPrefixInput.value) {
+                    pathPrefixInput.value = '/v1/chat/completions'; // 默认值
+                }
+            } else {
+                pathPrefixGroup.style.display = 'none';
+                pathPrefixInput.required = false;
+                pathPrefixInput.value = ''; // 清空值
+            }
+        }
+
+        // ===== Modal Functions =====
 
         // 模型重写启用/禁用切换
         document.getElementById('model-rewrite-enabled').addEventListener('change', function() {

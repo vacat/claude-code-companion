@@ -41,6 +41,8 @@
             font-size: 0.875rem;
             max-height: 400px;
             overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
         }
         /* 模型重写相关样式 */
         .model-rewritten {
@@ -55,6 +57,19 @@
         }
         .model-original {
             color: #6c757d;
+        }
+        /* Tab样式 */
+        .before-after-tabs {
+            margin-bottom: 1rem;
+        }
+        .before-after-tabs .nav-link {
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+        }
+        .comparison-badge {
+            font-size: 0.7em;
+            vertical-align: super;
+            margin-left: 0.25rem;
         }
     </style>
 </head>
@@ -331,11 +346,30 @@
             </div>`;
             
             logs.forEach((log, index) => {
-                const attemptNum = index + 1;
-                const isSuccess = log.status_code >= 200 && log.status_code < 300;
-                const badgeClass = isSuccess ? 'bg-success' : 'bg-danger';
-                
-                html += `
+                html += generateLogAttemptHtml(log, index + 1);
+            });
+            
+            modalBody.innerHTML = html;
+            
+            // 重新初始化tooltips for dynamic content
+            var tooltipTriggerList = [].slice.call(modalBody.querySelectorAll('[title]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+            
+            const modal = new bootstrap.Modal(document.getElementById('logModal'));
+            modal.show();
+        }
+
+        function generateLogAttemptHtml(log, attemptNum) {
+            const isSuccess = log.status_code >= 200 && log.status_code < 300;
+            const badgeClass = isSuccess ? 'bg-success' : 'bg-danger';
+            
+            // 检查是否有数据转换
+            const requestChanges = hasRequestChanges(log);
+            const responseChanges = hasResponseChanges(log);
+            
+            return `
                 <div class="row mb-4">
                     <div class="col-12">
                         <div class="card">
@@ -352,98 +386,299 @@
                                     }
                                     ${log.is_streaming ? '<span class="badge bg-info">SSE</span>' : ''}
                                     ${log.content_type_override ? `<span class="badge bg-warning text-dark" title="Content-Type覆盖: ${escapeHtml(log.content_type_override)}">${escapeHtml(log.content_type_override)}</span>` : ''}
+                                    ${requestChanges || responseChanges ? '<span class="badge bg-info">有修改</span>' : ''}
                                 </h6>
                             </div>
                             <div class="card-body">
-                                <div class="row mb-3">
-                                    <div class="col-6">
-                                        <div class="content-section">
-                                            <div class="content-header">
-                                                <h6>请求头</h6>
-                                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
-                                                        data-filename="请求头_${log.request_id}_尝试${attemptNum}.json"
-                                                        data-content="${safeBase64Encode(JSON.stringify(log.request_headers, null, 2))}"
-                                                        onclick="saveAsFileFromButton(this)" 
-                                                        ${Object.keys(log.request_headers || {}).length === 0 ? 'disabled' : ''}>
-                                                    <i class="fas fa-download"></i> 保存
-                                                </button>
-                                            </div>
-                                            <pre class="json-pretty" style="max-height: 150px;">${JSON.stringify(log.request_headers, null, 2)}</pre>
-                                        </div>
+                                <!-- Request/Response Tabs -->
+                                <ul class="nav nav-tabs before-after-tabs" id="logTabs${attemptNum}" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="request-tab-${attemptNum}" data-bs-toggle="tab" data-bs-target="#request-${attemptNum}" type="button" role="tab">
+                                            请求数据 ${requestChanges ? '<span class="comparison-badge badge bg-warning">修改</span>' : ''}
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="response-tab-${attemptNum}" data-bs-toggle="tab" data-bs-target="#response-${attemptNum}" type="button" role="tab">
+                                            响应数据 ${responseChanges ? '<span class="comparison-badge badge bg-warning">修改</span>' : ''}
+                                        </button>
+                                    </li>
+                                </ul>
+                                
+                                <div class="tab-content mt-3" id="logTabsContent${attemptNum}">
+                                    <!-- Request Tab -->
+                                    <div class="tab-pane fade show active" id="request-${attemptNum}" role="tabpanel">
+                                        ${generateRequestComparisonHtml(log, attemptNum)}
                                     </div>
-                                    <div class="col-6">
-                                        <div class="content-section">
-                                            <div class="content-header">
-                                                <h6>响应头</h6>
-                                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
-                                                        data-filename="响应头_${log.request_id}_尝试${attemptNum}.json"
-                                                        data-content="${safeBase64Encode(JSON.stringify(log.response_headers, null, 2))}"
-                                                        onclick="saveAsFileFromButton(this)" 
-                                                        ${Object.keys(log.response_headers || {}).length === 0 ? 'disabled' : ''}>
-                                                    <i class="fas fa-download"></i> 保存
-                                                </button>
-                                            </div>
-                                            <pre class="json-pretty" style="max-height: 150px;">${JSON.stringify(log.response_headers, null, 2)}</pre>
-                                        </div>
+                                    
+                                    <!-- Response Tab -->  
+                                    <div class="tab-pane fade" id="response-${attemptNum}" role="tabpanel">
+                                        ${generateResponseComparisonHtml(log, attemptNum)}
                                     </div>
                                 </div>
-                                <div class="row">
-                                    <div class="col-6">
-                                        <div class="content-section">
-                                            <div class="content-header">
-                                                <h6>请求体 (${log.request_body_size} 字节)</h6>
-                                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
-                                                        data-filename="请求体_${log.request_id}_尝试${attemptNum}.${getFileExtension(log.request_body)}"
-                                                        data-content="${log.request_body ? safeBase64Encode(log.request_body) : ''}"
-                                                        onclick="saveAsFileFromButton(this)" 
-                                                        ${!log.request_body ? 'disabled' : ''}>
-                                                    <i class="fas fa-download"></i> 保存
-                                                </button>
-                                            </div>
-                                            <div class="json-pretty" style="max-height: 200px;">
-                                                ${log.request_body ? escapeHtml(formatJson(log.request_body)) : '无请求体'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="content-section">
-                                            <div class="content-header">
-                                                <h6>响应体 (${log.response_body_size} 字节)</h6>
-                                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
-                                                        data-filename="响应体_${log.request_id}_尝试${attemptNum}.${getFileExtension(log.response_body)}"
-                                                        data-content="${log.response_body ? safeBase64Encode(log.response_body) : ''}"
-                                                        onclick="saveAsFileFromButton(this)" 
-                                                        ${!log.response_body ? 'disabled' : ''}>
-                                                    <i class="fas fa-download"></i> 保存
-                                                </button>
-                                            </div>
-                                            <div class="json-pretty" style="max-height: 200px;">
-                                                ${log.response_body ? escapeHtml(formatJson(log.response_body)) : '无响应体'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                ${log.error ? `<div class="row mt-2"><div class="col-12"><div class="alert alert-danger"><strong>错误:</strong> ${escapeHtml(log.error)}</div></div></div>` : ''}
+                                
+                                ${log.error ? `<div class="row mt-3"><div class="col-12"><div class="alert alert-danger"><strong>错误:</strong> ${escapeHtml(log.error)}</div></div></div>` : ''}
                             </div>
                         </div>
                     </div>
                 </div>`;
-            });
+        }
+
+        function generateRequestComparisonHtml(log, attemptNum) {
+            const hasUrlChanges = log.original_request_url && log.final_request_url && log.original_request_url !== log.final_request_url;
+            const hasHeaderChanges = log.original_request_headers && log.final_request_headers && 
+                                   JSON.stringify(log.original_request_headers) !== JSON.stringify(log.final_request_headers);
+            const hasBodyChanges = log.original_request_body && log.final_request_body && log.original_request_body !== log.final_request_body;
             
-            modalBody.innerHTML = html;
+            let html = '';
             
-            // 重新初始化tooltips for dynamic content
-            var tooltipTriggerList = [].slice.call(modalBody.querySelectorAll('[title]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
+            // URL对比（如果有变化）
+            if (hasUrlChanges) {
+                html += `
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <h6>URL 对比</h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">客户端原始 URL:</small>
+                                    <div class="json-pretty" style="max-height: 100px;">${escapeHtml(log.original_request_url || '-')}</div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-success">发送给上游 URL:</small>
+                                    <div class="json-pretty" style="max-height: 100px;">${escapeHtml(log.final_request_url || log.original_request_url || '-')}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            }
             
-            const modal = new bootstrap.Modal(document.getElementById('logModal'));
-            modal.show();
+            // Headers 对比
+            html += `
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="content-section">
+                            <div class="content-header">
+                                <h6>请求头对比 ${hasHeaderChanges ? '<span class="badge bg-warning">有修改</span>' : ''}</h6>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-secondary save-file-btn me-1" 
+                                            data-filename="原始请求头_${log.request_id}_尝试${attemptNum}.json"
+                                            data-content="${safeBase64Encode(JSON.stringify(log.original_request_headers || {}, null, 2))}"
+                                            onclick="saveAsFileFromButton(this)">
+                                        <i class="fas fa-download"></i> 原始
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary save-file-btn" 
+                                            data-filename="最终请求头_${log.request_id}_尝试${attemptNum}.json"
+                                            data-content="${safeBase64Encode(JSON.stringify(log.final_request_headers || log.request_headers || {}, null, 2))}"
+                                            onclick="saveAsFileFromButton(this)">
+                                        <i class="fas fa-download"></i> 最终
+                                    </button>
+                                </div>
+                            </div>
+                            ${hasHeaderChanges ? `
+                                <div class="row">
+                                    <div class="col-6">
+                                        <small class="text-muted">客户端原始请求头:</small>
+                                        <div class="json-pretty" style="max-height: 300px;">${escapeHtml(formatJson(JSON.stringify(log.original_request_headers || {}, null, 2)))}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-success">发送给上游请求头:</small>
+                                        <div class="json-pretty" style="max-height: 300px;">${escapeHtml(formatJson(JSON.stringify(log.final_request_headers || log.request_headers || {}, null, 2)))}</div>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="json-pretty" style="max-height: 300px;">${escapeHtml(formatJson(JSON.stringify(log.request_headers || {}, null, 2)))}</div>
+                            `}
+                        </div>
+                    </div>
+                </div>`;
+            
+            // Body 对比
+            html += `
+                <div class="row">
+                    <div class="col-12">
+                        <div class="content-section">
+                            <div class="content-header">
+                                <h6>请求体对比 (${log.request_body_size} 字节) ${hasBodyChanges ? '<span class="badge bg-warning">有修改</span>' : ''}</h6>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-secondary save-file-btn me-1" 
+                                            data-filename="原始请求体_${log.request_id}_尝试${attemptNum}.${getFileExtension(log.original_request_body)}"
+                                            data-content="${log.original_request_body ? safeBase64Encode(log.original_request_body) : ''}"
+                                            onclick="saveAsFileFromButton(this)" 
+                                            ${!log.original_request_body ? 'disabled' : ''}>
+                                        <i class="fas fa-download"></i> 原始
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary save-file-btn" 
+                                            data-filename="最终请求体_${log.request_id}_尝试${attemptNum}.${getFileExtension(log.final_request_body || log.request_body)}"
+                                            data-content="${(log.final_request_body || log.request_body) ? safeBase64Encode(log.final_request_body || log.request_body) : ''}"
+                                            onclick="saveAsFileFromButton(this)" 
+                                            ${!(log.final_request_body || log.request_body) ? 'disabled' : ''}>
+                                        <i class="fas fa-download"></i> 最终
+                                    </button>
+                                </div>
+                            </div>
+                            ${hasBodyChanges ? `
+                                <div class="row">
+                                    <div class="col-6">
+                                        <small class="text-muted">客户端原始请求体:</small>
+                                        <div class="json-pretty" style="max-height: 400px;">
+                                            ${log.original_request_body ? escapeHtml(formatJson(log.original_request_body)) : '无请求体'}
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-success">发送给上游请求体:</small>
+                                        <div class="json-pretty" style="max-height: 400px;">
+                                            ${(log.final_request_body || log.request_body) ? escapeHtml(formatJson(log.final_request_body || log.request_body)) : '无请求体'}
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="json-pretty" style="max-height: 400px;">
+                                    ${log.request_body ? escapeHtml(formatJson(log.request_body)) : '无请求体'}
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>`;
+            
+            return html;
+        }
+
+        function generateResponseComparisonHtml(log, attemptNum) {
+            const hasHeaderChanges = log.original_response_headers && log.final_response_headers && 
+                                   JSON.stringify(log.original_response_headers) !== JSON.stringify(log.final_response_headers);
+            const hasBodyChanges = log.original_response_body && log.final_response_body && log.original_response_body !== log.final_response_body;
+            
+            let html = '';
+            
+            // Headers 对比
+            html += `
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="content-section">
+                            <div class="content-header">
+                                <h6>响应头对比 ${hasHeaderChanges ? '<span class="badge bg-warning">有修改</span>' : ''}</h6>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-secondary save-file-btn me-1" 
+                                            data-filename="原始响应头_${log.request_id}_尝试${attemptNum}.json"
+                                            data-content="${safeBase64Encode(JSON.stringify(log.original_response_headers || {}, null, 2))}"
+                                            onclick="saveAsFileFromButton(this)">
+                                        <i class="fas fa-download"></i> 原始
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary save-file-btn" 
+                                            data-filename="最终响应头_${log.request_id}_尝试${attemptNum}.json"
+                                            data-content="${safeBase64Encode(JSON.stringify(log.final_response_headers || log.response_headers || {}, null, 2))}"
+                                            onclick="saveAsFileFromButton(this)">
+                                        <i class="fas fa-download"></i> 最终
+                                    </button>
+                                </div>
+                            </div>
+                            ${hasHeaderChanges ? `
+                                <div class="row">
+                                    <div class="col-6">
+                                        <small class="text-muted">上游原始响应头:</small>
+                                        <div class="json-pretty" style="max-height: 300px;">${escapeHtml(formatJson(JSON.stringify(log.original_response_headers || {}, null, 2)))}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-success">发送给客户端响应头:</small>
+                                        <div class="json-pretty" style="max-height: 300px;">${escapeHtml(formatJson(JSON.stringify(log.final_response_headers || log.response_headers || {}, null, 2)))}</div>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="json-pretty" style="max-height: 300px;">${escapeHtml(formatJson(JSON.stringify(log.response_headers || {}, null, 2)))}</div>
+                            `}
+                        </div>
+                    </div>
+                </div>`;
+            
+            // Body 对比
+            html += `
+                <div class="row">
+                    <div class="col-12">
+                        <div class="content-section">
+                            <div class="content-header">
+                                <h6>响应体对比 (${log.response_body_size} 字节) ${hasBodyChanges ? '<span class="badge bg-warning">有修改</span>' : ''}</h6>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-secondary save-file-btn me-1" 
+                                            data-filename="原始响应体_${log.request_id}_尝试${attemptNum}.${getFileExtension(log.original_response_body)}"
+                                            data-content="${log.original_response_body ? safeBase64Encode(log.original_response_body) : ''}"
+                                            onclick="saveAsFileFromButton(this)" 
+                                            ${!log.original_response_body ? 'disabled' : ''}>
+                                        <i class="fas fa-download"></i> 原始
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary save-file-btn" 
+                                            data-filename="最终响应体_${log.request_id}_尝试${attemptNum}.${getFileExtension(log.final_response_body || log.response_body)}"
+                                            data-content="${(log.final_response_body || log.response_body) ? safeBase64Encode(log.final_response_body || log.response_body) : ''}"
+                                            onclick="saveAsFileFromButton(this)" 
+                                            ${!(log.final_response_body || log.response_body) ? 'disabled' : ''}>
+                                        <i class="fas fa-download"></i> 最终
+                                    </button>
+                                </div>
+                            </div>
+                            ${hasBodyChanges ? `
+                                <div class="row">
+                                    <div class="col-6">
+                                        <small class="text-muted">上游原始响应体:</small>
+                                        <div class="json-pretty" style="max-height: 400px;">
+                                            ${log.original_response_body ? escapeHtml(formatJson(log.original_response_body)) : '无响应体'}
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-success">发送给客户端响应体:</small>
+                                        <div class="json-pretty" style="max-height: 400px;">
+                                            ${(log.final_response_body || log.response_body) ? escapeHtml(formatJson(log.final_response_body || log.response_body)) : '无响应体'}
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="json-pretty" style="max-height: 400px;">
+                                    ${log.response_body ? escapeHtml(formatJson(log.response_body)) : '无响应体'}
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>`;
+            
+            return html;
+        }
+
+        function hasDataChanges(originalUrl, originalHeaders, originalBody, finalUrl, finalHeaders, finalBody) {
+            // 检查URL变化
+            if (originalUrl && finalUrl && originalUrl !== finalUrl) return true;
+            
+            // 检查headers变化
+            if (originalHeaders && finalHeaders) {
+                if (JSON.stringify(originalHeaders) !== JSON.stringify(finalHeaders)) return true;
+            }
+            
+            // 检查body变化
+            if (originalBody && finalBody && originalBody !== finalBody) return true;
+            
+            return false;
+        }
+
+        function hasRequestChanges(log) {
+            const hasUrlChanges = log.original_request_url && log.final_request_url && log.original_request_url !== log.final_request_url;
+            const hasHeaderChanges = log.original_request_headers && log.final_request_headers && 
+                                   JSON.stringify(log.original_request_headers) !== JSON.stringify(log.final_request_headers);
+            const hasBodyChanges = log.original_request_body && log.final_request_body && log.original_request_body !== log.final_request_body;
+            
+            return hasUrlChanges || hasHeaderChanges || hasBodyChanges;
+        }
+        
+        function hasResponseChanges(log) {
+            const hasHeaderChanges = log.original_response_headers && log.final_response_headers && 
+                                   JSON.stringify(log.original_response_headers) !== JSON.stringify(log.final_response_headers);
+            const hasBodyChanges = log.original_response_body && log.final_response_body && log.original_response_body !== log.final_response_body;
+            
+            return hasHeaderChanges || hasBodyChanges;
         }
 
         function displayLogDetails(log) {
             const modalBody = document.getElementById('modalBody');
+            
+            // 检查是否有数据转换
+            const requestChanges = hasRequestChanges(log);
+            const responseChanges = hasResponseChanges(log);
+
             modalBody.innerHTML = `
                 <div class="row">
                     <div class="col-12 mb-3">
@@ -473,66 +708,32 @@
                             ${log.error ? `<tr><th>错误:</th><td class="text-danger">${escapeHtml(log.error)}</td></tr>` : ''}
                         </table>
                     </div>
-                    <div class="col-6 mb-3">
-                        <div class="content-section">
-                            <div class="content-header">
-                                <h6>请求头</h6>
-                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
-                                        data-filename="请求头_${escapeHtml(log.request_id)}.json"
-                                        data-content="${safeBase64Encode(JSON.stringify(log.request_headers, null, 2))}"
-                                        onclick="saveAsFileFromButton(this)" 
-                                        ${Object.keys(log.request_headers || {}).length === 0 ? 'disabled' : ''}>
-                                    <i class="fas fa-download"></i> 保存
-                                </button>
-                            </div>
-                            <pre class="json-pretty">${JSON.stringify(log.request_headers, null, 2)}</pre>
-                        </div>
+                </div>
+                
+                <!-- Request/Response Tabs -->
+                <ul class="nav nav-tabs before-after-tabs" id="singleLogTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="single-request-tab" data-bs-toggle="tab" data-bs-target="#single-request" type="button" role="tab">
+                            请求数据 ${requestChanges ? '<span class="comparison-badge badge bg-warning">修改</span>' : ''}
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="single-response-tab" data-bs-toggle="tab" data-bs-target="#single-response" type="button" role="tab">
+                            响应数据 ${responseChanges ? '<span class="comparison-badge badge bg-warning">修改</span>' : ''}
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content mt-3" id="singleLogTabsContent">
+                    <!-- Request Tab -->
+                    <div class="tab-pane fade show active" id="single-request" role="tabpanel">
+                        ${generateRequestComparisonHtml(log, 'single')}
                     </div>
-                    <div class="col-6 mb-3">
-                        <div class="content-section">
-                            <div class="content-header">
-                                <h6>响应头</h6>
-                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
-                                        data-filename="响应头_${escapeHtml(log.request_id)}.json"
-                                        data-content="${safeBase64Encode(JSON.stringify(log.response_headers, null, 2))}"
-                                        onclick="saveAsFileFromButton(this)" 
-                                        ${Object.keys(log.response_headers || {}).length === 0 ? 'disabled' : ''}>
-                                    <i class="fas fa-download"></i> 保存
-                                </button>
-                            </div>
-                            <pre class="json-pretty">${JSON.stringify(log.response_headers, null, 2)}</pre>
-                        </div>
+                    
+                    <!-- Response Tab -->  
+                    <div class="tab-pane fade" id="single-response" role="tabpanel">
+                        ${generateResponseComparisonHtml(log, 'single')}
                     </div>
-                    ${log.request_body ? `
-                    <div class="col-12 mb-3">
-                        <div class="content-section">
-                            <div class="content-header">
-                                <h6>请求体</h6>
-                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
-                                        data-filename="请求体_${escapeHtml(log.request_id)}.${getFileExtension(log.request_body)}"
-                                        data-content="${safeBase64Encode(log.request_body)}"
-                                        onclick="saveAsFileFromButton(this)">
-                                    <i class="fas fa-download"></i> 保存
-                                </button>
-                            </div>
-                            <pre class="json-pretty">${escapeHtml(formatJson(log.request_body))}</pre>
-                        </div>
-                    </div>` : ''}
-                    ${log.response_body ? `
-                    <div class="col-12 mb-3">
-                        <div class="content-section">
-                            <div class="content-header">
-                                <h6>响应体</h6>
-                                <button class="btn btn-sm btn-outline-secondary save-file-btn" 
-                                        data-filename="响应体_${escapeHtml(log.request_id)}.${getFileExtension(log.response_body)}"
-                                        data-content="${safeBase64Encode(log.response_body)}"
-                                        onclick="saveAsFileFromButton(this)">
-                                    <i class="fas fa-download"></i> 保存
-                                </button>
-                            </div>
-                            <pre class="json-pretty">${escapeHtml(formatJson(log.response_body))}</pre>
-                        </div>
-                    </div>` : ''}
                 </div>
             `;
             
@@ -547,6 +748,7 @@
         }
 
         function formatJson(jsonString) {
+            if (!jsonString) return jsonString;
             try {
                 const parsed = JSON.parse(jsonString);
                 return JSON.stringify(parsed, null, 2);
@@ -590,6 +792,7 @@
         }
         
         function escapeHtml(text) {
+            if (!text) return text;
             const map = {
                 '&': '&amp;',
                 '<': '&lt;',
@@ -653,34 +856,6 @@
                 console.error('保存文件失败:', error);
                 alert('保存文件失败，请检查浏览器控制台');
             }
-        }
-
-        // 保存文件功能（旧版本，保留兼容性）
-        function saveAsFile(defaultFilename, content) {
-            if (!content || content.trim() === '') {
-                alert('内容为空，无法保存');
-                return;
-            }
-
-            // 创建下载链接
-            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            
-            // 创建下载元素
-            const downloadLink = document.createElement('a');
-            downloadLink.href = url;
-            downloadLink.download = defaultFilename;
-            downloadLink.style.display = 'none';
-            
-            // 添加到DOM并触发下载
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            
-            // 清理
-            setTimeout(() => {
-                document.body.removeChild(downloadLink);
-                URL.revokeObjectURL(url);
-            }, 100);
         }
     </script>
 </body>

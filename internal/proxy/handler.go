@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"claude-proxy/internal/conversion"
 	"claude-proxy/internal/endpoint"
 	"claude-proxy/internal/tagging"
 	"claude-proxy/internal/utils"
@@ -39,7 +40,12 @@ func (s *Server) handleProxy(c *gin.Context) {
 	selectedEndpoint, err := s.selectEndpointForRequest(taggedRequest)
 	if err != nil {
 		s.logger.Error("Failed to select endpoint", err)
-		s.sendProxyError(c, http.StatusBadGateway, "no_available_endpoints", "All endpoints are currently unavailable", requestID)
+		// 获取tags用于日志记录
+		var tags []string
+		if taggedRequest != nil {
+			tags = taggedRequest.Tags
+		}
+		s.sendFailureResponse(c, requestID, startTime, requestBody, tags, 0, "All endpoints are currently unavailable", "no_available_endpoints")
 		return
 	}
 
@@ -270,8 +276,8 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 			totalAttempted += attemptedCount
 		}
 		
-		// 所有endpoint都失败了
-		s.sendFailureResponse(c, requestID, startTime, requestBody, requestTags, totalAttempted, fmt.Sprintf("All %d endpoints failed for tagged request (tags: %v)", totalAttempted, requestTags), "all_endpoints_failed")
+		// 所有endpoint都失败了，发送错误响应但不记录额外日志（每个endpoint的失败已经记录过了）
+		s.sendProxyError(c, http.StatusBadGateway, "all_endpoints_failed", fmt.Sprintf("All %d endpoints failed for tagged request (tags: %v)", totalAttempted, requestTags), requestID)
 		
 	} else {
 		// 无标签请求：只尝试万用端点
@@ -294,8 +300,8 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 		}
 		totalAttempted += attemptedCount
 		
-		// 所有universal endpoint都失败了
-		s.sendFailureResponse(c, requestID, startTime, requestBody, nil, totalAttempted, fmt.Sprintf("All %d universal endpoints failed for untagged request", totalAttempted), "all_universal_endpoints_failed")
+		// 所有universal endpoint都失败了，发送错误响应但不记录额外日志（每个endpoint的失败已经记录过了）
+		s.sendProxyError(c, http.StatusBadGateway, "all_universal_endpoints_failed", fmt.Sprintf("All %d universal endpoints failed for untagged request", totalAttempted), requestID)
 	}
 }
 
@@ -304,9 +310,34 @@ func (s *Server) sendFailureResponse(c *gin.Context, requestID string, startTime
 	duration := time.Since(startTime)
 	requestLog := s.logger.CreateRequestLog(requestID, "failed", c.Request.Method, c.Param("path"))
 	requestLog.DurationMs = duration.Nanoseconds() / 1000000
+	requestLog.StatusCode = http.StatusBadGateway
+	
+	// 记录请求头信息
+	if c.Request != nil {
+		requestLog.OriginalRequestHeaders = utils.HeadersToMap(c.Request.Header)
+		requestLog.RequestHeaders = requestLog.OriginalRequestHeaders
+		
+		// 记录请求URL
+		requestLog.OriginalRequestURL = c.Request.URL.String()
+	}
+	
+	// 记录请求体信息
 	if len(requestBody) > 0 {
 		requestLog.Model = utils.ExtractModelFromRequestBody(string(requestBody))
+		requestLog.RequestBodySize = len(requestBody)
+		
+		// 根据配置记录请求体内容
+		if s.config.Logging.LogRequestBody != "none" {
+			if s.config.Logging.LogRequestBody == "truncated" {
+				requestLog.OriginalRequestBody = utils.TruncateBody(string(requestBody), 1024)
+			} else {
+				requestLog.OriginalRequestBody = string(requestBody)
+			}
+			// 同时设置RequestBody字段用于向后兼容
+			requestLog.RequestBody = requestLog.OriginalRequestBody
+		}
 	}
+	
 	requestLog.Tags = requestTags
 	requestLog.Error = errorMsg
 	s.logger.LogRequest(requestLog)
@@ -337,7 +368,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		// 记录创建请求失败的日志
 		duration := time.Since(startTime)
 		createRequestError := fmt.Sprintf("Failed to create request: %v", err)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "", "", "")
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, requestBody, c, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "", "", "")
 		return false, false
 	}
 
@@ -347,7 +378,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		s.logger.Error("Model rewrite failed", err)
 		// 记录模型重写失败的日志
 		duration := time.Since(startTime)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, nil, nil, nil, duration, err, false, tags, "", "", "")
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, requestBody, c, nil, nil, nil, duration, err, false, tags, "", "", "")
 		return false, false
 	}
 
@@ -358,11 +389,30 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		if err != nil {
 			s.logger.Error("Failed to read rewritten request body", err)
 			duration := time.Since(startTime)
-			s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, nil, nil, nil, duration, err, false, tags, "", originalModel, rewrittenModel)
+			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, nil, nil, nil, duration, err, false, tags, "", originalModel, rewrittenModel)
 			return false, false
 		}
 	} else {
 		finalRequestBody = requestBody // 使用原始请求体
+	}
+
+	// 格式转换（在模型重写之后）
+	var conversionContext *conversion.ConversionContext
+	if s.converter.ShouldConvert(ep.EndpointType) {
+		convertedBody, ctx, err := s.converter.ConvertRequest(finalRequestBody, ep.EndpointType)
+		if err != nil {
+			s.logger.Error("Request format conversion failed", err)
+			duration := time.Since(startTime)
+			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, nil, nil, nil, duration, err, false, tags, "", originalModel, rewrittenModel)
+			return false, true // 转换失败，尝试下一个端点
+		}
+		finalRequestBody = convertedBody
+		conversionContext = ctx
+		s.logger.Debug("Request format converted successfully", map[string]interface{}{
+			"endpoint_type": ep.EndpointType,
+			"original_size": len(requestBody),
+			"converted_size": len(convertedBody),
+		})
 	}
 
 	// 创建最终的HTTP请求
@@ -372,7 +422,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		// 记录创建请求失败的日志
 		duration := time.Since(startTime)
 		createRequestError := fmt.Sprintf("Failed to create final request: %v", err)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, finalRequestBody, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "", originalModel, rewrittenModel)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "", originalModel, rewrittenModel)
 		return false, false
 	}
 
@@ -401,7 +451,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	resp, err := client.Do(req)
 	if err != nil {
 		duration := time.Since(startTime)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
 		return false, true
 	}
 	defer resp.Body.Close()
@@ -418,7 +468,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			decompressedBody = body // 如果解压失败，使用原始数据
 		}
 		
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, nil, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, nil, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
 		s.logger.Debug(fmt.Sprintf("HTTP error %d from endpoint %s, trying next endpoint", resp.StatusCode, ep.Name))
 		return false, true
 	}
@@ -429,7 +479,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		// 记录读取响应体失败的日志
 		duration := time.Since(startTime)
 		readError := fmt.Sprintf("Failed to read response body: %v", err)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, nil, duration, fmt.Errorf(readError), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, nil, duration, fmt.Errorf(readError), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
 		return false, false
 	}
 
@@ -441,7 +491,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		// 记录解压响应体失败的日志
 		duration := time.Since(startTime)
 		decompressError := fmt.Sprintf("Failed to decompress response body: %v", err)
-		s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, responseBody, duration, fmt.Errorf(decompressError), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, responseBody, duration, fmt.Errorf(decompressError), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
 		return false, false
 	}
 
@@ -470,13 +520,13 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		}
 	}
 	if s.config.Validation.StrictAnthropicFormat {
-		if err := s.validator.ValidateAnthropicResponse(decompressedBody, isStreaming); err != nil {
+		if err := s.validator.ValidateResponse(decompressedBody, isStreaming, ep.EndpointType); err != nil {
 			// 如果是usage统计验证失败，尝试下一个endpoint
 			if strings.Contains(err.Error(), "invalid usage stats") {
 				s.logger.Info(fmt.Sprintf("Usage validation failed for endpoint %s: %v", ep.Name, err))
 				duration := time.Since(startTime)
 				errorLog := fmt.Sprintf("Usage validation failed: %v", err)
-				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
+				s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
 				return false, true // 验证失败，尝试下一个endpoint
 			}
 			
@@ -485,7 +535,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 				// 记录验证失败的请求日志
 				duration := time.Since(startTime)
 				validationError := fmt.Sprintf("Response validation failed: %v", err)
-				s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, requestBody, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags, "", originalModel, rewrittenModel)
+				s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags, "", originalModel, rewrittenModel)
 				c.Header("Connection", "close")
 				c.AbortWithStatus(http.StatusBadGateway)
 				return false, false
@@ -495,27 +545,139 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 
 	c.Status(resp.StatusCode)
 	
+	// 格式转换（在模型重写之前）
+	convertedResponseBody := decompressedBody
+	if conversionContext != nil {
+		convertedResp, err := s.converter.ConvertResponse(decompressedBody, conversionContext, isStreaming)
+		if err != nil {
+			s.logger.Error("Response format conversion failed", err)
+			// 转换失败，使用原始响应体
+		} else {
+			convertedResponseBody = convertedResp
+			s.logger.Debug("Response format converted successfully", map[string]interface{}{
+				"endpoint_type": conversionContext.EndpointType,
+				"original_size": len(decompressedBody),
+				"converted_size": len(convertedResp),
+			})
+		}
+	}
+	
 	// 应用响应模型重写（如果进行了请求模型重写）
 	finalResponseBody := responseBody
 	if originalModel != "" && rewrittenModel != "" {
-		rewrittenResponseBody, err := s.modelRewriter.RewriteResponse(decompressedBody, originalModel, rewrittenModel)
+		rewrittenResponseBody, err := s.modelRewriter.RewriteResponse(convertedResponseBody, originalModel, rewrittenModel)
 		if err != nil {
 			s.logger.Error("Failed to rewrite response model", err)
-			// 如果响应重写失败，使用原始响应体，不中断请求
-		} else if len(rewrittenResponseBody) > 0 && !bytes.Equal(rewrittenResponseBody, decompressedBody) {
+			// 如果响应重写失败，使用转换后的响应体，不中断请求
+		} else if len(rewrittenResponseBody) > 0 && !bytes.Equal(rewrittenResponseBody, convertedResponseBody) {
 			// 如果响应重写成功且内容发生了变化，发送重写后的未压缩响应
 			// 并移除Content-Encoding头（因为我们发送的是未压缩数据）
 			c.Header("Content-Encoding", "")
 			c.Header("Content-Length", fmt.Sprintf("%d", len(rewrittenResponseBody)))
 			finalResponseBody = rewrittenResponseBody
+		} else {
+			// 如果没有重写或重写后内容没变化，使用转换后的响应体
+			finalResponseBody = convertedResponseBody
 		}
+	} else if conversionContext != nil {
+		// 只有格式转换没有模型重写的情况
+		finalResponseBody = convertedResponseBody
 	}
 	
 	// 发送最终响应体给客户端
 	c.Writer.Write(finalResponseBody)
 
 	duration := time.Since(startTime)
-	s.createAndLogRequest(requestID, ep.URL, c.Request.Method, path, finalRequestBody, req, resp, decompressedBody, duration, nil, isStreaming, tags, overrideInfo, originalModel, rewrittenModel)
+	// 创建日志条目，记录修改前后的完整数据
+	requestLog := s.logger.CreateRequestLog(requestID, ep.URL, c.Request.Method, path)
+	requestLog.RequestBodySize = len(requestBody)
+	requestLog.Tags = tags
+	requestLog.ContentTypeOverride = overrideInfo
+	
+	// 记录原始客户端请求数据
+	requestLog.OriginalRequestURL = c.Request.URL.String()
+	requestLog.OriginalRequestHeaders = utils.HeadersToMap(c.Request.Header)
+	if len(requestBody) > 0 {
+		if s.config.Logging.LogRequestBody != "none" {
+			if s.config.Logging.LogRequestBody == "truncated" {
+				requestLog.OriginalRequestBody = utils.TruncateBody(string(requestBody), 1024)
+			} else {
+				requestLog.OriginalRequestBody = string(requestBody)
+			}
+		}
+	}
+	
+	// 记录最终发送给上游的请求数据
+	requestLog.FinalRequestURL = req.URL.String()
+	requestLog.FinalRequestHeaders = utils.HeadersToMap(req.Header)
+	if len(finalRequestBody) > 0 {
+		if s.config.Logging.LogRequestBody != "none" {
+			if s.config.Logging.LogRequestBody == "truncated" {
+				requestLog.FinalRequestBody = utils.TruncateBody(string(finalRequestBody), 1024)
+			} else {
+				requestLog.FinalRequestBody = string(finalRequestBody)
+			}
+		}
+	}
+	
+	// 记录上游原始响应数据
+	requestLog.OriginalResponseHeaders = utils.HeadersToMap(resp.Header)
+	if len(decompressedBody) > 0 {
+		if s.config.Logging.LogResponseBody != "none" {
+			if s.config.Logging.LogResponseBody == "truncated" {
+				requestLog.OriginalResponseBody = utils.TruncateBody(string(decompressedBody), 1024)
+			} else {
+				requestLog.OriginalResponseBody = string(decompressedBody)
+			}
+		}
+	}
+	
+	// 记录最终发送给客户端的响应数据
+	finalHeaders := make(map[string]string)
+	for key := range resp.Header {
+		values := c.Writer.Header().Values(key)
+		if len(values) > 0 {
+			finalHeaders[key] = values[0]
+		}
+	}
+	requestLog.FinalResponseHeaders = finalHeaders
+	if len(finalResponseBody) > 0 {
+		if s.config.Logging.LogResponseBody != "none" {
+			if s.config.Logging.LogResponseBody == "truncated" {
+				requestLog.FinalResponseBody = utils.TruncateBody(string(finalResponseBody), 1024)
+			} else {
+				requestLog.FinalResponseBody = string(finalResponseBody)
+			}
+		}
+	}
+	
+	// 设置兼容性字段
+	requestLog.RequestHeaders = requestLog.FinalRequestHeaders
+	requestLog.RequestBody = requestLog.OriginalRequestBody
+	requestLog.ResponseHeaders = requestLog.OriginalResponseHeaders
+	requestLog.ResponseBody = requestLog.OriginalResponseBody
+	
+	// 设置模型信息
+	if len(requestBody) > 0 {
+		extractedModel := utils.ExtractModelFromRequestBody(string(requestBody))
+		if originalModel != "" {
+			requestLog.Model = originalModel
+			requestLog.OriginalModel = originalModel
+		} else {
+			requestLog.Model = extractedModel
+			requestLog.OriginalModel = extractedModel
+		}
+		
+		if rewrittenModel != "" {
+			requestLog.RewrittenModel = rewrittenModel
+			requestLog.ModelRewriteApplied = rewrittenModel != requestLog.OriginalModel
+		}
+	}
+	
+	// 更新基本字段
+	s.logger.UpdateRequestLog(requestLog, req, resp, decompressedBody, duration, nil)
+	requestLog.IsStreaming = isStreaming
+	s.logger.LogRequest(requestLog)
 
 	return true, false
 }
@@ -541,27 +703,88 @@ func (s *Server) isRequestExpectingStream(req *http.Request) bool {
 	return accept == "text/event-stream" || strings.Contains(accept, "text/event-stream")
 }
 
-// createAndLogRequest creates a request log entry, populates common fields, and logs it
-func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, requestBody []byte, req *http.Request, resp *http.Response, responseBody []byte, duration time.Duration, err error, isStreaming bool, tags []string, contentTypeOverride string, originalModel, rewrittenModel string) {
+// logSimpleRequest creates and logs a simple request log entry for error cases
+func (s *Server) logSimpleRequest(requestID, endpoint, method, path string, originalRequestBody []byte, finalRequestBody []byte, c *gin.Context, req *http.Request, resp *http.Response, responseBody []byte, duration time.Duration, err error, isStreaming bool, tags []string, contentTypeOverride string, originalModel, rewrittenModel string) {
 	requestLog := s.logger.CreateRequestLog(requestID, endpoint, method, path)
-	requestLog.RequestBodySize = len(requestBody)
+	requestLog.RequestBodySize = len(originalRequestBody)
 	requestLog.Tags = tags
 	requestLog.ContentTypeOverride = contentTypeOverride
 	
-	// 设置请求体日志
-	if s.config.Logging.LogRequestBody != "none" && len(requestBody) > 0 {
-		if s.config.Logging.LogRequestBody == "truncated" {
-			requestLog.RequestBody = utils.TruncateBody(string(requestBody), 1024)
-		} else {
-			requestLog.RequestBody = string(requestBody)
+	// 记录原始客户端请求数据
+	if c != nil {
+		requestLog.OriginalRequestURL = c.Request.URL.String()
+		requestLog.OriginalRequestHeaders = utils.HeadersToMap(c.Request.Header)
+	}
+	
+	if len(originalRequestBody) > 0 {
+		if s.config.Logging.LogRequestBody != "none" {
+			if s.config.Logging.LogRequestBody == "truncated" {
+				requestLog.OriginalRequestBody = utils.TruncateBody(string(originalRequestBody), 1024)
+				requestLog.RequestBody = requestLog.OriginalRequestBody
+			} else {
+				requestLog.OriginalRequestBody = string(originalRequestBody)
+				requestLog.RequestBody = requestLog.OriginalRequestBody
+			}
 		}
 	}
 	
-	// 提取模型信息并设置模型重写相关字段
-	if len(requestBody) > 0 {
-		extractedModel := utils.ExtractModelFromRequestBody(string(requestBody))
+	// 记录最终请求体（如果不同于原始请求体）
+	if len(finalRequestBody) > 0 && !bytes.Equal(originalRequestBody, finalRequestBody) {
+		if s.config.Logging.LogRequestBody != "none" {
+			if s.config.Logging.LogRequestBody == "truncated" {
+				requestLog.FinalRequestBody = utils.TruncateBody(string(finalRequestBody), 1024)
+			} else {
+				requestLog.FinalRequestBody = string(finalRequestBody)
+			}
+		}
+	}
+	
+	// 设置最终请求数据（发送给上游的数据）
+	if req != nil {
+		requestLog.FinalRequestURL = req.URL.String()
+		requestLog.FinalRequestHeaders = utils.HeadersToMap(req.Header)
+		requestLog.RequestHeaders = requestLog.FinalRequestHeaders
 		
-		// 如果提供了原始模型名，使用它；否则使用提取的模型名
+		// 尝试读取最终请求体（如果有的话）
+		if req.Body != nil {
+			if finalBody, err := io.ReadAll(req.Body); err == nil && len(finalBody) > 0 {
+				// 重新设置请求体供后续使用
+				req.Body = io.NopCloser(bytes.NewReader(finalBody))
+				
+				if s.config.Logging.LogRequestBody != "none" {
+					if s.config.Logging.LogRequestBody == "truncated" {
+						requestLog.FinalRequestBody = utils.TruncateBody(string(finalBody), 1024)
+					} else {
+						requestLog.FinalRequestBody = string(finalBody)
+					}
+				}
+			}
+		}
+	} else if c != nil {
+		// 如果没有最终请求，使用原始请求数据作为兼容
+		requestLog.RequestHeaders = requestLog.OriginalRequestHeaders
+	}
+	
+	// 设置响应数据
+	if resp != nil {
+		requestLog.OriginalResponseHeaders = utils.HeadersToMap(resp.Header)
+		requestLog.ResponseHeaders = requestLog.OriginalResponseHeaders
+		if len(responseBody) > 0 {
+			if s.config.Logging.LogResponseBody != "none" {
+				if s.config.Logging.LogResponseBody == "truncated" {
+					requestLog.OriginalResponseBody = utils.TruncateBody(string(responseBody), 1024)
+					requestLog.ResponseBody = requestLog.OriginalResponseBody
+				} else {
+					requestLog.OriginalResponseBody = string(responseBody)
+					requestLog.ResponseBody = requestLog.OriginalResponseBody
+				}
+			}
+		}
+	}
+	
+	// 设置模型信息
+	if len(originalRequestBody) > 0 {
+		extractedModel := utils.ExtractModelFromRequestBody(string(originalRequestBody))
 		if originalModel != "" {
 			requestLog.Model = originalModel
 			requestLog.OriginalModel = originalModel
@@ -570,7 +793,6 @@ func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, r
 			requestLog.OriginalModel = extractedModel
 		}
 		
-		// 设置重写后的模型名和重写标志
 		if rewrittenModel != "" {
 			requestLog.RewrittenModel = rewrittenModel
 			requestLog.ModelRewriteApplied = rewrittenModel != requestLog.OriginalModel
@@ -579,9 +801,7 @@ func (s *Server) createAndLogRequest(requestID, endpoint, method, path string, r
 	
 	// 更新并记录日志
 	s.logger.UpdateRequestLog(requestLog, req, resp, responseBody, duration, err)
-	
-	// 覆盖流式检测结果
 	requestLog.IsStreaming = isStreaming
-	
 	s.logger.LogRequest(requestLog)
 }
+
