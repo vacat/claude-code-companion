@@ -109,7 +109,6 @@
                                         <th>请求大小</th>
                                         <th>响应大小</th>
                                         <th>流式</th>
-                                        <th>内容类型</th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
@@ -159,15 +158,22 @@
                                         <td>
                                             {{if .IsStreaming}}
                                                 <span class="badge bg-info">SSE</span>
+                                                {{if .ContentTypeOverride}}
+                                                    <i class="fas fa-sync-alt ms-1" 
+                                                       data-bs-toggle="tooltip" 
+                                                       data-bs-placement="top" 
+                                                       title="Content-Type 覆盖: 原始类型 → {{.ContentTypeOverride}}"
+                                                       style="color: #28a745; font-size: 0.7em;"></i>
+                                                {{end}}
                                             {{else}}
-                                                <span class="badge bg-secondary">REQ</span>
-                                            {{end}}
-                                        </td>
-                                        <td>
-                                            {{if .ContentTypeOverride}}
-                                                <span class="badge bg-warning text-dark" title="Content-Type自动覆盖: {{.ContentTypeOverride}}">{{.ContentTypeOverride}}</span>
-                                            {{else}}
-                                                <span class="text-muted">-</span>
+                                                <span class="badge bg-secondary">JSON</span>
+                                                {{if .ContentTypeOverride}}
+                                                    <i class="fas fa-sync-alt ms-1" 
+                                                       data-bs-toggle="tooltip" 
+                                                       data-bs-placement="top" 
+                                                       title="Content-Type 覆盖: 原始类型 → {{.ContentTypeOverride}}"
+                                                       style="color: #28a745; font-size: 0.7em;"></i>
+                                                {{end}}
                                             {{end}}
                                         </td>
                                         <td>
