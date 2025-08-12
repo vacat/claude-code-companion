@@ -148,6 +148,7 @@ func (c *ResponseConverter) convertStreamingResponse(openaiResp []byte, ctx *Con
 			NextBlockIndex:    0,
 			TextBlockStarted:  false,
 			MessageStarted:    false,
+			PingSent:          false,
 		}
 	}
 
@@ -174,11 +175,6 @@ func (c *ResponseConverter) convertStreamingResponse(openaiResp []byte, ctx *Con
 			},
 		}
 		messageStartData, _ := json.Marshal(messageStartEvent)
-		
-		// 添加心跳帧
-		allEvents = append(allEvents, "event: ping")
-		allEvents = append(allEvents, "data: {}")
-		allEvents = append(allEvents, "")
 		
 		allEvents = append(allEvents, "event: message_start")
 		allEvents = append(allEvents, "data: "+string(messageStartData))
@@ -259,6 +255,7 @@ func (c *ResponseConverter) convertStreamingResponse(openaiResp []byte, ctx *Con
 					"stop_sequence": nil,
 				},
 				"usage": map[string]interface{}{
+					"input_tokens":  finalUsage.PromptTokens,
 					"output_tokens": finalUsage.CompletionTokens,
 				},
 			}
@@ -348,6 +345,15 @@ func (c *ResponseConverter) convertSingleChunkToEvents(chunk OpenAIStreamChunk, 
 						events = append(events, "event: content_block_start")
 						events = append(events, "data: "+string(startData))
 						events = append(events, "")
+						
+						// 在第一个content_block_start后发送ping事件
+						if !streamState.PingSent {
+							events = append(events, "event: ping")
+							events = append(events, "data: {}")
+							events = append(events, "")
+							streamState.PingSent = true
+						}
+						
 						streamState.TextBlockStarted = true
 						streamState.NextBlockIndex = 1 // 下一个块从 index 1 开始
 					}
@@ -405,6 +411,15 @@ func (c *ResponseConverter) convertSingleChunkToEvents(chunk OpenAIStreamChunk, 
 					events = append(events, "event: content_block_start")
 					events = append(events, "data: "+string(startData))
 					events = append(events, "")
+					
+					// 在第一个content_block_start后发送ping事件
+					if !streamState.PingSent {
+						events = append(events, "event: ping")
+						events = append(events, "data: {}")
+						events = append(events, "")
+						streamState.PingSent = true
+					}
+					
 					state.Started = true
 				}
 			}

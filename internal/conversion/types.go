@@ -30,6 +30,7 @@ type StreamState struct {
 	NextBlockIndex    int                         // 下一个块索引
 	TextBlockStarted  bool                        // 文本块是否已开始
 	MessageStarted    bool                        // 消息是否已开始
+	PingSent          bool                        // ping事件是否已发送
 }
 
 // ToolCallState 工具调用状态
