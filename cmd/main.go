@@ -18,9 +18,11 @@ var (
 	configFile = flag.String("config", "config.yaml", "Configuration file path")
 	port       = flag.Int("port", 0, "Override proxy server port")
 	version    = flag.Bool("version", false, "Show version information")
+	
+	// These will be set by build process
+	Version      = "1.0.0"
+	BuildVersion = "unknown"
 )
-
-const Version = "1.0.0"
 
 func main() {
 	flag.Parse()
@@ -43,7 +45,7 @@ func main() {
 	if err := initHTTPClientsFromConfig(cfg); err != nil {
 		log.Fatalf("Failed to initialize HTTP clients: %v", err)
 	}
-	proxyServer, err := proxy.NewServer(cfg, *configFile)
+	proxyServer, err := proxy.NewServer(cfg, *configFile, BuildVersion)
 	if err != nil {
 		log.Fatalf("Failed to create proxy server: %v", err)
 	}

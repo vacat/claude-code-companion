@@ -29,9 +29,10 @@ type TagResponse struct {
 
 // handleTaggersPage 显示tagger管理页面
 func (s *AdminServer) handleTaggersPage(c *gin.Context) {
-	c.HTML(http.StatusOK, "taggers.html", gin.H{
+	data := s.mergeTemplateData("taggers", map[string]interface{}{
 		"Title": "Tagger Management",
 	})
+	c.HTML(http.StatusOK, "taggers.html", data)
 }
 
 // handleGetTaggers 获取所有tagger配置

@@ -21,21 +21,40 @@ type AdminServer struct {
 	logger            *logger.Logger
 	configFilePath    string
 	hotUpdateHandler  HotUpdateHandler
+	buildVersion      string
 }
 
-func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, taggingManager *tagging.Manager, log *logger.Logger, configFilePath string) *AdminServer {
+func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, taggingManager *tagging.Manager, log *logger.Logger, configFilePath string, buildVersion string) *AdminServer {
 	return &AdminServer{
 		config:          cfg,
 		endpointManager: endpointManager,
 		taggingManager:  taggingManager,
 		logger:          log,
 		configFilePath:  configFilePath,
+		buildVersion:    buildVersion,
 	}
 }
 
 // SetHotUpdateHandler sets the hot update handler
 func (s *AdminServer) SetHotUpdateHandler(handler HotUpdateHandler) {
 	s.hotUpdateHandler = handler
+}
+
+// getBaseTemplateData returns common template data for all pages
+func (s *AdminServer) getBaseTemplateData(currentPage string) map[string]interface{} {
+	return map[string]interface{}{
+		"BuildVersion": s.buildVersion,
+		"CurrentPage":  currentPage,
+	}
+}
+
+// mergeTemplateData merges base template data with page-specific data
+func (s *AdminServer) mergeTemplateData(currentPage string, pageData map[string]interface{}) map[string]interface{} {
+	baseData := s.getBaseTemplateData(currentPage)
+	for key, value := range pageData {
+		baseData[key] = value
+	}
+	return baseData
 }
 
 // RegisterRoutes 注册管理界面路由到指定的 router

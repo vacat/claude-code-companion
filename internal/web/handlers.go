@@ -52,7 +52,7 @@ func (s *AdminServer) handleDashboard(c *gin.Context) {
 		overallSuccessRate = fmt.Sprintf("%.1f%%", rate)
 	}
 	
-	c.HTML(http.StatusOK, "dashboard.html", gin.H{
+	data := s.mergeTemplateData("dashboard", map[string]interface{}{
 		"Title":             "Claude Proxy Dashboard",
 		"TotalEndpoints":    len(endpoints),
 		"ActiveEndpoints":   activeEndpoints,
@@ -61,6 +61,7 @@ func (s *AdminServer) handleDashboard(c *gin.Context) {
 		"OverallSuccessRate": overallSuccessRate,
 		"Endpoints":         endpointStats,
 	})
+	c.HTML(http.StatusOK, "dashboard.html", data)
 }
 
 func (s *AdminServer) handleEndpointsPage(c *gin.Context) {
@@ -86,10 +87,11 @@ func (s *AdminServer) handleEndpointsPage(c *gin.Context) {
 		})
 	}
 	
-	c.HTML(http.StatusOK, "endpoints.html", gin.H{
+	data := s.mergeTemplateData("endpoints", map[string]interface{}{
 		"Title":     "Endpoints Configuration",
 		"Endpoints": endpointStats,
 	})
+	c.HTML(http.StatusOK, "endpoints.html", data)
 }
 
 func (s *AdminServer) handleLogsPage(c *gin.Context) {
@@ -135,7 +137,7 @@ func (s *AdminServer) handleLogsPage(c *gin.Context) {
 		pages = append(pages, i)
 	}
 	
-	c.HTML(http.StatusOK, "logs.html", gin.H{
+	data := s.mergeTemplateData("logs", map[string]interface{}{
 		"Title":       "Request Logs",
 		"Logs":        logs,
 		"Total":       total,
@@ -149,6 +151,7 @@ func (s *AdminServer) handleLogsPage(c *gin.Context) {
 		"NextPage":    page + 1,
 		"Limit":       limit,
 	})
+	c.HTML(http.StatusOK, "logs.html", data)
 }
 
 func (s *AdminServer) handleSettingsPage(c *gin.Context) {
@@ -160,11 +163,12 @@ func (s *AdminServer) handleSettingsPage(c *gin.Context) {
 		}
 	}
 	
-	c.HTML(http.StatusOK, "settings.html", gin.H{
+	data := s.mergeTemplateData("settings", map[string]interface{}{
 		"Title":        "Settings",
 		"Config":       s.config,
 		"EnabledCount": enabledCount,
 	})
+	c.HTML(http.StatusOK, "settings.html", data)
 }
 
 func (s *AdminServer) handleGetEndpoints(c *gin.Context) {

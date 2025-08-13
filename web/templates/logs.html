@@ -74,20 +74,7 @@
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="/admin/">
-                <i class="fas fa-server"></i> Claude 代理管理后台
-            </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/admin/">控制台</a>
-                <a class="nav-link" href="/admin/endpoints">端点配置</a>
-                <a class="nav-link" href="/admin/taggers">Taggers</a>
-                <a class="nav-link active" href="/admin/logs">请求日志</a>
-                <a class="nav-link" href="/admin/settings">系统设置</a>
-            </div>
-        </div>
-    </nav>
+    {{template "header.html" .}}
 
     <div class="container mt-4">
         <div class="row mb-3">
@@ -858,5 +845,7 @@
             }
         }
     </script>
+
+    {{template "footer.html" .}}
 </body>
 </html>
