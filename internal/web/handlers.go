@@ -523,6 +523,139 @@ func (s *AdminServer) handleDeleteEndpoint(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Endpoint deleted successfully"})
 }
 
+// generateUniqueEndpointName 生成唯一的端点名称，如果存在重名则添加数字后缀
+func (s *AdminServer) generateUniqueEndpointName(baseName string) string {
+	currentEndpoints := s.config.Endpoints
+	
+	// 检查基础名称是否已存在
+	nameExists := func(name string) bool {
+		for _, ep := range currentEndpoints {
+			if ep.Name == name {
+				return true
+			}
+		}
+		return false
+	}
+	
+	// 如果基础名称不存在，直接返回
+	if !nameExists(baseName) {
+		return baseName
+	}
+	
+	// 如果存在，添加数字后缀
+	counter := 1
+	for {
+		newName := fmt.Sprintf("%s (%d)", baseName, counter)
+		if !nameExists(newName) {
+			return newName
+		}
+		counter++
+	}
+}
+
+// handleCopyEndpoint 复制端点
+func (s *AdminServer) handleCopyEndpoint(c *gin.Context) {
+	endpointName := c.Param("id") // 要复制的端点名称
+
+	// 查找源端点
+	var sourceEndpoint *config.EndpointConfig
+	for _, ep := range s.config.Endpoints {
+		if ep.Name == endpointName {
+			sourceEndpoint = &ep
+			break
+		}
+	}
+
+	if sourceEndpoint == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Endpoint not found"})
+		return
+	}
+
+	// 生成唯一的新名称
+	newName := s.generateUniqueEndpointName(sourceEndpoint.Name)
+
+	// 获取当前所有端点
+	currentEndpoints := s.config.Endpoints
+
+	// 计算新端点的优先级
+	maxPriority := 0
+	for _, ep := range currentEndpoints {
+		if ep.Priority > maxPriority {
+			maxPriority = ep.Priority
+		}
+	}
+
+	// 创建新端点（复制所有属性，除了名称和优先级）
+	newEndpoint := config.EndpointConfig{
+		Name:         newName,
+		URL:          sourceEndpoint.URL,
+		EndpointType: sourceEndpoint.EndpointType,
+		PathPrefix:   sourceEndpoint.PathPrefix,
+		AuthType:     sourceEndpoint.AuthType,
+		AuthValue:    sourceEndpoint.AuthValue,
+		Enabled:      sourceEndpoint.Enabled,
+		Priority:     maxPriority + 1,
+		Tags:         make([]string, len(sourceEndpoint.Tags)), // 复制tags
+	}
+
+	// 深度复制Tags切片
+	copy(newEndpoint.Tags, sourceEndpoint.Tags)
+
+	// 深度复制ModelRewrite配置
+	if sourceEndpoint.ModelRewrite != nil {
+		newEndpoint.ModelRewrite = &config.ModelRewriteConfig{
+			Enabled: sourceEndpoint.ModelRewrite.Enabled,
+			Rules:   make([]config.ModelRewriteRule, len(sourceEndpoint.ModelRewrite.Rules)),
+		}
+		copy(newEndpoint.ModelRewrite.Rules, sourceEndpoint.ModelRewrite.Rules)
+	}
+
+	// 添加到端点列表
+	currentEndpoints = append(currentEndpoints, newEndpoint)
+
+	// 使用热更新机制
+	if s.hotUpdateHandler != nil {
+		// 创建新配置，只更新端点部分
+		newConfig := *s.config
+		newConfig.Endpoints = currentEndpoints
+
+		// 验证完整的配置
+		if err := config.ValidateConfig(&newConfig); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Configuration validation failed: " + err.Error(),
+			})
+			return
+		}
+
+		if err := s.hotUpdateHandler.HotUpdateConfig(&newConfig); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to copy endpoint: " + err.Error(),
+			})
+			return
+		}
+
+		// 保存配置到文件
+		if err := config.SaveConfig(&newConfig, s.configFilePath); err != nil {
+			s.logger.Error("Failed to save configuration file after endpoint copy", err)
+			// 不返回错误，因为内存更新已成功
+		}
+
+		// 更新本地配置引用
+		s.config = &newConfig
+	} else {
+		// 回退到旧方式
+		if err := s.saveEndpointsToConfig(currentEndpoints); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration: " + err.Error()})
+			return
+		}
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":  "Endpoint copied successfully",
+		"endpoint": newEndpoint,
+	})
+}
+
 // handleReorderEndpoints 重新排序端点
 func (s *AdminServer) handleReorderEndpoints(c *gin.Context) {
 	var request struct {

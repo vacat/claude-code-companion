@@ -132,7 +132,7 @@
                                         <th>状态</th>
                                         <th>启用</th>
                                         <th>统计</th>
-                                        <th width="120">操作</th>
+                                        <th width="140">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="endpoint-list">
@@ -211,6 +211,11 @@
                                                         onclick="event.stopPropagation(); showEditEndpointModal('{{.Name}}')"
                                                         title="编辑">
                                                     <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info btn-sm" 
+                                                        onclick="event.stopPropagation(); copyEndpoint('{{.Name}}')"
+                                                        title="复制">
+                                                    <i class="fas fa-copy"></i>
                                                 </button>
                                                 <button class="btn btn-outline-danger btn-sm" 
                                                         onclick="event.stopPropagation(); deleteEndpoint('{{.Name}}')"
@@ -574,6 +579,11 @@
                                     title="编辑">
                                 <i class="fas fa-edit"></i>
                             </button>
+                            <button class="btn btn-outline-info btn-sm" 
+                                    onclick="event.stopPropagation(); copyEndpoint('${endpoint.name}')"
+                                    title="复制">
+                                <i class="fas fa-copy"></i>
+                            </button>
                             <button class="btn btn-outline-danger btn-sm" 
                                     onclick="event.stopPropagation(); deleteEndpoint('${endpoint.name}')"
                                     title="删除">
@@ -771,6 +781,29 @@
             .catch(error => {
                 console.error('Failed to delete endpoint:', error);
                 showAlert('Failed to delete endpoint', 'danger');
+            });
+        }
+
+        function copyEndpoint(endpointName) {
+            if (!confirm(`确定要复制端点 "${endpointName}" 吗？`)) {
+                return;
+            }
+
+            fetch(`/admin/api/endpoints/${encodeURIComponent(endpointName)}/copy`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showAlert(data.error, 'danger');
+                } else {
+                    showAlert(data.message, 'success');
+                    loadEndpoints(); // 重新加载数据以显示新复制的端点
+                }
+            })
+            .catch(error => {
+                console.error('Failed to copy endpoint:', error);
+                showAlert('Failed to copy endpoint', 'danger');
             });
         }
 
