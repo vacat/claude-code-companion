@@ -1,0 +1,103 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: windows
+            goarch: amd64
+            suffix: .exe
+            name: windows-amd64
+          - goos: linux
+            goarch: amd64
+            suffix: ""
+            name: linux-amd64
+          - goos: linux
+            goarch: arm64
+            suffix: ""
+            name: linux-arm64
+          - goos: darwin
+            goarch: amd64
+            suffix: ""
+            name: darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            suffix: ""
+            name: darwin-arm64
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Get version info
+      id: version
+      run: |
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        BUILD_VERSION=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "BUILD_VERSION=$BUILD_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Build binary
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+      run: |
+        BINARY_NAME=claude-proxy-${{ matrix.name }}${{ matrix.suffix }}
+        go build -ldflags "-X main.Version=${{ steps.version.outputs.VERSION }} -X main.BuildVersion=${{ steps.version.outputs.BUILD_VERSION }}" \
+          -o $BINARY_NAME ./cmd/
+        
+        # Create zip archive
+        if [[ "${{ matrix.goos }}" == "windows" ]]; then
+          zip claude-proxy-${{ matrix.name }}.zip $BINARY_NAME
+        else
+          tar -czf claude-proxy-${{ matrix.name }}.tar.gz $BINARY_NAME
+        fi
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: claude-proxy-${{ matrix.name }}
+        path: |
+          claude-proxy-${{ matrix.name }}.zip
+          claude-proxy-${{ matrix.name }}.tar.gz
+        retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/claude-proxy-windows-amd64/claude-proxy-windows-amd64.zip
+          artifacts/claude-proxy-linux-amd64/claude-proxy-linux-amd64.tar.gz
+          artifacts/claude-proxy-linux-arm64/claude-proxy-linux-arm64.tar.gz
+          artifacts/claude-proxy-darwin-amd64/claude-proxy-darwin-amd64.tar.gz
+          artifacts/claude-proxy-darwin-arm64/claude-proxy-darwin-arm64.tar.gz
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
