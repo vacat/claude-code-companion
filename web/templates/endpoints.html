@@ -130,7 +130,7 @@
 
                         <div class="mb-3">
                             <label for="endpoint-type" class="form-label">端点类型 <span class="text-danger">*</span></label>
-                            <select class="form-select" id="endpoint-type" required onchange="togglePathPrefixField()">
+                            <select class="form-select" id="endpoint-type" required onchange="onEndpointTypeChange()">
                                 <option value="anthropic">Anthropic (Claude)</option>
                                 <option value="openai">OpenAI Compatible</option>
                             </select>
@@ -146,9 +146,9 @@
 
                         <div class="mb-3">
                             <label for="endpoint-auth-type" class="form-label">认证方式 <span class="text-danger">*</span></label>
-                            <select class="form-select" id="endpoint-auth-type" required>
+                            <select class="form-select" id="endpoint-auth-type" required onchange="onAuthTypeChange()">
                                 <option value="api_key">API Key (x-api-key 请求头)</option>
-                                <option value="auth_token">Auth Token (Authorization Bearer)</option>
+                                <option value="auth_token" selected>Auth Token (Authorization Bearer)</option>
                             </select>
                         </div>
 
@@ -502,7 +502,7 @@
             document.getElementById('endpoint-tags').value = ''; // 清理tags字段
             
             // 设置端点类型并切换路径前缀显示
-            togglePathPrefixField();
+            onEndpointTypeChange();
             
             // 重置auth visibility
             resetAuthVisibility();
@@ -535,7 +535,7 @@
             document.getElementById('endpoint-enabled').checked = endpoint.enabled;
             
             // 设置端点类型并切换路径前缀显示
-            togglePathPrefixField();
+            onEndpointTypeChange();
             
             // 设置tags字段
             const tagsValue = endpoint.tags && endpoint.tags.length > 0 ? endpoint.tags.join(', ') : '';
@@ -752,7 +752,12 @@
             });
         }
 
-        // ===== Path Prefix Toggle Functions =====
+        // ===== Endpoint Type and Auth Type Functions =====
+        
+        function onEndpointTypeChange() {
+            togglePathPrefixField();
+            toggleAuthTypeForEndpointType();
+        }
         
         function togglePathPrefixField() {
             const endpointType = document.getElementById('endpoint-type').value;
@@ -770,6 +775,28 @@
                 pathPrefixInput.required = false;
                 pathPrefixInput.value = ''; // 清空值
             }
+        }
+        
+        function toggleAuthTypeForEndpointType() {
+            const endpointType = document.getElementById('endpoint-type').value;
+            const authTypeSelect = document.getElementById('endpoint-auth-type');
+            
+            if (endpointType === 'openai') {
+                // OpenAI compatible endpoints use auth_token and cannot be changed
+                authTypeSelect.value = 'auth_token';
+                authTypeSelect.disabled = true;
+            } else {
+                // Anthropic endpoints can use either auth type, but default to auth_token
+                authTypeSelect.disabled = false;
+                if (!editingEndpointName) { // Only set default for new endpoints
+                    authTypeSelect.value = 'auth_token';
+                }
+            }
+        }
+        
+        function onAuthTypeChange() {
+            // This function can be used for future auth type specific logic
+            // Currently no additional logic needed
         }
 
         // ===== Modal Functions =====
