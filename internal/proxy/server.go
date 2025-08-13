@@ -23,7 +23,7 @@ type Server struct {
 	validator       *validator.ResponseValidator
 	healthChecker   *health.Checker
 	adminServer     *web.AdminServer
-	taggingManager  *tagging.Manager  // 新增：tagging系统管理器
+	taggingManager  *tagging.Manager       // 新增：tagging系统管理器
 	modelRewriter   *modelrewrite.Rewriter // 新增：模型重写器
 	converter       conversion.Converter   // 新增：格式转换器
 	router          *gin.Engine
@@ -73,17 +73,17 @@ func NewServer(cfg *config.Config, configFilePath string, buildVersion string) (
 		validator:       responseValidator,
 		healthChecker:   healthChecker,
 		adminServer:     adminServer,
-		taggingManager:  taggingManager,  // 新增：设置tagging管理器
-		modelRewriter:   modelRewriter,   // 新增：设置模型重写器
-		converter:       converter,       // 新增：设置格式转换器
+		taggingManager:  taggingManager, // 新增：设置tagging管理器
+		modelRewriter:   modelRewriter,  // 新增：设置模型重写器
+		converter:       converter,      // 新增：设置格式转换器
 		configFilePath:  configFilePath,
 	}
-	
+
 	// 设置热更新处理器
 	if adminServer != nil {
 		adminServer.SetHotUpdateHandler(server)
 	}
-	
+
 	// 让端点管理器使用同一个健康检查器
 	endpointManager.SetHealthChecker(healthChecker)
 
@@ -92,11 +92,7 @@ func NewServer(cfg *config.Config, configFilePath string, buildVersion string) (
 }
 
 func (s *Server) setupRoutes() {
-	if s.config.Logging.Level == "debug" {
-		gin.SetMode(gin.DebugMode)
-	} else {
-		gin.SetMode(gin.ReleaseMode)
-	}
+	gin.SetMode(gin.ReleaseMode)
 
 	s.router = gin.New()
 	s.router.Use(gin.Recovery())
