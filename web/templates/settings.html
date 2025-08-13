@@ -25,12 +25,12 @@
                                 <h6>服务器设置</h6>
                                 <table class="table table-sm">
                                     <tr>
-                                        <th>代理端口:</th>
-                                        <td><code>{{.Config.Server.Port}}</code></td>
+                                        <th>主机地址:</th>
+                                        <td><code>{{.Config.Server.Host}}</code></td>
                                     </tr>
                                     <tr>
-                                        <th>认证令牌:</th>
-                                        <td><code>{{.Config.Server.AuthToken}}</code></td>
+                                        <th>代理端口:</th>
+                                        <td><code>{{.Config.Server.Port}}</code></td>
                                     </tr>
                                 </table>
                             </div>
@@ -48,18 +48,51 @@
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th>主机:</th>
-                                        <td><code>{{.Config.WebAdmin.Host}}</code></td>
-                                    </tr>
-                                    <tr>
-                                        <th>端口:</th>
-                                        <td><code>{{.Config.WebAdmin.Port}}</code></td>
+                                        <th>访问地址:</th>
+                                        <td><code>{{.Config.Server.Host}}:{{.Config.Server.Port}}/admin/</code></td>
                                     </tr>
                                 </table>
                             </div>
                         </div>
 
                         <div class="row mt-4">
+                            <div class="col-md-6">
+                                <h6>标签系统配置</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <th>启用:</th>
+                                        <td>
+                                            {{if .Config.Tagging.Enabled}}
+                                                <span class="badge bg-success">已启用</span>
+                                            {{else}}
+                                                <span class="badge bg-secondary">已禁用</span>
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>管道超时:</th>
+                                        <td><code>{{.Config.Tagging.PipelineTimeout}}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>标记器数量:</th>
+                                        <td><span class="badge bg-info">{{len .Config.Tagging.Taggers}}</span></td>
+                                    </tr>
+                                    <tr>
+                                        <th>已启用标记器:</th>
+                                        <td>
+                                            {{$first := true}}
+                                            {{range $tagger := .Config.Tagging.Taggers}}
+                                                {{if $tagger.Enabled}}
+                                                    {{if not $first}}, {{end}}
+                                                    <span class="badge bg-light text-dark">{{$tagger.Name}}</span>
+                                                    {{$first = false}}
+                                                {{end}}
+                                            {{end}}
+                                            {{if $first}}<span class="text-muted">无已启用的标记器</span>{{end}}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
                             <div class="col-md-6">
                                 <h6>日志配置</h6>
                                 <table class="table table-sm">
@@ -135,119 +168,60 @@
                         </div>
 
                         <div class="row mt-4">
-                            <div class="col-12">
-                                <h6>运行状态</h6>
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <div class="card bg-light">
-                                            <div class="card-body text-center">
-                                                <h5 class="text-primary">{{len .Config.Endpoints}}</h5>
-                                                <small class="text-muted">端点总数</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="card bg-light">
-                                            <div class="card-body text-center">
-                                                <h5 class="text-success">{{.EnabledCount}}</h5>
-                                                <small class="text-muted">已启用端点</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="card bg-light">
-                                            <div class="card-body text-center">
-                                                <h5 class="text-info text-uppercase">{{.Config.Logging.Level}}</h5>
-                                                <small class="text-muted">日志级别</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="card bg-light">
-                                            <div class="card-body text-center">
-                                                <h5 class="{{if .Config.Validation.StrictAnthropicFormat}}text-success{{else}}text-secondary{{end}}">
-                                                    {{if .Config.Validation.StrictAnthropicFormat}}<i class="fas fa-shield-alt"></i>{{else}}<i class="fas fa-shield"></i>{{end}}
-                                                </h5>
-                                                <small class="text-muted">校验</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <h6>端点概览</h6>
+                            <div class="col-md-6">
+                                <h6>代理超时配置</h6>
                                 <table class="table table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>优先级</th>
-                                            <th>名称</th>
-                                            <th>URL</th>
-                                            <th>类型</th>
-                                            <th>路径前缀</th>
-                                            <th>认证类型</th>
-                                            <th>启用</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {{range .Config.Endpoints}}
-                                        <tr>
-                                            <td><span class="badge bg-info">{{.Priority}}</span></td>
-                                            <td><strong>{{.Name}}</strong></td>
-                                            <td><code>{{.URL}}</code></td>
-                                            <td>
-                                                <span class="badge {{if eq .EndpointType "openai"}}bg-warning{{else}}bg-primary{{end}}">
-                                                    {{if .EndpointType}}{{.EndpointType}}{{else}}anthropic{{end}}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                {{if eq .EndpointType "openai"}}
-                                                    <code>{{.PathPrefix}}</code>
-                                                {{else}}
-                                                    <span class="text-muted">/v1/messages</span>
-                                                {{end}}
-                                            </td>
-                                            <td>
-                                                <span class="badge {{if eq .AuthType "api_key"}}bg-primary{{else}}bg-secondary{{end}}">
-                                                    {{.AuthType}}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                {{if .Enabled}}
-                                                    <span class="badge bg-success"><i class="fas fa-check"></i> 是</span>
-                                                {{else}}
-                                                    <span class="badge bg-secondary"><i class="fas fa-times"></i> 否</span>
-                                                {{end}}
-                                            </td>
-                                        </tr>
-                                        {{end}}
-                                    </tbody>
+                                    <tr>
+                                        <th>TLS握手超时:</th>
+                                        <td><code>{{.Config.Timeouts.Proxy.TLSHandshake}}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>响应头超时:</th>
+                                        <td><code>{{.Config.Timeouts.Proxy.ResponseHeader}}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>空闲连接超时:</th>
+                                        <td><code>{{.Config.Timeouts.Proxy.IdleConnection}}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>整体请求超时:</th>
+                                        <td>
+                                            {{if .Config.Timeouts.Proxy.OverallRequest}}
+                                                <code>{{.Config.Timeouts.Proxy.OverallRequest}}</code>
+                                            {{else}}
+                                                <span class="badge bg-info">无限制</span>
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>健康检查超时配置</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <th>TLS握手超时:</th>
+                                        <td><code>{{.Config.Timeouts.HealthCheck.TLSHandshake}}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>响应头超时:</th>
+                                        <td><code>{{.Config.Timeouts.HealthCheck.ResponseHeader}}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>空闲连接超时:</th>
+                                        <td><code>{{.Config.Timeouts.HealthCheck.IdleConnection}}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>整体请求超时:</th>
+                                        <td><code>{{.Config.Timeouts.HealthCheck.OverallRequest}}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>检查间隔:</th>
+                                        <td><code>{{.Config.Timeouts.HealthCheck.CheckInterval}}</code></td>
+                                    </tr>
                                 </table>
                             </div>
                         </div>
 
-                        <div class="mt-4">
-                            <div class="alert alert-info">
-                                <h6><i class="fas fa-info-circle"></i> 配置信息:</h6>
-                                <ul class="mb-0">
-                                    <li><strong>服务器:</strong> 代理服务器监听端口 {{.Config.Server.Port}}</li>
-                                    <li><strong>网页管理:</strong> 管理界面在 {{.Config.WebAdmin.Host}}:{{.Config.WebAdmin.Port}}</li>
-                                    <li><strong>端点:</strong> 可通过 <a href="/admin/endpoints">端点配置</a> 页面管理已配置的端点</li>
-                                    <li><strong>日志:</strong> 请求日志存储在 <code>{{.Config.Logging.LogDirectory}}</code> 目录中</li>
-                                </ul>
-                            </div>
-                            <div class="alert alert-warning">
-                                <h6><i class="fas fa-exclamation-triangle"></i> 配置说明:</h6>
-                                <ul class="mb-0">
-                                    <li>服务器和日志配置更改需要编辑 <code>config.yaml</code> 文件并重启服务器</li>
-                                    <li>端点配置可通过网页界面管理并自动保存</li>
-                                    <li>此界面仅供查看，出于安全考虑 - 在此处做的配置更改不会持久化</li>
-                                    <li>在手动修改 <code>config.yaml</code> 之前请始终备份您的配置</li>
-                                </ul>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
