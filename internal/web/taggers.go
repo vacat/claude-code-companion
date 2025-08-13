@@ -149,14 +149,24 @@ func (s *AdminServer) handleCreateTagger(c *gin.Context) {
 		return
 	}
 
-	// 添加到配置
-	s.config.Tagging.Taggers = append(s.config.Tagging.Taggers, newTagger)
-
-	// 保存配置到文件
-	if err := config.SaveConfig(s.config, s.configFilePath); err != nil {
-		// 如果保存失败，回滚内存中的配置
-		s.config.Tagging.Taggers = s.config.Tagging.Taggers[:len(s.config.Tagging.Taggers)-1]
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration: " + err.Error()})
+	// 使用公共的配置更新函数
+	err := s.updateConfigWithRollback(
+		// 更新函数
+		func() error {
+			s.config.Tagging.Taggers = append(s.config.Tagging.Taggers, newTagger)
+			return nil
+		},
+		// 回滚函数
+		func() error {
+			if len(s.config.Tagging.Taggers) > 0 {
+				s.config.Tagging.Taggers = s.config.Tagging.Taggers[:len(s.config.Tagging.Taggers)-1]
+			}
+			return nil
+		},
+	)
+	
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -179,52 +189,62 @@ func (s *AdminServer) handleUpdateTagger(c *gin.Context) {
 		return
 	}
 
-	// 查找要更新的tagger
-	found := false
+	var found bool
 	var originalConfig config.TaggerConfig
-	for i, tagger := range s.config.Tagging.Taggers {
-		if tagger.Name == name {
-			// 保存原始配置用于回滚
-			originalConfig = tagger
-			// 创建新的配置
-			newTaggerConfig := config.TaggerConfig{
-				Name:        req.Name,
-				Type:        req.Type,
-				Tag:         req.Tag,
-				BuiltinType: req.BuiltinType,
-				Enabled:     req.Enabled,
-				Priority:    req.Priority,
-				Config:      req.Config,
+	
+	// 使用公共的配置更新函数
+	err := s.updateConfigWithRollback(
+		// 更新函数
+		func() error {
+			for i, tagger := range s.config.Tagging.Taggers {
+				if tagger.Name == name {
+					// 保存原始配置用于回滚
+					originalConfig = tagger
+					// 创建新的配置
+					newTaggerConfig := config.TaggerConfig{
+						Name:        req.Name,
+						Type:        req.Type,
+						Tag:         req.Tag,
+						BuiltinType: req.BuiltinType,
+						Enabled:     req.Enabled,
+						Priority:    req.Priority,
+						Config:      req.Config,
+					}
+					
+					// 验证新配置
+					if err := validateTaggerConfig(newTaggerConfig); err != nil {
+						return fmt.Errorf("invalid tagger configuration: %v", err)
+					}
+					
+					// 更新配置
+					s.config.Tagging.Taggers[i] = newTaggerConfig
+					found = true
+					break
+				}
 			}
-			
-			// 验证新配置
-			if err := validateTaggerConfig(newTaggerConfig); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tagger configuration: " + err.Error()})
-				return
+			if !found {
+				return fmt.Errorf("tagger not found")
 			}
-			
-			// 更新配置
-			s.config.Tagging.Taggers[i] = newTaggerConfig
-			found = true
-			break
-		}
-	}
+			return nil
+		},
+		// 回滚函数
+		func() error {
+			for i, tagger := range s.config.Tagging.Taggers {
+				if tagger.Name == req.Name {
+					s.config.Tagging.Taggers[i] = originalConfig
+					break
+				}
+			}
+			return nil
+		},
+	)
 
-	if !found {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Tagger not found"})
-		return
-	}
-
-	// 保存配置到文件
-	if err := config.SaveConfig(s.config, s.configFilePath); err != nil {
-		// 如果保存失败，回滚内存中的配置
-		for i, tagger := range s.config.Tagging.Taggers {
-			if tagger.Name == req.Name {
-				s.config.Tagging.Taggers[i] = originalConfig
-				break
-			}
+	if err != nil {
+		if err.Error() == "tagger not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Tagger not found"})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration: " + err.Error()})
 		return
 	}
 
@@ -241,36 +261,47 @@ func (s *AdminServer) handleUpdateTagger(c *gin.Context) {
 func (s *AdminServer) handleDeleteTagger(c *gin.Context) {
 	name := c.Param("name")
 
-	// 查找并删除tagger
-	found := false
+	var found bool
 	var deletedTagger config.TaggerConfig
 	var deletedIndex int
-	for i, tagger := range s.config.Tagging.Taggers {
-		if tagger.Name == name {
-			// 保存被删除的tagger用于回滚
-			deletedTagger = tagger
-			deletedIndex = i
-			// 删除tagger
-			s.config.Tagging.Taggers = append(s.config.Tagging.Taggers[:i], s.config.Tagging.Taggers[i+1:]...)
-			found = true
-			break
+	
+	// 使用公共的配置更新函数
+	err := s.updateConfigWithRollback(
+		// 更新函数
+		func() error {
+			for i, tagger := range s.config.Tagging.Taggers {
+				if tagger.Name == name {
+					// 保存被删除的tagger用于回滚
+					deletedTagger = tagger
+					deletedIndex = i
+					// 删除tagger
+					s.config.Tagging.Taggers = append(s.config.Tagging.Taggers[:i], s.config.Tagging.Taggers[i+1:]...)
+					found = true
+					break
+				}
+			}
+			if !found {
+				return fmt.Errorf("tagger not found")
+			}
+			return nil
+		},
+		// 回滚函数
+		func() error {
+			newTaggers := make([]config.TaggerConfig, len(s.config.Tagging.Taggers)+1)
+			copy(newTaggers[:deletedIndex], s.config.Tagging.Taggers[:deletedIndex])
+			newTaggers[deletedIndex] = deletedTagger
+			copy(newTaggers[deletedIndex+1:], s.config.Tagging.Taggers[deletedIndex:])
+			s.config.Tagging.Taggers = newTaggers
+			return nil
+		},
+	)
+
+	if err != nil {
+		if err.Error() == "tagger not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Tagger not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
-	}
-
-	if !found {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Tagger not found"})
-		return
-	}
-
-	// 保存配置到文件
-	if err := config.SaveConfig(s.config, s.configFilePath); err != nil {
-		// 如果保存失败，回滚内存中的配置
-		newTaggers := make([]config.TaggerConfig, len(s.config.Tagging.Taggers)+1)
-		copy(newTaggers[:deletedIndex], s.config.Tagging.Taggers[:deletedIndex])
-		newTaggers[deletedIndex] = deletedTagger
-		copy(newTaggers[deletedIndex+1:], s.config.Tagging.Taggers[deletedIndex:])
-		s.config.Tagging.Taggers = newTaggers
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration: " + err.Error()})
 		return
 	}
 
