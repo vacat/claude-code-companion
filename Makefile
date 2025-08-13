@@ -1,4 +1,4 @@
-.PHONY: build clean test run dev windows-amd64 linux-amd64 linux-arm64 darwin-universal all
+.PHONY: build clean test run dev windows-amd64 linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 all
 
 BINARY_NAME=claude-proxy
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -21,12 +21,16 @@ linux-amd64:
 linux-arm64:
 	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o $(BINARY_NAME)-linux-arm64 ./cmd/
 
-# Cross-compile for macOS Universal (Intel + Apple Silicon)
-darwin-universal:
-	GOOS=darwin GOARCH=amd64,arm64 go build $(LDFLAGS) -o $(BINARY_NAME)-darwin-universal ./cmd/
+# Cross-compile for macOS Intel
+darwin-amd64:
+	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o $(BINARY_NAME)-darwin-amd64 ./cmd/
+
+# Cross-compile for macOS Apple Silicon
+darwin-arm64:
+	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o $(BINARY_NAME)-darwin-arm64 ./cmd/
 
 # Cross-compile for all platforms
-all: windows-amd64 linux-amd64 linux-arm64 darwin-universal
+all: windows-amd64 linux-amd64 linux-arm64 darwin-amd64 darwin-arm64
 
 # Clean build artifacts
 clean:
@@ -68,7 +72,8 @@ help:
 	@echo "  windows-amd64  - Cross-compile for Windows x64"
 	@echo "  linux-amd64    - Cross-compile for Linux x64"
 	@echo "  linux-arm64    - Cross-compile for Linux ARM64"
-	@echo "  darwin-universal - Cross-compile for macOS Universal"
+	@echo "  darwin-amd64   - Cross-compile for macOS Intel"
+	@echo "  darwin-arm64   - Cross-compile for macOS Apple Silicon"
 	@echo "  all            - Cross-compile for all platforms"
 	@echo "  clean          - Remove build artifacts"
 	@echo "  test           - Run tests"
