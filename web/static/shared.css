@@ -1,0 +1,163 @@
+/* Claude Proxy Web Admin - Shared Styles */
+
+/* Common log-related styles */
+.log-body {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.log-body:hover {
+    white-space: normal;
+    word-break: break-all;
+}
+
+/* Button and form styles */
+.save-file-btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    margin-top: 0.25rem;
+}
+
+/* Content section styles */
+.content-section {
+    position: relative;
+}
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+/* JSON display styles */
+.json-pretty {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* Model rewrite related styles */
+.model-rewritten {
+    position: relative;
+    display: inline-block;
+}
+.model-rewritten::after {
+    content: '🔄';
+    font-size: 0.7em;
+    color: #28a745;
+    margin-left: 3px;
+}
+.model-original {
+    color: #6c757d;
+}
+
+/* Tab styles */
+.before-after-tabs {
+    margin-bottom: 1rem;
+}
+.before-after-tabs .nav-link {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+}
+.comparison-badge {
+    font-size: 0.7em;
+    vertical-align: super;
+    margin-left: 0.25rem;
+}
+
+/* Endpoints page specific styles */
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: #e3f2fd !important;
+}
+.sortable-drag {
+    opacity: 0.8;
+    background-color: #f5f5f5 !important;
+}
+.drag-handle {
+    cursor: grab;
+    user-select: none;
+}
+.drag-handle:active {
+    cursor: grabbing;
+}
+.endpoint-row {
+    transition: background-color 0.2s ease;
+    cursor: move;
+    user-select: none;
+}
+.endpoint-row:hover {
+    background-color: #f8f9fa;
+}
+.endpoint-row.sortable-chosen {
+    background-color: #e3f2fd;
+}
+.auth-value {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.priority-badge {
+    width: 30px;
+    text-align: center;
+}
+.endpoint-row * {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+input, textarea, select {
+    user-select: auto !important;
+    -webkit-user-select: auto !important;
+    -moz-user-select: auto !important;
+    -ms-user-select: auto !important;
+}
+.action-buttons {
+    cursor: default;
+}
+.action-buttons button {
+    cursor: pointer;
+}
+.btn-group .btn:not(:last-child) {
+    margin-right: 4px;
+}
+.url-display, .path-display {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.path-display {
+    max-width: 150px;
+}
+.url-display:hover, .path-display:hover {
+    overflow: visible;
+    white-space: normal;
+    background-color: #f8f9fa;
+    border-radius: 3px;
+    padding: 2px 4px;
+    position: relative;
+    z-index: 10;
+}
+
+/* Alert positioning */
+.alert-positioned {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    min-width: 300px;
+}
