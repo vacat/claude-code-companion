@@ -108,109 +108,64 @@
                         </button>
                     </div>
                     <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th width="40"><i class="fas fa-arrows-alt" title="拖拽行来重新排序"></i></th>
-                                        <th>优先级</th>
-                                        <th>名称</th>
-                                        <th>URL</th>
-                                        <th>类型</th>
-                                        <th>路径</th>
-                                        <th>认证方式</th>
-                                        <th>Tags</th>
-                                        <th>状态</th>
-                                        <th>启用</th>
-                                        <th width="160">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="endpoint-list">
-                                    {{range .Endpoints}}
-                                    <tr class="endpoint-row" data-endpoint-name="{{.Name}}">
-                                        <td class="drag-handle text-center">
-                                            <i class="fas fa-arrows-alt text-muted"></i>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-info priority-badge">{{.Priority}}</span>
-                                        </td>
-                                        <td><strong>{{.Name}}</strong></td>
-                                        <td><code class="url-display" title="{{.URL}}">{{.URL}}</code></td>
-                                        <td>
-                                            <span class="badge {{if eq .EndpointType "openai"}}bg-warning{{else}}bg-primary{{end}}">
-                                                {{if .EndpointType}}{{.EndpointType}}{{else}}anthropic{{end}}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            {{if eq .EndpointType "openai"}}
-                                                <code class="path-display" title="{{.PathPrefix}}">{{.PathPrefix}}</code>
-                                            {{else}}
-                                                <span class="text-muted">/v1/messages</span>
-                                            {{end}}
-                                        </td>
-                                        <td>
-                                            <span class="badge {{if eq .AuthType "api_key"}}bg-primary{{else}}bg-secondary{{end}}">
-                                                {{.AuthType}}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            {{if .Tags}}
-                                                {{range .Tags}}
-                                                    <span class="badge bg-info me-1 mb-1">{{.}}</span>
-                                                {{end}}
-                                            {{else}}
-                                                <span class="text-muted">Universal</span>
-                                            {{end}}
-                                        </td>
-                                        <td>
-                                            {{if eq .Status "active"}}
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check-circle"></i> 活跃
-                                                </span>
-                                            {{else if eq .Status "inactive"}}
-                                                <span class="badge bg-danger">
-                                                    <i class="fas fa-times-circle"></i> 不可用
-                                                </span>
-                                            {{else}}
-                                                <span class="badge bg-warning">
-                                                    <i class="fas fa-clock"></i> 检测中
-                                                </span>
-                                            {{end}}
-                                        </td>
-                                        <td>
-                                            {{if .Enabled}}
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-toggle-on"></i> 已启用
-                                                </span>
-                                            {{else}}
-                                                <span class="badge bg-secondary">
-                                                    <i class="fas fa-toggle-off"></i> 已禁用
-                                                </span>
-                                            {{end}}
-                                        </td>
-                                        <td class="action-buttons">
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <button class="btn btn-outline-primary btn-sm" 
-                                                        onclick="event.stopPropagation(); showEditEndpointModal('{{.Name}}')"
-                                                        title="编辑">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button class="btn btn-outline-info btn-sm" 
-                                                        onclick="event.stopPropagation(); copyEndpoint('{{.Name}}')"
-                                                        title="复制">
-                                                    <i class="fas fa-copy"></i>
-                                                </button>
-                                                <button class="btn btn-outline-danger btn-sm" 
-                                                        onclick="event.stopPropagation(); deleteEndpoint('{{.Name}}')"
-                                                        title="删除">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {{end}}
-                                </tbody>
-                            </table>
+                        <!-- 特殊端点列表 -->
+                        <div id="special-endpoints-section" class="mb-4" style="display: none;">
+                            <h6 class="mb-3">
+                                <i class="fas fa-star text-warning"></i> 特殊端点
+                                <small class="text-muted ms-2">有特定标签的端点</small>
+                            </h6>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th width="40"><i class="fas fa-arrows-alt" title="拖拽行来重新排序"></i></th>
+                                            <th>优先级</th>
+                                            <th>名称</th>
+                                            <th>URL</th>
+                                            <th>类型</th>
+                                            <th>路径</th>
+                                            <th>认证方式</th>
+                                            <th>Tags</th>
+                                            <th>状态</th>
+                                            <th>启用</th>
+                                            <th width="160">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="special-endpoint-list">
+                                        <!-- 特殊端点将被动态添加到这里 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 通用端点列表 -->
+                        <div id="general-endpoints-section">
+                            <h6 class="mb-3">
+                                <i class="fas fa-globe text-info"></i> 通用端点
+                                <small class="text-muted ms-2">支持所有请求类型的端点</small>
+                            </h6>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th width="40"><i class="fas fa-arrows-alt" title="拖拽行来重新排序"></i></th>
+                                            <th>优先级</th>
+                                            <th>名称</th>
+                                            <th>URL</th>
+                                            <th>类型</th>
+                                            <th>路径</th>
+                                            <th>认证方式</th>
+                                            <th>Tags</th>
+                                            <th>状态</th>
+                                            <th>启用</th>
+                                            <th width="160">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="general-endpoint-list">
+                                        <!-- 通用端点将被动态添加到这里 -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                         
                         <div class="mt-4">
@@ -358,38 +313,63 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             endpointModal = new bootstrap.Modal(document.getElementById('endpointModal'));
-            initializeSortable();
             loadEndpoints();
             
             // Auto-refresh every 30 seconds (only status updates)
             setInterval(refreshEndpointStatus, 30000);
         });
 
-        let sortableInstance = null;
+        let specialSortableInstance = null;
+        let generalSortableInstance = null;
 
         function initializeSortable() {
-            const tbody = document.getElementById('endpoint-list');
-            
-            // 如果已经有实例，先销毁
-            if (sortableInstance) {
-                sortableInstance.destroy();
+            // 销毁现有的sortable实例
+            if (specialSortableInstance) {
+                specialSortableInstance.destroy();
+                specialSortableInstance = null;
+            }
+            if (generalSortableInstance) {
+                generalSortableInstance.destroy();
+                generalSortableInstance = null;
+            }
+
+            // 初始化特殊端点列表的拖拽排序
+            const specialTbody = document.getElementById('special-endpoint-list');
+            if (specialTbody && specialTbody.children.length > 0) {
+                specialSortableInstance = new Sortable(specialTbody, {
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    chosenClass: 'sortable-chosen',
+                    dragClass: 'sortable-drag',
+                    group: 'special-endpoints', // 限制在特殊端点组内拖拽
+                    onStart: function(evt) {
+                        document.body.style.cursor = 'grabbing';
+                    },
+                    onEnd: function (evt) {
+                        document.body.style.cursor = '';
+                        reorderEndpoints();
+                    }
+                });
             }
             
-            sortableInstance = new Sortable(tbody, {
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                chosenClass: 'sortable-chosen',
-                dragClass: 'sortable-drag',
-                onStart: function(evt) {
-                    // 拖拽开始时添加视觉反馈
-                    document.body.style.cursor = 'grabbing';
-                },
-                onEnd: function (evt) {
-                    // 拖拽结束时恢复光标
-                    document.body.style.cursor = '';
-                    reorderEndpoints();
-                }
-            });
+            // 初始化通用端点列表的拖拽排序
+            const generalTbody = document.getElementById('general-endpoint-list');
+            if (generalTbody && generalTbody.children.length > 0) {
+                generalSortableInstance = new Sortable(generalTbody, {
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    chosenClass: 'sortable-chosen',
+                    dragClass: 'sortable-drag',
+                    group: 'general-endpoints', // 限制在通用端点组内拖拽
+                    onStart: function(evt) {
+                        document.body.style.cursor = 'grabbing';
+                    },
+                    onEnd: function (evt) {
+                        document.body.style.cursor = '';
+                        reorderEndpoints();
+                    }
+                });
+            }
         }
 
         function loadEndpoints() {
@@ -411,7 +391,12 @@
                 .then(data => {
                     // Only update status and statistics, not the full table
                     data.endpoints.forEach(endpoint => {
-                        const row = document.querySelector(`tr[data-endpoint-name="${endpoint.name}"]`);
+                        // 尝试在特殊端点列表中查找
+                        let row = document.querySelector(`#special-endpoint-list tr[data-endpoint-name="${endpoint.name}"]`);
+                        if (!row) {
+                            // 如果没找到，则在通用端点列表中查找
+                            row = document.querySelector(`#general-endpoint-list tr[data-endpoint-name="${endpoint.name}"]`);
+                        }
                         if (row) {
                             updateEndpointRowStatus(row, endpoint);
                         }
@@ -459,10 +444,27 @@
         }
 
         function rebuildTable(endpoints) {
-            const tbody = document.getElementById('endpoint-list');
-            tbody.innerHTML = '';
+            const specialTbody = document.getElementById('special-endpoint-list');
+            const generalTbody = document.getElementById('general-endpoint-list');
+            const specialSection = document.getElementById('special-endpoints-section');
             
-            endpoints.forEach((endpoint, index) => {
+            // 清空现有内容
+            specialTbody.innerHTML = '';
+            generalTbody.innerHTML = '';
+            
+            // 分离有标签和无标签的端点
+            const specialEndpoints = endpoints.filter(endpoint => endpoint.tags && endpoint.tags.length > 0);
+            const generalEndpoints = endpoints.filter(endpoint => !endpoint.tags || endpoint.tags.length === 0);
+            
+            // 显示/隐藏特殊端点区域
+            if (specialEndpoints.length > 0) {
+                specialSection.style.display = 'block';
+            } else {
+                specialSection.style.display = 'none';
+            }
+            
+            // 创建端点行的函数
+            function createEndpointRow(endpoint, index) {
                 const row = document.createElement('tr');
                 row.className = 'endpoint-row';
                 row.setAttribute('data-endpoint-name', endpoint.name);
@@ -505,7 +507,6 @@
                 const authTypeBadge = endpoint.auth_type === 'api_key' 
                     ? '<span class="badge bg-primary">api_key</span>'
                     : '<span class="badge bg-secondary">auth_token</span>';
-                
                 
                 // 构建tags显示
                 let tagsDisplay = '';
@@ -551,7 +552,19 @@
                     </td>
                 `;
                 
-                tbody.appendChild(row);
+                return row;
+            }
+            
+            // 添加特殊端点
+            specialEndpoints.forEach((endpoint, index) => {
+                const row = createEndpointRow(endpoint, index);
+                specialTbody.appendChild(row);
+            });
+            
+            // 添加通用端点
+            generalEndpoints.forEach((endpoint, index) => {
+                const row = createEndpointRow(endpoint, specialEndpoints.length + index);
+                generalTbody.appendChild(row);
             });
             
             // 重新初始化拖拽排序
@@ -766,8 +779,16 @@
         }
 
         function reorderEndpoints() {
-            const rows = document.querySelectorAll('#endpoint-list tr');
-            const orderedNames = Array.from(rows).map(row => row.dataset.endpointName);
+            // 获取特殊端点的顺序
+            const specialRows = document.querySelectorAll('#special-endpoint-list tr');
+            const specialOrderedNames = Array.from(specialRows).map(row => row.dataset.endpointName);
+            
+            // 获取通用端点的顺序
+            const generalRows = document.querySelectorAll('#general-endpoint-list tr');
+            const generalOrderedNames = Array.from(generalRows).map(row => row.dataset.endpointName);
+            
+            // 合并顺序：特殊端点在前，通用端点在后
+            const orderedNames = [...specialOrderedNames, ...generalOrderedNames];
             
             fetch('/admin/api/endpoints/reorder', {
                 method: 'POST',
@@ -786,11 +807,21 @@
                 } else {
                     showAlert(data.message, 'success');
                     // 更新优先级显示，不需要重新加载整个表格
-                    const rows = document.querySelectorAll('#endpoint-list tr');
-                    rows.forEach((row, index) => {
+                    let priorityIndex = 1;
+                    
+                    // 更新特殊端点的优先级
+                    specialRows.forEach((row) => {
                         const priorityBadge = row.querySelector('.priority-badge');
                         if (priorityBadge) {
-                            priorityBadge.textContent = index + 1;
+                            priorityBadge.textContent = priorityIndex++;
+                        }
+                    });
+                    
+                    // 更新通用端点的优先级
+                    generalRows.forEach((row) => {
+                        const priorityBadge = row.querySelector('.priority-badge');
+                        if (priorityBadge) {
+                            priorityBadge.textContent = priorityIndex++;
                         }
                     });
                 }
