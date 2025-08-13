@@ -57,6 +57,7 @@ type OpenAIFunctionDef struct {
 
 // OpenAIToolCall 工具调用
 type OpenAIToolCall struct {
+	Index    int              `json:"index,omitempty"`    // 在streaming中用于标识工具调用的索引
 	ID       string           `json:"id"`
 	Type     string           `json:"type"` // "function"
 	Function OpenAIToolCallDetail `json:"function"`

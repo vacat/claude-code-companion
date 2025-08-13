@@ -38,9 +38,11 @@ type ToolCallState struct {
 	BlockIndex        int    // 内容块索引
 	ID               string // 工具调用ID
 	Name             string // 工具名称
-	ArgumentsBuffer  string // 参数缓冲区
+	ArgumentsBuffer  string // 参数缓冲区（保留以兼容现有代码）
+	JSONBuffer       *SimpleJSONBuffer // 简单JSON缓冲器
 	Completed        bool   // 是否已完成
 	Started          bool   // 是否已发送 content_block_start
+	NameReceived     bool   // 是否已收到工具名称
 }
 
 // ConversionError 转换错误
