@@ -196,25 +196,6 @@ func (e *Endpoint) MarkActive() {
 	e.RequestHistory.Clear()
 }
 
-type requestStats struct {
-	success int
-	failed  int
-}
-
-// getRecentRequests returns recent request statistics using the circular buffer
-func (e *Endpoint) getRecentRequests(duration time.Duration) requestStats {
-	e.mutex.RLock()
-	defer e.mutex.RUnlock()
-	
-	now := time.Now()
-	total, failed := e.RequestHistory.GetWindowStats(now)
-	success := total - failed
-	
-	return requestStats{
-		success: success,
-		failed:  failed,
-	}
-}
 
 func generateID(name string) string {
 	return fmt.Sprintf("endpoint-%s-%d", name, time.Now().Unix())

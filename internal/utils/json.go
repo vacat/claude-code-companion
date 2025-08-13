@@ -61,11 +61,6 @@ func ExtractModelFromRequestBody(body string) string {
 	return model
 }
 
-// ExtractUserIDFromRequestBody extracts the user ID from request body JSON
-func ExtractUserIDFromRequestBody(body []byte) string {
-	userID, _ := ExtractNestedStringField(body, []string{"metadata", "user_id"})
-	return userID
-}
 
 // TruncateBody truncates body content to specified length
 func TruncateBody(body string, maxLen int) string {

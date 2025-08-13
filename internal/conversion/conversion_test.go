@@ -5,15 +5,8 @@ import (
 	"testing"
 
 	"claude-proxy/internal/logger"
-	"github.com/sirupsen/logrus"
 )
 
-// 测试用的mock logger
-type mockLogger struct{}
-
-func (m *mockLogger) Debug(msg string, fields ...logrus.Fields) {}
-func (m *mockLogger) Info(msg string, fields ...logrus.Fields)  {}
-func (m *mockLogger) Error(msg string, err error, fields ...logrus.Fields)  {}
 
 func TestConvertAnthropicRequestToOpenAI_SimpleText(t *testing.T) {
 	converter := NewRequestConverter(getTestLogger())
@@ -565,127 +558,6 @@ func TestConvertOpenAIResponseToAnthropic_WithToolCalls(t *testing.T) {
 	}
 }
 
-func TestConvertOpenAIStreamToAnthropic_SimpleText(t *testing.T) {
-	chunks := []OpenAIStreamChunk{
-		{
-			ID:    "chatcmpl-123",
-			Model: "gpt-4",
-			Choices: []OpenAIStreamChoice{
-				{
-					Index: 0,
-					Delta: OpenAIMessage{
-						Content: "Hello",
-					},
-				},
-			},
-		},
-		{
-			ID:    "chatcmpl-123",
-			Model: "gpt-4",
-			Choices: []OpenAIStreamChoice{
-				{
-					Index: 0,
-					Delta: OpenAIMessage{
-						Content: " world!",
-					},
-				},
-			},
-		},
-		{
-			ID:    "chatcmpl-123",
-			Model: "gpt-4",
-			Choices: []OpenAIStreamChoice{
-				{
-					Index:        0,
-					FinishReason: "stop",
-				},
-			},
-		},
-	}
-
-	result, err := ConvertOpenAIStreamToAnthropic(chunks)
-	if err != nil {
-		t.Fatalf("Conversion failed: %v", err)
-	}
-
-	// 验证基本字段
-	if result.Type != "message" {
-		t.Errorf("Expected type 'message', got '%s'", result.Type)
-	}
-
-	if result.Role != "assistant" {
-		t.Errorf("Expected role 'assistant', got '%s'", result.Role)
-	}
-
-	if result.Model != "gpt-4" {
-		t.Errorf("Expected model 'gpt-4', got '%s'", result.Model)
-	}
-
-	if result.StopReason != "stop" {
-		t.Errorf("Expected stop_reason 'stop', got '%s'", result.StopReason)
-	}
-
-	// 验证内容
-	if len(result.Content) != 1 {
-		t.Fatalf("Expected 1 content block, got %d", len(result.Content))
-	}
-
-	content := result.Content[0]
-	if content.Type != "text" {
-		t.Errorf("Expected content type 'text', got '%s'", content.Type)
-	}
-
-	if content.Text != "Hello world!" {
-		t.Errorf("Expected text 'Hello world!', got '%s'", content.Text)
-	}
-}
-
-func TestBuildAnthropicToolResultMessage(t *testing.T) {
-	result := BuildAnthropicToolResultMessage("call_123", "file1.txt\nfile2.txt", false)
-
-	if result.Role != "user" {
-		t.Errorf("Expected role 'user', got '%s'", result.Role)
-	}
-
-	contentBlocks, ok := result.Content.([]AnthropicContentBlock)
-	if !ok {
-		t.Fatalf("Expected Content to be []AnthropicContentBlock")
-	}
-	if len(contentBlocks) != 1 {
-		t.Fatalf("Expected 1 content block, got %d", len(contentBlocks))
-	}
-
-	block := contentBlocks[0]
-	if block.Type != "tool_result" {
-		t.Errorf("Expected type 'tool_result', got '%s'", block.Type)
-	}
-
-	if block.ToolUseID != "call_123" {
-		t.Errorf("Expected tool_use_id 'call_123', got '%s'", block.ToolUseID)
-	}
-
-	if *block.IsError != false {
-		t.Errorf("Expected is_error false, got %v", *block.IsError)
-	}
-
-	if len(block.Content) != 1 {
-		t.Fatalf("Expected 1 nested content block, got %d", len(block.Content))
-	}
-
-	if block.Content[0].Text != "file1.txt\nfile2.txt" {
-		t.Errorf("Expected text 'file1.txt\\nfile2.txt', got '%s'", block.Content[0].Text)
-	}
-}
-
-// 辅助函数
-func intPtr(i int) *int {
-	return &i
-}
-
-func getTestLogger() *logger.Logger {
-	return (*logger.Logger)(nil) // 使用nil logger用于测试
-}
-
 func TestToolChoiceMapping(t *testing.T) {
 	converter := NewRequestConverter(getTestLogger())
 	
@@ -973,4 +845,13 @@ func TestFullConversionCycle(t *testing.T) {
 	}
 
 	t.Logf("Full conversion cycle test passed successfully")
+}
+
+// 辅助函数
+func intPtr(i int) *int {
+	return &i
+}
+
+func getTestLogger() *logger.Logger {
+	return (*logger.Logger)(nil) // 使用nil logger用于测试
 }

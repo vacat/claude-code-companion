@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"sync"
@@ -96,15 +95,7 @@ func GetHealthClient() *http.Client {
 	return healthClient
 }
 
-// CreateRequest creates a new HTTP request with proper error handling
-func CreateRequest(method, url string, body []byte) (*http.Request, error) {
-	if body != nil {
-		return http.NewRequest(method, url, bytes.NewReader(body))
-	}
-	return http.NewRequest(method, url, nil)
-}
-
-// parseTimeoutWithDefault parses a timeout string with fallback to default
+// ParseTimeoutWithDefault parses a timeout string with fallback to default
 func ParseTimeoutWithDefault(value, fieldName string, defaultDuration time.Duration) (time.Duration, error) {
 	if value == "" {
 		return defaultDuration, nil
@@ -116,11 +107,3 @@ func ParseTimeoutWithDefault(value, fieldName string, defaultDuration time.Durat
 	return d, nil
 }
 
-// ResetHTTPClients allows resetting the global HTTP clients (useful for testing)
-func ResetHTTPClients() {
-	clientMutex.Lock()
-	defer clientMutex.Unlock()
-	
-	proxyClient = nil
-	healthClient = nil
-}

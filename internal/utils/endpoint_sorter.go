@@ -108,12 +108,6 @@ func FilterEnabledEndpoints(endpoints []EndpointSorter) []EndpointSorter {
 	})
 }
 
-// FilterAvailableEndpoints filters out unavailable endpoints
-func FilterAvailableEndpoints(endpoints []EndpointSorter) []EndpointSorter {
-	return FilterEndpoints(endpoints, func(ep EndpointSorter) bool {
-		return ep.IsAvailable()
-	})
-}
 
 // FilterEndpoints applies a generic filter predicate to endpoints
 func FilterEndpoints(endpoints []EndpointSorter, predicate func(EndpointSorter) bool) []EndpointSorter {
