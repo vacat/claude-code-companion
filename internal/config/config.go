@@ -17,8 +17,8 @@ type Config struct {
 	Logging     LoggingConfig     `yaml:"logging"`
 	Validation  ValidationConfig  `yaml:"validation"`
 	WebAdmin    WebAdminConfig    `yaml:"web_admin"`
-	Tagging     TaggingConfig     `yaml:"tagging"`     // 新增：Tag系统配置
-	Timeouts    TimeoutConfig     `yaml:"timeouts"`    // 新增：超时配置
+	Tagging     TaggingConfig     `yaml:"tagging"`     // 标签系统配置（永远启用）
+	Timeouts    TimeoutConfig     `yaml:"timeouts"`    // 超时配置
 }
 
 type ServerConfig struct {
@@ -100,9 +100,8 @@ type HealthCheckTimeoutConfig struct {
 	CheckInterval    string `yaml:"check_interval"`     // 健康检查间隔，默认30s
 }
 
-// 新增：Tag系统配置结构
+// Tag系统配置结构 (永远启用)
 type TaggingConfig struct {
-	Enabled         bool            `yaml:"enabled"`
 	PipelineTimeout string          `yaml:"pipeline_timeout"`
 	Taggers         []TaggerConfig  `yaml:"taggers"`
 }
@@ -120,7 +119,19 @@ type TaggerConfig struct {
 func LoadConfig(filename string) (*Config, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %v", err)
+		if os.IsNotExist(err) {
+			// 配置文件不存在，生成默认配置文件
+			if err := generateDefaultConfig(filename); err != nil {
+				return nil, fmt.Errorf("failed to generate default config file: %v", err)
+			}
+			// 重新读取生成的配置文件
+			data, err = os.ReadFile(filename)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read generated config file: %v", err)
+			}
+		} else {
+			return nil, fmt.Errorf("failed to read config file: %v", err)
+		}
 	}
 
 	var config Config
@@ -133,6 +144,98 @@ func LoadConfig(filename string) (*Config, error) {
 	}
 
 	return &config, nil
+}
+
+// generateDefaultConfig 生成默认配置文件
+func generateDefaultConfig(filename string) error {
+	defaultConfig := &Config{
+		Server: ServerConfig{
+			Host: "127.0.0.1",
+			Port: 8080,
+		},
+		Endpoints: []EndpointConfig{
+			{
+				Name:         "example-anthropic",
+				URL:          "https://api.anthropic.com",
+				EndpointType: "anthropic",
+				AuthType:     "api_key",
+				AuthValue:    "YOUR_ANTHROPIC_API_KEY_HERE",
+				Enabled:      false, // 默认禁用，需要用户配置
+				Priority:     1,
+				Tags:         []string{},
+			},
+			{
+				Name:         "example-openai",
+				URL:          "https://api.openai.com",
+				EndpointType: "openai",
+				PathPrefix:   "/v1/chat/completions",
+				AuthType:     "auth_token",
+				AuthValue:    "YOUR_OPENAI_API_KEY_HERE",
+				Enabled:      false, // 默认禁用，需要用户配置
+				Priority:     2,
+				Tags:         []string{},
+			},
+		},
+		Logging: LoggingConfig{
+			Level:           "info",
+			LogRequestTypes: "failed",
+			LogRequestBody:  "truncated",
+			LogResponseBody: "truncated",
+			LogDirectory:    "./logs",
+		},
+		Validation: ValidationConfig{
+			StrictAnthropicFormat: false,
+			ValidateStreaming:     false,
+			DisconnectOnInvalid:   false,
+		},
+		WebAdmin: WebAdminConfig{
+			Enabled: true,
+		},
+		Tagging: TaggingConfig{
+			PipelineTimeout: "5s",
+			Taggers:         []TaggerConfig{},
+		},
+		Timeouts: TimeoutConfig{
+			Proxy: ProxyTimeoutConfig{
+				TLSHandshake:   "10s",
+				ResponseHeader: "60s",
+				IdleConnection: "90s",
+				OverallRequest: "", // 默认无限制，支持流式响应
+			},
+			HealthCheck: HealthCheckTimeoutConfig{
+				TLSHandshake:   "5s",
+				ResponseHeader: "30s",
+				IdleConnection: "60s",
+				OverallRequest: "30s",
+				CheckInterval:  "30s",
+			},
+		},
+	}
+
+	// 序列化为YAML
+	data, err := yaml.Marshal(defaultConfig)
+	if err != nil {
+		return fmt.Errorf("failed to marshal default config: %v", err)
+	}
+
+	// 添加注释说明
+	header := `# Claude API Proxy 默认配置文件
+# 这是自动生成的默认配置文件，请根据需要修改各项配置
+# 注意：endpoints 中的示例端点默认为禁用状态，需要配置正确的 API 密钥并启用
+
+`
+
+	finalData := header + string(data)
+
+	// 写入配置文件
+	if err := os.WriteFile(filename, []byte(finalData), 0644); err != nil {
+		return fmt.Errorf("failed to write default config file: %v", err)
+	}
+
+	fmt.Printf("默认配置文件已生成: %s\n", filename)
+	fmt.Println("请编辑配置文件，设置正确的端点信息和 API 密钥后重新启动服务")
+
+	return nil
 }
 
 // ValidateConfig 导出的配置验证函数

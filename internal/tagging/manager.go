@@ -25,21 +25,19 @@ func NewManager() *Manager {
 		registry: NewTagRegistry(),
 		pipeline: NewTaggerPipeline(5 * time.Second), // 默认5秒超时
 		factory:  builtin.NewBuiltinTaggerFactory(),
-		enabled:  false,
+		enabled:  true, // tagging系统永远启用
 	}
 }
 
 // Initialize 根据配置初始化tagging系统
 func (m *Manager) Initialize(config *config.TaggingConfig) error {
 	if config == nil {
-		m.enabled = false
+		// 即使没有配置，tagging系统也保持启用状态，只是没有taggers
+		m.enabled = true
 		return nil
 	}
 
-	m.enabled = config.Enabled
-	if !m.enabled {
-		return nil // tagging系统被禁用
-	}
+	m.enabled = true // tagging系统永远启用
 
 	// 清理之前的注册信息
 	m.registry.Clear()
