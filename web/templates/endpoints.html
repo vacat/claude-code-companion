@@ -65,6 +65,10 @@
         .action-buttons button {
             cursor: pointer;
         }
+        /* 横向按钮间距 */
+        .btn-group .btn:not(:last-child) {
+            margin-right: 4px;
+        }
         /* URL 和路径显示样式 */
         .url-display, .path-display {
             max-width: 200px;
@@ -118,8 +122,7 @@
                                         <th>Tags</th>
                                         <th>状态</th>
                                         <th>启用</th>
-                                        <th>统计</th>
-                                        <th width="140">操作</th>
+                                        <th width="160">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="endpoint-list">
@@ -185,15 +188,8 @@
                                                 </span>
                                             {{end}}
                                         </td>
-                                        <td>
-                                            <small>
-                                                <div><strong>总请求:</strong> {{.TotalRequests}}</div>
-                                                <div><strong>成功:</strong> {{.SuccessRequests}}</div>
-                                                <div><strong>成功率:</strong> {{.SuccessRate}}</div>
-                                            </small>
-                                        </td>
                                         <td class="action-buttons">
-                                            <div class="btn-group-vertical btn-group-sm">
+                                            <div class="btn-group btn-group-sm" role="group">
                                                 <button class="btn btn-outline-primary btn-sm" 
                                                         onclick="event.stopPropagation(); showEditEndpointModal('{{.Name}}')"
                                                         title="编辑">
@@ -426,7 +422,6 @@
 
         function updateEndpointRowStatus(row, endpoint) {
             const statusCell = row.children[8]; // 调整索引：增加了类型和路径列
-            const statsCell = row.children[10];  // 调整索引
             
             // Update status
             let statusBadge = '';
@@ -438,19 +433,6 @@
                 statusBadge = '<span class="badge bg-warning"><i class="fas fa-clock"></i> 检测中</span>';
             }
             statusCell.innerHTML = statusBadge;
-            
-            // Update statistics - 使用正确的字段名
-            const successRate = endpoint.total_requests > 0 
-                ? (endpoint.success_requests / endpoint.total_requests * 100).toFixed(1) + '%' 
-                : 'N/A';
-            
-            statsCell.innerHTML = `
-                <small>
-                    <div><strong>总请求:</strong> ${endpoint.total_requests || 0}</div>
-                    <div><strong>成功:</strong> ${endpoint.success_requests || 0}</div>
-                    <div><strong>成功率:</strong> ${successRate}</div>
-                </small>
-            `;
         }
 
         function refreshTable() {
@@ -524,10 +506,6 @@
                     ? '<span class="badge bg-primary">api_key</span>'
                     : '<span class="badge bg-secondary">auth_token</span>';
                 
-                // 计算成功率
-                const successRate = endpoint.total_requests > 0 
-                    ? (endpoint.success_requests / endpoint.total_requests * 100).toFixed(1) + '%' 
-                    : 'N/A';
                 
                 // 构建tags显示
                 let tagsDisplay = '';
@@ -552,15 +530,8 @@
                     <td>${tagsDisplay}</td>
                     <td>${statusBadge}</td>
                     <td>${enabledBadge}</td>
-                    <td>
-                        <small>
-                            <div><strong>总请求:</strong> ${endpoint.total_requests || 0}</div>
-                            <div><strong>成功:</strong> ${endpoint.success_requests || 0}</div>
-                            <div><strong>成功率:</strong> ${successRate}</div>
-                        </small>
-                    </td>
                     <td class="action-buttons">
-                        <div class="btn-group-vertical btn-group-sm">
+                        <div class="btn-group btn-group-sm" role="group">
                             <button class="btn btn-outline-primary btn-sm" 
                                     onclick="event.stopPropagation(); showEditEndpointModal('${endpoint.name}')"
                                     title="编辑">
