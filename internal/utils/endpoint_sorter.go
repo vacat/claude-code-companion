@@ -40,7 +40,11 @@ func SortEndpointsByTagsAndPriority(endpoints []EndpointSorter, requiredTags []s
 // 返回值：0=完全匹配（最高优先级），1=万用端点（中等优先级），2=不匹配（最低优先级）
 func getEndpointTier(endpointTags, requiredTags []string) int {
 	if len(requiredTags) == 0 {
-		return 0 // 无标签要求时，所有端点同级
+		// 无标签要求时，只有无标签端点为最高优先级，有标签端点排除
+		if len(endpointTags) == 0 {
+			return 0 // 万用端点，最高优先级
+		}
+		return 999 // 有标签端点排除，设为最低优先级
 	}
 	
 	if matchesAllTags(endpointTags, requiredTags) {
@@ -76,7 +80,14 @@ func matchesAllTags(endpointTags, requiredTags []string) bool {
 // FilterEndpointsForTags 过滤出满足标签要求的 endpoint
 func FilterEndpointsForTags(endpoints []EndpointSorter, requiredTags []string) []EndpointSorter {
 	if len(requiredTags) == 0 {
-		return endpoints // 如果没有标签要求，返回所有 endpoint
+		// 如果没有标签要求，只返回无标签的endpoint
+		filtered := make([]EndpointSorter, 0)
+		for _, ep := range endpoints {
+			if len(ep.GetTags()) == 0 {
+				filtered = append(filtered, ep)
+			}
+		}
+		return filtered
 	}
 	
 	filtered := make([]EndpointSorter, 0)
@@ -123,21 +134,9 @@ func SortEndpointsByPriority(endpoints []EndpointSorter) {
 }
 
 // SelectBestEndpoint selects the first available endpoint from sorted, enabled endpoints
+// 现在使用和SelectBestEndpointWithTags相同的逻辑，但requiredTags为空
 func SelectBestEndpoint(endpoints []EndpointSorter) EndpointSorter {
-	enabled := FilterEnabledEndpoints(endpoints)
-	if len(enabled) == 0 {
-		return nil
-	}
-
-	SortEndpointsByPriority(enabled)
-	
-	for _, ep := range enabled {
-		if ep.IsAvailable() {
-			return ep
-		}
-	}
-
-	return nil
+	return SelectBestEndpointWithTags(endpoints, []string{})
 }
 
 // SelectBestEndpointWithTags selects the first available endpoint matching the tags
