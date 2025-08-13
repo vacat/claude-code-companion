@@ -15,210 +15,169 @@
         <div class="row">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">服务器配置</h5>
-                        <small class="text-muted">当前配置（只读）</small>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0">服务器配置</h5>
+                            <small class="text-muted">编辑配置并保存</small>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="saveSettings()">
+                                <i class="fas fa-save"></i> 保存配置
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm ms-2" onclick="resetSettings()">
+                                <i class="fas fa-undo"></i> 重置
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-12">
                                 <h6>服务器设置</h6>
-                                <table class="table table-sm">
-                                    <tr>
-                                        <th>主机地址:</th>
-                                        <td><code>{{.Config.Server.Host}}</code></td>
-                                    </tr>
-                                    <tr>
-                                        <th>代理端口:</th>
-                                        <td><code>{{.Config.Server.Port}}</code></td>
-                                    </tr>
-                                </table>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>网页管理设置</h6>
-                                <table class="table table-sm">
-                                    <tr>
-                                        <th>启用:</th>
-                                        <td>
-                                            {{if .Config.WebAdmin.Enabled}}
-                                                <span class="badge bg-success">是</span>
-                                            {{else}}
-                                                <span class="badge bg-secondary">否</span>
-                                            {{end}}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>访问地址:</th>
-                                        <td><code>{{.Config.Server.Host}}:{{.Config.Server.Port}}/admin/</code></td>
-                                    </tr>
-                                </table>
+                                <div class="mb-3">
+                                    <label for="serverHost" class="form-label">主机地址</label>
+                                    <input type="text" class="form-control" id="serverHost" value="{{.Config.Server.Host}}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="serverPort" class="form-label">代理端口</label>
+                                    <input type="number" class="form-control" id="serverPort" value="{{.Config.Server.Port}}" min="1" max="65535">
+                                </div>
                             </div>
                         </div>
 
                         <div class="row mt-4">
-                            <div class="col-md-6">
-                                <h6>标签系统配置</h6>
-                                <table class="table table-sm">
-                                    <tr>
-                                        <th>启用:</th>
-                                        <td>
-                                            {{if .Config.Tagging.Enabled}}
-                                                <span class="badge bg-success">已启用</span>
-                                            {{else}}
-                                                <span class="badge bg-secondary">已禁用</span>
-                                            {{end}}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>管道超时:</th>
-                                        <td><code>{{.Config.Tagging.PipelineTimeout}}</code></td>
-                                    </tr>
-                                    <tr>
-                                        <th>标记器数量:</th>
-                                        <td><span class="badge bg-info">{{len .Config.Tagging.Taggers}}</span></td>
-                                    </tr>
-                                    <tr>
-                                        <th>已启用标记器:</th>
-                                        <td>
-                                            {{$first := true}}
-                                            {{range $tagger := .Config.Tagging.Taggers}}
-                                                {{if $tagger.Enabled}}
-                                                    {{if not $first}}, {{end}}
-                                                    <span class="badge bg-light text-dark">{{$tagger.Name}}</span>
-                                                    {{$first = false}}
-                                                {{end}}
-                                            {{end}}
-                                            {{if $first}}<span class="text-muted">无已启用的标记器</span>{{end}}
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
-                            <div class="col-md-6">
+                            <div class="col-12">
                                 <h6>日志配置</h6>
-                                <table class="table table-sm">
-                                    <tr>
-                                        <th>日志级别:</th>
-                                        <td><code>{{.Config.Logging.Level}}</code></td>
-                                    </tr>
-                                    <tr>
-                                        <th>记录请求类型:</th>
-                                        <td>
-                                            <span class="badge {{if eq .Config.Logging.LogRequestTypes "all"}}bg-info{{else if eq .Config.Logging.LogRequestTypes "failed"}}bg-warning{{else}}bg-success{{end}}">
-                                                {{.Config.Logging.LogRequestTypes}}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>记录请求体:</th>
-                                        <td>
-                                            <span class="badge {{if eq .Config.Logging.LogRequestBody "full"}}bg-success{{else if eq .Config.Logging.LogRequestBody "truncated"}}bg-warning{{else}}bg-secondary{{end}}">
-                                                {{.Config.Logging.LogRequestBody}}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>记录响应体:</th>
-                                        <td>
-                                            <span class="badge {{if eq .Config.Logging.LogResponseBody "full"}}bg-success{{else if eq .Config.Logging.LogResponseBody "truncated"}}bg-warning{{else}}bg-secondary{{end}}">
-                                                {{.Config.Logging.LogResponseBody}}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>日志目录:</th>
-                                        <td><code>{{.Config.Logging.LogDirectory}}</code></td>
-                                    </tr>
-                                </table>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>校验配置</h6>
-                                <table class="table table-sm">
-                                    <tr>
-                                        <th>严格 Anthropic 格式:</th>
-                                        <td>
-                                            {{if .Config.Validation.StrictAnthropicFormat}}
-                                                <span class="badge bg-success">已启用</span>
-                                            {{else}}
-                                                <span class="badge bg-secondary">已禁用</span>
-                                            {{end}}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>校验流式响应:</th>
-                                        <td>
-                                            {{if .Config.Validation.ValidateStreaming}}
-                                                <span class="badge bg-success">已启用</span>
-                                            {{else}}
-                                                <span class="badge bg-secondary">已禁用</span>
-                                            {{end}}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>无效时断开连接:</th>
-                                        <td>
-                                            {{if .Config.Validation.DisconnectOnInvalid}}
-                                                <span class="badge bg-warning">是</span>
-                                            {{else}}
-                                                <span class="badge bg-secondary">否</span>
-                                            {{end}}
-                                        </td>
-                                    </tr>
-                                </table>
+                                <div class="mb-3">
+                                    <label for="logLevel" class="form-label">日志级别</label>
+                                    <select class="form-select" id="logLevel">
+                                        <option value="debug" {{if eq .Config.Logging.Level "debug"}}selected{{end}}>Debug</option>
+                                        <option value="info" {{if eq .Config.Logging.Level "info"}}selected{{end}}>Info</option>
+                                        <option value="warn" {{if eq .Config.Logging.Level "warn"}}selected{{end}}>Warn</option>
+                                        <option value="error" {{if eq .Config.Logging.Level "error"}}selected{{end}}>Error</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="logRequestTypes" class="form-label">记录请求类型</label>
+                                    <select class="form-select" id="logRequestTypes">
+                                        <option value="all" {{if eq .Config.Logging.LogRequestTypes "all"}}selected{{end}}>全部</option>
+                                        <option value="failed" {{if eq .Config.Logging.LogRequestTypes "failed"}}selected{{end}}>仅失败</option>
+                                        <option value="success" {{if eq .Config.Logging.LogRequestTypes "success"}}selected{{end}}>仅成功</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="logRequestBody" class="form-label">记录请求体</label>
+                                    <select class="form-select" id="logRequestBody">
+                                        <option value="none" {{if eq .Config.Logging.LogRequestBody "none"}}selected{{end}}>不记录</option>
+                                        <option value="truncated" {{if eq .Config.Logging.LogRequestBody "truncated"}}selected{{end}}>截断</option>
+                                        <option value="full" {{if eq .Config.Logging.LogRequestBody "full"}}selected{{end}}>完整</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="logResponseBody" class="form-label">记录响应体</label>
+                                    <select class="form-select" id="logResponseBody">
+                                        <option value="none" {{if eq .Config.Logging.LogResponseBody "none"}}selected{{end}}>不记录</option>
+                                        <option value="truncated" {{if eq .Config.Logging.LogResponseBody "truncated"}}selected{{end}}>截断</option>
+                                        <option value="full" {{if eq .Config.Logging.LogResponseBody "full"}}selected{{end}}>完整</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="logDirectory" class="form-label">日志目录</label>
+                                    <input type="text" class="form-control" id="logDirectory" value="{{.Config.Logging.LogDirectory}}">
+                                </div>
                             </div>
                         </div>
 
                         <div class="row mt-4">
-                            <div class="col-md-6">
-                                <h6>代理超时配置</h6>
-                                <table class="table table-sm">
-                                    <tr>
-                                        <th>TLS握手超时:</th>
-                                        <td><code>{{.Config.Timeouts.Proxy.TLSHandshake}}</code></td>
-                                    </tr>
-                                    <tr>
-                                        <th>响应头超时:</th>
-                                        <td><code>{{.Config.Timeouts.Proxy.ResponseHeader}}</code></td>
-                                    </tr>
-                                    <tr>
-                                        <th>空闲连接超时:</th>
-                                        <td><code>{{.Config.Timeouts.Proxy.IdleConnection}}</code></td>
-                                    </tr>
-                                    <tr>
-                                        <th>整体请求超时:</th>
-                                        <td>
-                                            {{if .Config.Timeouts.Proxy.OverallRequest}}
-                                                <code>{{.Config.Timeouts.Proxy.OverallRequest}}</code>
-                                            {{else}}
-                                                <span class="badge bg-info">无限制</span>
-                                            {{end}}
-                                        </td>
-                                    </tr>
-                                </table>
+                            <div class="col-12">
+                                <h6>校验配置</h6>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="strictAnthropicFormat" {{if .Config.Validation.StrictAnthropicFormat}}checked{{end}}>
+                                        <label class="form-check-label" for="strictAnthropicFormat">
+                                            严格 Anthropic 格式校验
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="validateStreaming" {{if .Config.Validation.ValidateStreaming}}checked{{end}}>
+                                        <label class="form-check-label" for="validateStreaming">
+                                            校验流式响应
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="disconnectOnInvalid" {{if .Config.Validation.DisconnectOnInvalid}}checked{{end}}>
+                                        <label class="form-check-label" for="disconnectOnInvalid">
+                                            无效时断开连接
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-md-6">
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <h6>代理超时配置</h6>
+                                <div class="mb-3">
+                                    <label for="proxyTLSHandshake" class="form-label">TLS握手超时</label>
+                                    <input type="text" class="form-control" id="proxyTLSHandshake" value="{{.Config.Timeouts.Proxy.TLSHandshake}}" placeholder="10s">
+                                    <div class="form-text">请使用Go duration格式</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="proxyResponseHeader" class="form-label">响应头超时</label>
+                                    <input type="text" class="form-control" id="proxyResponseHeader" value="{{.Config.Timeouts.Proxy.ResponseHeader}}" placeholder="60s">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="proxyIdleConnection" class="form-label">空闲连接超时</label>
+                                    <input type="text" class="form-control" id="proxyIdleConnection" value="{{.Config.Timeouts.Proxy.IdleConnection}}" placeholder="90s">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="proxyOverallRequest" class="form-label">整体请求超时</label>
+                                    <input type="text" class="form-control" id="proxyOverallRequest" value="{{.Config.Timeouts.Proxy.OverallRequest}}" placeholder="留空表示无限制">
+                                    <div class="form-text">留空支持流式响应</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
                                 <h6>健康检查超时配置</h6>
-                                <table class="table table-sm">
-                                    <tr>
-                                        <th>TLS握手超时:</th>
-                                        <td><code>{{.Config.Timeouts.HealthCheck.TLSHandshake}}</code></td>
-                                    </tr>
-                                    <tr>
-                                        <th>响应头超时:</th>
-                                        <td><code>{{.Config.Timeouts.HealthCheck.ResponseHeader}}</code></td>
-                                    </tr>
-                                    <tr>
-                                        <th>空闲连接超时:</th>
-                                        <td><code>{{.Config.Timeouts.HealthCheck.IdleConnection}}</code></td>
-                                    </tr>
-                                    <tr>
-                                        <th>整体请求超时:</th>
-                                        <td><code>{{.Config.Timeouts.HealthCheck.OverallRequest}}</code></td>
-                                    </tr>
-                                    <tr>
-                                        <th>检查间隔:</th>
-                                        <td><code>{{.Config.Timeouts.HealthCheck.CheckInterval}}</code></td>
-                                    </tr>
-                                </table>
+                                <div class="mb-3">
+                                    <label for="healthCheckTLSHandshake" class="form-label">TLS握手超时</label>
+                                    <input type="text" class="form-control" id="healthCheckTLSHandshake" value="{{.Config.Timeouts.HealthCheck.TLSHandshake}}" placeholder="5s">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="healthCheckResponseHeader" class="form-label">响应头超时</label>
+                                    <input type="text" class="form-control" id="healthCheckResponseHeader" value="{{.Config.Timeouts.HealthCheck.ResponseHeader}}" placeholder="30s">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="healthCheckIdleConnection" class="form-label">空闲连接超时</label>
+                                    <input type="text" class="form-control" id="healthCheckIdleConnection" value="{{.Config.Timeouts.HealthCheck.IdleConnection}}" placeholder="60s">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="healthCheckOverallRequest" class="form-label">整体请求超时</label>
+                                    <input type="text" class="form-control" id="healthCheckOverallRequest" value="{{.Config.Timeouts.HealthCheck.OverallRequest}}" placeholder="30s">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="healthCheckInterval" class="form-label">检查间隔</label>
+                                    <input type="text" class="form-control" id="healthCheckInterval" value="{{.Config.Timeouts.HealthCheck.CheckInterval}}" placeholder="30s">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 底部按钮 -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-secondary" onclick="resetSettings()">
+                                        <i class="fas fa-undo"></i> 重置
+                                    </button>
+                                    <button type="button" class="btn btn-primary" onclick="saveSettings()">
+                                        <i class="fas fa-save"></i> 保存配置
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -230,6 +189,134 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/shared.js"></script>
+    
+    <script>
+        let originalConfig = null;
+        
+        // 页面加载时保存原始配置
+        document.addEventListener('DOMContentLoaded', function() {
+            originalConfig = collectFormData();
+        });
+        
+        function collectFormData() {
+            return {
+                server: {
+                    host: document.getElementById('serverHost').value,
+                    port: parseInt(document.getElementById('serverPort').value)
+                },
+                logging: {
+                    level: document.getElementById('logLevel').value,
+                    log_request_types: document.getElementById('logRequestTypes').value,
+                    log_request_body: document.getElementById('logRequestBody').value,
+                    log_response_body: document.getElementById('logResponseBody').value,
+                    log_directory: document.getElementById('logDirectory').value
+                },
+                validation: {
+                    strict_anthropic_format: document.getElementById('strictAnthropicFormat').checked,
+                    validate_streaming: document.getElementById('validateStreaming').checked,
+                    disconnect_on_invalid: document.getElementById('disconnectOnInvalid').checked
+                },
+                timeouts: {
+                    proxy: {
+                        tls_handshake: document.getElementById('proxyTLSHandshake').value,
+                        response_header: document.getElementById('proxyResponseHeader').value,
+                        idle_connection: document.getElementById('proxyIdleConnection').value,
+                        overall_request: document.getElementById('proxyOverallRequest').value
+                    },
+                    health_check: {
+                        tls_handshake: document.getElementById('healthCheckTLSHandshake').value,
+                        response_header: document.getElementById('healthCheckResponseHeader').value,
+                        idle_connection: document.getElementById('healthCheckIdleConnection').value,
+                        overall_request: document.getElementById('healthCheckOverallRequest').value,
+                        check_interval: document.getElementById('healthCheckInterval').value
+                    }
+                }
+            };
+        }
+        
+        function saveSettings() {
+            const config = collectFormData();
+            
+            // 显示加载状态
+            const saveBtn = document.querySelector('button[onclick="saveSettings()"]');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+            saveBtn.disabled = true;
+            
+            fetch('/admin/api/settings', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // 更新原始配置
+                originalConfig = config;
+                
+                // 显示成功消息
+                showAlert('配置已保存！配置文件已更新，重启服务后生效。', 'success');
+            })
+            .catch(error => {
+                console.error('Error saving settings:', error);
+                showAlert('保存失败: ' + error.message, 'danger');
+            })
+            .finally(() => {
+                // 恢复按钮状态
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            });
+        }
+        
+        function resetSettings() {
+            if (!originalConfig) return;
+            
+            // 还原表单值
+            document.getElementById('serverHost').value = originalConfig.server.host;
+            document.getElementById('serverPort').value = originalConfig.server.port;
+            document.getElementById('logLevel').value = originalConfig.logging.level;
+            document.getElementById('logRequestTypes').value = originalConfig.logging.log_request_types;
+            document.getElementById('logRequestBody').value = originalConfig.logging.log_request_body;
+            document.getElementById('logResponseBody').value = originalConfig.logging.log_response_body;
+            document.getElementById('logDirectory').value = originalConfig.logging.log_directory;
+            document.getElementById('strictAnthropicFormat').checked = originalConfig.validation.strict_anthropic_format;
+            document.getElementById('validateStreaming').checked = originalConfig.validation.validate_streaming;
+            document.getElementById('disconnectOnInvalid').checked = originalConfig.validation.disconnect_on_invalid;
+            document.getElementById('proxyTLSHandshake').value = originalConfig.timeouts.proxy.tls_handshake;
+            document.getElementById('proxyResponseHeader').value = originalConfig.timeouts.proxy.response_header;
+            document.getElementById('proxyIdleConnection').value = originalConfig.timeouts.proxy.idle_connection;
+            document.getElementById('proxyOverallRequest').value = originalConfig.timeouts.proxy.overall_request;
+            document.getElementById('healthCheckTLSHandshake').value = originalConfig.timeouts.health_check.tls_handshake;
+            document.getElementById('healthCheckResponseHeader').value = originalConfig.timeouts.health_check.response_header;
+            document.getElementById('healthCheckIdleConnection').value = originalConfig.timeouts.health_check.idle_connection;
+            document.getElementById('healthCheckOverallRequest').value = originalConfig.timeouts.health_check.overall_request;
+            document.getElementById('healthCheckInterval').value = originalConfig.timeouts.health_check.check_interval;
+        }
+        
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            // 自动消失
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+    </script>
 
     {{template "footer.html" .}}
 </body>

@@ -812,3 +812,54 @@ func (s *AdminServer) handleTestModelRewrite(c *gin.Context) {
 		"rewrite_applied": matched,
 	})
 }
+
+// handleUpdateSettings handles updating server settings
+func (s *AdminServer) handleUpdateSettings(c *gin.Context) {
+	// 定义请求结构
+	type SettingsRequest struct {
+		Server     config.ServerConfig         `json:"server"`
+		Logging    config.LoggingConfig        `json:"logging"`
+		Validation config.ValidationConfig    `json:"validation"`
+		Timeouts   config.TimeoutConfig        `json:"timeouts"`
+	}
+
+	var request SettingsRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request format: " + err.Error(),
+		})
+		return
+	}
+
+	// 创建新的配置，保持现有的端点和其他配置不变
+	newConfig := *s.config
+	newConfig.Server = request.Server
+	newConfig.Logging = request.Logging
+	newConfig.Validation = request.Validation
+	newConfig.Timeouts = request.Timeouts
+
+	// 验证新配置
+	if err := config.ValidateConfig(&newConfig); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Configuration validation failed: " + err.Error(),
+		})
+		return
+	}
+
+	// 保存配置到文件
+	if err := config.SaveConfig(&newConfig, s.configFilePath); err != nil {
+		s.logger.Error("Failed to save configuration file", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to save configuration file: " + err.Error(),
+		})
+		return
+	}
+
+	// 更新内存中的配置
+	s.config = &newConfig
+
+	s.logger.Info("Settings updated successfully")
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Settings updated successfully",
+	})
+}

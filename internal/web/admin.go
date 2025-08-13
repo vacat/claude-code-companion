@@ -153,6 +153,7 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 		api.GET("/logs/stats", s.handleGetLogStats)
 		api.PUT("/config", s.handleHotUpdateConfig)
 		api.GET("/config", s.handleGetConfig)
+		api.PUT("/settings", s.handleUpdateSettings)
 	}
 }
 
