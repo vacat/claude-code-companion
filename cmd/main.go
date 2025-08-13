@@ -62,9 +62,7 @@ func main() {
 
 	fmt.Printf("\n=== Claude API Proxy Server v%s ===\n", Version)
 	fmt.Printf("Proxy Server: http://%s:%d\n", cfg.Server.Host, cfg.Server.Port)
-	if cfg.WebAdmin.Enabled {
-		fmt.Printf("Admin Interface: http://%s:%d/admin/\n", cfg.Server.Host, cfg.Server.Port)
-	}
+	fmt.Printf("Admin Interface: http://%s:%d/admin/\n", cfg.Server.Host, cfg.Server.Port)
 	fmt.Printf("Configuration File: %s\n", *configFile)
 	fmt.Printf("\nPress Ctrl+C to stop the server...\n\n")
 

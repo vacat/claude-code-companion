@@ -60,11 +60,8 @@ func NewServer(cfg *config.Config, configFilePath string, buildVersion string) (
 	// 初始化格式转换器
 	converter := conversion.NewConverter(log)
 
-	// 创建管理界面服务器（如果启用）
-	var adminServer *web.AdminServer
-	if cfg.WebAdmin.Enabled {
-		adminServer = web.NewAdminServer(cfg, endpointManager, taggingManager, log, configFilePath, buildVersion)
-	}
+	// 创建管理界面服务器（永远启用）
+	adminServer := web.NewAdminServer(cfg, endpointManager, taggingManager, log, configFilePath, buildVersion)
 
 	server := &Server{
 		config:          cfg,
@@ -80,9 +77,7 @@ func NewServer(cfg *config.Config, configFilePath string, buildVersion string) (
 	}
 
 	// 设置热更新处理器
-	if adminServer != nil {
-		adminServer.SetHotUpdateHandler(server)
-	}
+	adminServer.SetHotUpdateHandler(server)
 
 	// 让端点管理器使用同一个健康检查器
 	endpointManager.SetHealthChecker(healthChecker)
@@ -98,9 +93,7 @@ func (s *Server) setupRoutes() {
 	s.router.Use(gin.Recovery())
 
 	// 注册管理界面路由（不需要认证）
-	if s.adminServer != nil {
-		s.adminServer.RegisterRoutes(s.router)
-	}
+	s.adminServer.RegisterRoutes(s.router)
 
 	// 为 API 端点添加日志中间件
 	apiGroup := s.router.Group("/v1")

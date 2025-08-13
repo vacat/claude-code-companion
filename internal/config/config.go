@@ -16,7 +16,6 @@ type Config struct {
 	Endpoints   []EndpointConfig  `yaml:"endpoints"`
 	Logging     LoggingConfig     `yaml:"logging"`
 	Validation  ValidationConfig  `yaml:"validation"`
-	WebAdmin    WebAdminConfig    `yaml:"web_admin"`
 	Tagging     TaggingConfig     `yaml:"tagging"`     // 标签系统配置（永远启用）
 	Timeouts    TimeoutConfig     `yaml:"timeouts"`    // 超时配置
 }
@@ -69,10 +68,6 @@ type ValidationConfig struct {
 	StrictAnthropicFormat bool `yaml:"strict_anthropic_format"`
 	ValidateStreaming     bool `yaml:"validate_streaming"`
 	DisconnectOnInvalid   bool `yaml:"disconnect_on_invalid"`
-}
-
-type WebAdminConfig struct {
-	Enabled bool `yaml:"enabled"`
 }
 
 // 新增：超时配置结构
@@ -187,9 +182,6 @@ func generateDefaultConfig(filename string) error {
 			StrictAnthropicFormat: false,
 			ValidateStreaming:     false,
 			DisconnectOnInvalid:   false,
-		},
-		WebAdmin: WebAdminConfig{
-			Enabled: true,
 		},
 		Tagging: TaggingConfig{
 			PipelineTimeout: "5s",
