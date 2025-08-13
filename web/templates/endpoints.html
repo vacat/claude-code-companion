@@ -107,7 +107,7 @@
 
     <!-- 添加/编辑端点模态框 -->
     <div class="modal fade" id="endpointModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="endpointModalTitle">添加端点</h5>
@@ -117,45 +117,69 @@
                     <form id="endpointForm">
                         <input type="hidden" id="endpoint-id" />
                         
-                        <div class="mb-3">
-                            <label for="endpoint-name" class="form-label">名称 <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="endpoint-name" required>
+                        <!-- 第一行：名称和启用状态 -->
+                        <div class="row mb-3">
+                            <div class="col-9">
+                                <label for="endpoint-name" class="form-label">名称 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="endpoint-name" required>
+                            </div>
+                            <div class="col-3 d-flex align-items-end">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="endpoint-enabled" checked>
+                                    <label class="form-check-label" for="endpoint-enabled">
+                                        启用
+                                    </label>
+                                </div>
+                            </div>
                         </div>
 
+                        <!-- 第二行：URL -->
                         <div class="mb-3">
                             <label for="endpoint-url" class="form-label">URL <span class="text-danger">*</span></label>
                             <input type="url" class="form-control" id="endpoint-url" required
                                    placeholder="https://api.example.com">
                         </div>
 
-                        <div class="mb-3">
-                            <label for="endpoint-type" class="form-label">端点类型 <span class="text-danger">*</span></label>
-                            <select class="form-select" id="endpoint-type" required onchange="onEndpointTypeChange()">
-                                <option value="anthropic">Anthropic (Claude)</option>
-                                <option value="openai">OpenAI Compatible</option>
-                            </select>
-                            <small class="form-text text-muted">选择端点的API兼容类型</small>
+                        <!-- 第三行：端点类型和路径前缀 -->
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label for="endpoint-type" class="form-label">端点类型 <span class="text-danger">*</span></label>
+                                <select class="form-select" id="endpoint-type" required onchange="onEndpointTypeChange()">
+                                    <option value="anthropic">Anthropic (Claude)</option>
+                                    <option value="openai">OpenAI Compatible</option>
+                                </select>
+                                <small class="form-text text-muted">选择端点的API兼容类型</small>
+                            </div>
+                            <div class="col-6" id="path-prefix-group" style="display: none;">
+                                <label for="endpoint-path-prefix" class="form-label">路径前缀 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="endpoint-path-prefix" 
+                                       placeholder="/v1/chat/completions">
+                                <small class="form-text text-muted">OpenAI兼容端点的API路径</small>
+                            </div>
                         </div>
 
-                        <div class="mb-3" id="path-prefix-group" style="display: none;">
-                            <label for="endpoint-path-prefix" class="form-label">路径前缀 <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="endpoint-path-prefix" 
-                                   placeholder="/v1/chat/completions">
-                            <small class="form-text text-muted">OpenAI兼容端点的API路径，如: /v1/chat/completions</small>
+                        <!-- 第四行：认证方式和Tags -->
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label for="endpoint-auth-type" class="form-label">认证方式 <span class="text-danger">*</span></label>
+                                <select class="form-select" id="endpoint-auth-type" required onchange="onAuthTypeChange()">
+                                    <option value="api_key">API Key (x-api-key 请求头)</option>
+                                    <option value="auth_token" selected>Auth Token (Authorization Bearer)</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label for="endpoint-tags" class="form-label">Tags</label>
+                                <input type="text" class="form-control" id="endpoint-tags" 
+                                       placeholder="输入tags，用逗号分隔 (例: api-v1, claude-3)">
+                                <small class="form-text text-muted">留空则为万能endpoint，支持所有tags的请求</small>
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="endpoint-auth-type" class="form-label">认证方式 <span class="text-danger">*</span></label>
-                            <select class="form-select" id="endpoint-auth-type" required onchange="onAuthTypeChange()">
-                                <option value="api_key">API Key (x-api-key 请求头)</option>
-                                <option value="auth_token" selected>Auth Token (Authorization Bearer)</option>
-                            </select>
-                        </div>
-
+                        <!-- 第五行：认证值 -->
                         <div class="mb-3">
                             <label for="endpoint-auth-value" class="form-label">认证值 <span class="text-danger">*</span></label>
                             <div class="input-group">
-                                <textarea class="form-control" id="endpoint-auth-value" rows="3" required
+                                <textarea class="form-control" id="endpoint-auth-value" rows="2" required
                                           placeholder="输入您的 API Key 或 Token"></textarea>
                                 <button class="btn btn-outline-secondary" type="button" id="toggle-auth-visibility" onclick="toggleAuthVisibility()">
                                     <i class="fas fa-eye" id="auth-eye-icon"></i>
@@ -164,12 +188,7 @@
                             <small class="form-text text-muted">认证值默认隐藏以保障安全</small>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="endpoint-tags" class="form-label">Tags</label>
-                            <input type="text" class="form-control" id="endpoint-tags" 
-                                   placeholder="输入tags，用逗号分隔 (例: api-v1, claude-3)">
-                            <small class="form-text text-muted">留空则为万能endpoint，支持所有tags的请求</small>
-                        </div>
+                        <!-- 模型重写配置区域 -->
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <label class="form-label mb-0">模型重写配置</label>
@@ -199,15 +218,6 @@
                                         • 所有Claude: claude-*
                                     </small>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="endpoint-enabled" checked>
-                                <label class="form-check-label" for="endpoint-enabled">
-                                    启用
-                                </label>
                             </div>
                         </div>
                     </form>
