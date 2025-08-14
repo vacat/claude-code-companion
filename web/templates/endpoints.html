@@ -737,6 +737,8 @@
             
             // 设置auth value为星号
             document.getElementById('endpoint-auth-value').value = '*'.repeat(Math.min(endpoint.auth_value.length, 50));
+            document.getElementById('endpoint-auth-value').type = 'password'; // 确保是password类型
+            document.getElementById('endpoint-auth-value').placeholder = '输入您的 API Key 或 Token';
             resetAuthVisibility();
             
             // 加载代理配置
@@ -779,11 +781,13 @@
                 if (originalAuthValue) {
                     authValueField.value = '*'.repeat(Math.min(originalAuthValue.length, 50));
                 }
+                authValueField.type = 'password'; // 设置为password类型
                 eyeIcon.className = 'fas fa-eye';
                 isAuthVisible = false;
             } else {
                 // 显示：显示真实值
                 authValueField.value = originalAuthValue;
+                authValueField.type = 'text'; // 设置为text类型
                 eyeIcon.className = 'fas fa-eye-slash';
                 isAuthVisible = true;
             }

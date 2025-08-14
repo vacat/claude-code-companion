@@ -634,19 +634,7 @@ func (s *AdminServer) handleGetConfig(c *gin.Context) {
 	configCopy := *s.config
 	
 	// 隐藏认证信息的敏感部分
-	for i := range configCopy.Endpoints {
-		if configCopy.Endpoints[i].AuthValue != "" {
-			// 只显示前4个和后4个字符
-			authValue := configCopy.Endpoints[i].AuthValue
-			if len(authValue) > 8 {
-				configCopy.Endpoints[i].AuthValue = authValue[:4] + "****" + authValue[len(authValue)-4:]
-			} else {
-				configCopy.Endpoints[i].AuthValue = "****"
-			}
-		}
-	}
-	
-	// 不再隐藏服务器认证token（已移除）
+	// 直接返回配置，不掩码认证值
 	
 	c.JSON(http.StatusOK, gin.H{
 		"config": configCopy,
