@@ -56,17 +56,17 @@
             <div class="row align-items-center">
                 <div class="col-md-8">
                     <h1 class="display-4 mb-3">
-                        <i class="fas fa-robot"></i> <span data-t="Claude Proxy Help">Claude 代理帮助</span>
+                        <i class="fas fa-robot"></i> <span data-t="claude_proxy_help">Claude 代理帮助</span>
                     </h1>
                     <p class="lead mb-4">
-                        <span data-t="Setup guide for Claude Code with proxy">使用代理设置 Claude Code 的完整指南</span>
+                        <span data-t="setup_guide_claude_code_proxy">使用代理设置 Claude Code 的完整指南</span>
                     </p>
                     <div class="d-flex gap-3">
                         <a href="/admin/" class="btn btn-light btn-lg">
-                            <i class="fas fa-cog"></i> <span data-t="Admin Panel">管理面板</span>
+                            <i class="fas fa-cog"></i> <span data-t="admin_panel">管理面板</span>
                         </a>
                         <a href="#installation" class="btn btn-outline-light btn-lg">
-                            <i class="fas fa-download"></i> <span data-t="Installation Guide">安装指南</span>
+                            <i class="fas fa-download"></i> <span data-t="installation_guide">安装指南</span>
                         </a>
                     </div>
                 </div>
@@ -84,7 +84,7 @@
                 <div class="card-header">
                     <h2 class="h4 mb-0">
                         <i class="fas fa-download text-primary"></i> 
-                        <span data-t="Install Claude Code">安装 Claude Code</span>
+                        <span data-t="install_claude_code">安装 Claude Code</span>
                     </h2>
                 </div>
                 <div class="card-body">
@@ -114,17 +114,17 @@
                     <div class="tab-content" id="osTabContent">
                         <!-- Windows -->
                         <div class="tab-pane fade show active" id="windows" role="tabpanel" aria-labelledby="windows-tab">
-                            <h5><span data-t="Windows Installation">Windows 安装</span></h5>
+                            <h5><span data-t="windows_installation">Windows 安装</span></h5>
                             <p class="text-muted mb-3">
-                                <span data-t="Windows install note">Claude Code 需要 Node.js 18 或更高版本</span>
+                                <span data-t="windows_install_note">Claude Code 需要 Node.js 18 或更高版本</span>
                             </p>
                             <ol>
-                                <li class="mb-2"><span data-t="Method 1: NPM Install">方法 1：NPM 安装（推荐）</span></li>
+                                <li class="mb-2"><span data-t="method1_npm_install">方法 1：NPM 安装（推荐）</span></li>
                             </ol>
                             
                             <div class="position-relative mb-4">
                                 <div class="code-block">
-                                    # <span data-t="Install via NPM">通过 NPM 安装</span><br>
+                                    # <span data-t="install_via_npm">通过 NPM 安装</span><br>
                                     npm install -g @anthropic-ai/claude-code
                                 </div>
                                 <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
@@ -133,12 +133,12 @@
                             </div>
 
                             <ol start="2">
-                                <li class="mb-2"><span data-t="Method 2: Native Install">方法 2：原生安装（Beta）</span></li>
+                                <li class="mb-2"><span data-t="method2_native_install">方法 2：原生安装（Beta）</span></li>
                             </ol>
                             
                             <div class="position-relative">
                                 <div class="code-block">
-                                    # <span data-t="Using PowerShell">使用 PowerShell</span><br>
+                                    # <span data-t="using_powershell">使用 PowerShell</span><br>
                                     irm https://claude.ai/install.ps1 | iex
                                 </div>
                                 <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
@@ -149,17 +149,17 @@
 
                         <!-- macOS -->
                         <div class="tab-pane fade" id="macos" role="tabpanel" aria-labelledby="macos-tab">
-                            <h5><span data-t="macOS Installation">macOS 安装</span></h5>
+                            <h5><span data-t="macos_installation">macOS 安装</span></h5>
                             <p class="text-muted mb-3">
-                                <span data-t="macOS install note">Claude Code 需要 Node.js 18 或更高版本</span>
+                                <span data-t="macos_install_note">Claude Code 需要 Node.js 18 或更高版本</span>
                             </p>
                             <ol>
-                                <li class="mb-2"><span data-t="Method 1: NPM Install">方法 1：NPM 安装（推荐）</span></li>
+                                <li class="mb-2"><span data-t="method1_npm_install">方法 1：NPM 安装（推荐）</span></li>
                             </ol>
 
                             <div class="position-relative mb-4">
                                 <div class="code-block">
-                                    # <span data-t="Install via NPM">通过 NPM 安装</span><br>
+                                    # <span data-t="install_via_npm">通过 NPM 安装</span><br>
                                     npm install -g @anthropic-ai/claude-code
                                 </div>
                                 <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
@@ -168,12 +168,12 @@
                             </div>
 
                             <ol start="2">
-                                <li class="mb-2"><span data-t="Method 2: Native Install">方法 2：原生安装（Beta）</span></li>
+                                <li class="mb-2"><span data-t="method2_native_install">方法 2：原生安装（Beta）</span></li>
                             </ol>
 
                             <div class="position-relative">
                                 <div class="code-block">
-                                    # <span data-t="Install using curl">使用 curl 安装</span><br>
+                                    # <span data-t="install_using_curl">使用 curl 安装</span><br>
                                     curl -fsSL claude.ai/install.sh | bash
                                 </div>
                                 <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
@@ -184,17 +184,17 @@
 
                         <!-- Linux -->
                         <div class="tab-pane fade" id="linux" role="tabpanel" aria-labelledby="linux-tab">
-                            <h5><span data-t="Linux Installation">Linux 安装</span></h5>
+                            <h5><span data-t="linux_installation">Linux 安装</span></h5>
                             <p class="text-muted mb-3">
-                                <span data-t="Linux install note">Claude Code 需要 Node.js 18 或更高版本（仅限NPM方式）</span>
+                                <span data-t="linux_install_note">Claude Code 需要 Node.js 18 或更高版本（仅限NPM方式）</span>
                             </p>
                             <ol>
-                                <li class="mb-2"><span data-t="Method 1: NPM Install">方法 1：NPM 安装（推荐）</span></li>
+                                <li class="mb-2"><span data-t="method1_npm_install">方法 1：NPM 安装（推荐）</span></li>
                             </ol>
 
                             <div class="position-relative mb-4">
                                 <div class="code-block">
-                                    # <span data-t="Install via NPM">通过 NPM 安装</span><br>
+                                    # <span data-t="install_via_npm">通过 NPM 安装</span><br>
                                     npm install -g @anthropic-ai/claude-code
                                 </div>
                                 <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
@@ -203,12 +203,12 @@
                             </div>
 
                             <ol start="2">
-                                <li class="mb-2"><span data-t="Method 2: Native Install">方法 2：原生安装（Beta）</span></li>
+                                <li class="mb-2"><span data-t="method2_native_install">方法 2：原生安装（Beta）</span></li>
                             </ol>
 
                             <div class="position-relative">
                                 <div class="code-block">
-                                    # <span data-t="Install using curl">使用 curl 安装</span><br>
+                                    # <span data-t="install_using_curl">使用 curl 安装</span><br>
                                     curl -fsSL claude.ai/install.sh | bash
                                 </div>
                                 <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
@@ -227,12 +227,12 @@
                 <div class="card-header">
                     <h2 class="h4 mb-0">
                         <i class="fas fa-code text-success"></i> 
-                        <span data-t="Generate Proxy Script">生成代理脚本</span>
+                        <span data-t="generate_proxy_script">生成代理脚本</span>
                     </h2>
                 </div>
                 <div class="card-body">
                     <p class="text-muted mb-4">
-                        <span data-t="Generate script description">生成启动脚本来使用此代理服务器。脚本会自动设置必要的环境变量并启动 Claude Code。</span>
+                        <span data-t="generate_script_description">生成启动脚本来使用此代理服务器。脚本会自动设置必要的环境变量并启动 Claude Code。</span>
                     </p>
 
                     <!-- Script Tabs -->
@@ -262,9 +262,9 @@
                         <!-- Windows Script -->
                         <div class="tab-pane fade show active" id="windows-script" role="tabpanel" aria-labelledby="windows-script-tab">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5><span data-t="Windows Script">Windows 脚本</span> (ccc.bat)</h5>
+                                <h5><span data-t="windows_script">Windows 脚本</span> (ccc.bat)</h5>
                                 <button class="btn btn-success" onclick="downloadScript('windows')">
-                                    <i class="fas fa-download"></i> <span data-t="Download Script">下载脚本</span>
+                                    <i class="fas fa-download"></i> <span data-t="download_script">下载脚本</span>
                                 </button>
                             </div>
                             
@@ -288,7 +288,7 @@
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h5><span data-t="macOS Script">macOS 脚本</span> (ccc.command)</h5>
                                 <button class="btn btn-success" onclick="downloadScript('macos')">
-                                    <i class="fas fa-download"></i> <span data-t="Download Script">下载脚本</span>
+                                    <i class="fas fa-download"></i> <span data-t="download_script">下载脚本</span>
                                 </button>
                             </div>
                             
@@ -312,7 +312,7 @@
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h5><span data-t="Linux Script">Linux 脚本</span> (ccc.sh)</h5>
                                 <button class="btn btn-success" onclick="downloadScript('linux')">
-                                    <i class="fas fa-download"></i> <span data-t="Download Script">下载脚本</span>
+                                    <i class="fas fa-download"></i> <span data-t="download_script">下载脚本</span>
                                 </button>
                             </div>
                             

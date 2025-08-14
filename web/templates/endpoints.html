@@ -19,19 +19,19 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div>
-                            <h5 class="mb-1">端点配置</h5>
-                            <small class="text-muted">配置变更自动保存，实时生效</small>
+                            <h5 class="mb-1" data-t="endpoint_configuration">端点配置</h5>
+                            <small class="text-muted" data-t="config_changes_auto_save">配置变更自动保存，实时生效</small>
                         </div>
                         <button class="btn btn-primary" onclick="showAddEndpointModal()">
-                            <i class="fas fa-plus"></i> 添加端点
+                            <i class="fas fa-plus"></i> <span data-t="add_endpoint">添加端点</span>
                         </button>
                     </div>
                     <div class="card-body">
                         <!-- 特殊端点列表 -->
                         <div id="special-endpoints-section" class="mb-4" style="display: none;">
                             <h6 class="mb-3">
-                                <i class="fas fa-star text-warning"></i> 特殊端点
-                                <small class="text-muted ms-2">有特定标签的端点</small>
+                                <i class="fas fa-star text-warning"></i> <span data-t="special_endpoints">特殊端点</span>
+                                <small class="text-muted ms-2" data-t="endpoints_with_specific_tags">有特定标签的端点</small>
                             </h6>
                             <div class="table-responsive">
                                 <table class="table table-striped">
@@ -48,7 +48,7 @@
                                             <th>标签</th>
                                             <th>状态</th>
                                             <th>启用</th>
-                                            <th width="160">操作</th>
+                                            <th width="160" data-t="actions">操作</th>
                                         </tr>
                                     </thead>
                                     <tbody id="special-endpoint-list">
@@ -61,8 +61,8 @@
                         <!-- 通用端点列表 -->
                         <div id="general-endpoints-section">
                             <h6 class="mb-3">
-                                <i class="fas fa-globe text-info"></i> 通用端点
-                                <small class="text-muted ms-2">支持所有请求类型的端点</small>
+                                <i class="fas fa-globe text-info"></i> <span data-t="general_endpoints">通用端点</span>
+                                <small class="text-muted ms-2" data-t="endpoints_supporting_all_requests">支持所有请求类型的端点</small>
                             </h6>
                             <div class="table-responsive">
                                 <table class="table table-striped">
@@ -79,7 +79,7 @@
                                             <th>标签</th>
                                             <th>状态</th>
                                             <th>启用</th>
-                                            <th width="160">操作</th>
+                                            <th width="160" data-t="actions">操作</th>
                                         </tr>
                                     </thead>
                                     <tbody id="general-endpoint-list">

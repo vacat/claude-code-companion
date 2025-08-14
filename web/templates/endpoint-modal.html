@@ -3,7 +3,7 @@
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="endpointModalTitle">添加端点</h5>
+                <h5 class="modal-title" id="endpointModalTitle" data-t="add_endpoint">添加端点</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -15,13 +15,13 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic-tab-pane" 
                                     type="button" role="tab" aria-controls="basic-tab-pane" aria-selected="true">
-                                <i class="fas fa-cog"></i> 基本配置
+                                <i class="fas fa-cog"></i> <span data-t="basic_configuration">基本配置</span>
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced-tab-pane" 
                                     type="button" role="tab" aria-controls="advanced-tab-pane" aria-selected="false">
-                                <i class="fas fa-sliders-h"></i> 高级配置
+                                <i class="fas fa-sliders-h"></i> <span data-t="advanced_configuration">高级配置</span>
                             </button>
                         </li>
                     </ul>
@@ -34,17 +34,17 @@
                             <div class="row mb-3">
                                 <div class="col-9">
                                     <label for="endpoint-name" class="form-label">
-                                        <i class="fas fa-tag form-label-icon"></i>名称 <span class="text-danger">*</span>
+                                        <i class="fas fa-tag form-label-icon"></i><span data-t="name">名称</span> <span class="text-danger">*</span>
                                     </label>
                                     <input type="text" class="form-control" id="endpoint-name" required>
                                 </div>
                                 <div class="col-3">
                                     <h6 class="mb-2">
-                                        <i class="fas fa-power-off form-label-icon"></i> 启用
+                                        <i class="fas fa-power-off form-label-icon"></i> <span data-t="enable">启用</span>
                                     </h6>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="endpoint-enabled" checked>
-                                        <label class="form-check-label" for="endpoint-enabled">
+                                        <label class="form-check-label" for="endpoint-enabled" data-t="enable_this_endpoint">
                                             启用此端点
                                         </label>
                                     </div>
@@ -55,18 +55,18 @@
                             <div class="row mb-3">
                                 <div class="col-8">
                                     <label for="endpoint-url" class="form-label">
-                                        <i class="fas fa-link form-label-icon"></i>URL <span class="text-danger">*</span>
+                                        <i class="fas fa-link form-label-icon"></i><span data-t="url">URL</span> <span class="text-danger">*</span>
                                     </label>
                                     <input type="url" class="form-control" id="endpoint-url" required
                                            placeholder="https://api.example.com">
                                 </div>
                                 <div class="col-4">
                                     <label for="endpoint-tags" class="form-label">
-                                        <i class="fas fa-tags form-label-icon"></i>标签
+                                        <i class="fas fa-tags form-label-icon"></i><span data-t="tags">标签</span>
                                     </label>
                                     <input type="text" class="form-control" id="endpoint-tags" 
                                            placeholder="用逗号分隔">
-                                    <small class="form-text text-muted">留空则为万能endpoint</small>
+                                    <small class="form-text text-muted" data-t="empty_for_universal_endpoint">留空endpoint</small>
                                 </div>
                             </div>
 
@@ -74,21 +74,21 @@
                             <div class="row mb-3">
                                 <div class="col-6">
                                     <label for="endpoint-type" class="form-label">
-                                        <i class="fas fa-cogs form-label-icon"></i>端点类型 <span class="text-danger">*</span>
+                                        <i class="fas fa-cogs form-label-icon"></i><span data-t="endpoint_type">端点类型</span> <span class="text-danger">*</span>
                                     </label>
                                     <select class="form-select" id="endpoint-type" required onchange="onEndpointTypeChange()">
                                         <option value="anthropic">Anthropic (Claude)</option>
                                         <option value="openai">OpenAI Compatible</option>
                                     </select>
-                                    <small class="form-text text-muted">选择端点的API兼容类型</small>
+                                    <small class="form-text text-muted" data-t="select_api_compatible_type">选择端点的API兼容类型</small>
                                 </div>
                                 <div class="col-6" id="path-prefix-group" style="display: none;">
                                     <label for="endpoint-path-prefix" class="form-label">
-                                        <i class="fas fa-route form-label-icon"></i>路径前缀 <span class="text-danger">*</span>
+                                        <i class="fas fa-route form-label-icon"></i><span data-t="path_prefix">路径前缀</span> <span class="text-danger">*</span>
                                     </label>
                                     <input type="text" class="form-control" id="endpoint-path-prefix" 
                                            placeholder="/v1/chat/completions">
-                                    <small class="form-text text-muted">OpenAI兼容端点的API路径</small>
+                                    <small class="form-text text-muted" data-t="openai_compatible_api_path">OpenAI兼容端点的API路径</small>
                                 </div>
                             </div>
 
@@ -96,7 +96,7 @@
                             <div class="row mb-3">
                                 <div class="col-4">
                                     <label for="endpoint-auth-type" class="form-label">
-                                        <i class="fas fa-key form-label-icon"></i>认证方式 <span class="text-danger">*</span>
+                                        <i class="fas fa-key form-label-icon"></i><span data-t="authentication_method">认证方式</span> <span class="text-danger">*</span>
                                     </label>
                                     <select class="form-select" id="endpoint-auth-type" required onchange="onAuthTypeChange()">
                                         <option value="api_key">API Key (x-api-key 请求头)</option>
@@ -105,7 +105,7 @@
                                 </div>
                                 <div class="col-8">
                                     <label for="endpoint-auth-value" class="form-label">
-                                        <i class="fas fa-shield-alt form-label-icon"></i>认证值 <span class="text-danger">*</span>
+                                        <i class="fas fa-shield-alt form-label-icon"></i><span data-t="authentication_value">认证值</span> <span class="text-danger">*</span>
                                     </label>
                                     <div class="input-group">
                                         <input type="password" class="form-control" id="endpoint-auth-value" required
@@ -124,43 +124,43 @@
                             <div class="mb-4">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h6 class="mb-0">
-                                        <i class="fas fa-shield-alt"></i> 代理配置
+                                        <i class="fas fa-shield-alt"></i> <span data-t="proxy_configuration">代理配置</span>
                                     </h6>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="proxy-enabled">
-                                        <label class="form-check-label" for="proxy-enabled">启用代理</label>
+                                        <label class="form-check-label" for="proxy-enabled" data-t="enable_proxy">启用代理</label>
                                     </div>
                                 </div>
                                 
                                 <div id="proxy-config" style="display: none;">
-                                    <small class="form-text text-muted mb-3 d-block">配置HTTP或SOCKS5代理以访问上游端点</small>
+                                    <small class="form-text text-muted mb-3 d-block" data-t="configure_proxy_description">配置HTTP或SOCKS5代理以访问上游端点</small>
                                     
                                     <!-- 代理类型和地址 -->
                                     <div class="row mb-3">
                                         <div class="col-4">
-                                            <label for="proxy-type" class="form-label">代理类型</label>
+                                            <label for="proxy-type" class="form-label" data-t="proxy_type">代理类型</label>
                                             <select class="form-select" id="proxy-type">
                                                 <option value="http">HTTP</option>
                                                 <option value="socks5">SOCKS5</option>
                                             </select>
                                         </div>
                                         <div class="col-8">
-                                            <label for="proxy-address" class="form-label">代理地址</label>
+                                            <label for="proxy-address" class="form-label" data-t="proxy_address">代理地址</label>
                                             <input type="text" class="form-control" id="proxy-address" 
                                                    placeholder="127.0.0.1:1080">
-                                            <small class="form-text text-muted">格式: 主机:端口</small>
+                                            <small class="form-text text-muted" data-t="format_host_port">格式: 主机:端口</small>
                                         </div>
                                     </div>
                                     
                                     <!-- 代理认证 -->
                                     <div class="row mb-3">
                                         <div class="col-6">
-                                            <label for="proxy-username" class="form-label">用户名 (可选)</label>
+                                            <label for="proxy-username" class="form-label" data-t="username_optional">用户名 (可选)</label>
                                             <input type="text" class="form-control" id="proxy-username" 
                                                    placeholder="代理认证用户名">
                                         </div>
                                         <div class="col-6">
-                                            <label for="proxy-password" class="form-label">密码 (可选)</label>
+                                            <label for="proxy-password" class="form-label" data-t="password_optional">密码 (可选)</label>
                                             <input type="password" class="form-control" id="proxy-password" 
                                                    placeholder="代理认证密码">
                                         </div>
@@ -168,7 +168,7 @@
                                     
                                     <div class="alert alert-info p-2">
                                         <small class="text-muted">
-                                            <strong>说明：</strong><br>
+                                            <strong data-t="description">说明：</strong><br>
                                             • 留空用户名和密码表示无需认证<br>
                                             • HTTP代理支持 CONNECT 方法用于HTTPS<br>
                                             • SOCKS5代理支持TCP连接代理
@@ -181,28 +181,28 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h6 class="mb-0">
-                                        <i class="fas fa-exchange-alt"></i> 模型重写配置
+                                        <i class="fas fa-exchange-alt"></i> <span data-t="model_rewrite_configuration">模型重写配置</span>
                                     </h6>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="model-rewrite-enabled">
-                                        <label class="form-check-label" for="model-rewrite-enabled">启用模型重写</label>
+                                        <label class="form-check-label" for="model-rewrite-enabled" data-t="enable_model_rewrite">启用模型重写</label>
                                     </div>
                                 </div>
                                 
                                 <div id="model-rewrite-rules" style="display: none;">
-                                    <small class="form-text text-muted mb-3 d-block">配置规则将匹配的Claude模型重写为其他模型</small>
+                                    <small class="form-text text-muted mb-3 d-block" data-t="configure_rewrite_rules_description">配置规则将匹配的Claude模型重写为其他模型</small>
                                     
                                     <div id="rewrite-rules-list">
                                         <!-- 动态生成的规则列表 -->
                                     </div>
                                     
                                     <button type="button" class="btn btn-outline-primary btn-sm mb-3" onclick="addRewriteRule()">
-                                        <i class="fas fa-plus"></i> 添加规则
+                                        <i class="fas fa-plus"></i> <span data-t="add_rule">添加规则</span>
                                     </button>
                                     
                                     <div class="alert alert-info p-2">
                                         <small class="text-muted">
-                                            <strong>预设模型模式：</strong><br>
+                                            <strong data-t="preset_model_patterns">预设模型模式：</strong><br>
                                             • Haiku系列: claude-*haiku*<br>
                                             • Sonnet系列: claude-*sonnet*<br>  
                                             • Opus系列: claude-*opus*<br>
@@ -216,8 +216,8 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-primary" onclick="saveEndpoint()">保存</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="cancel">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveEndpoint()" data-t="save">保存</button>
             </div>
         </div>
     </div>

@@ -17,28 +17,28 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div>
-                            <h5 class="mb-0">服务器配置</h5>
-                            <small class="text-muted">编辑配置并保存</small>
+                            <h5 class="mb-0" data-t="server_configuration">服务器配置</h5>
+                            <small class="text-muted" data-t="edit_and_save_config">编辑配置并保存</small>
                         </div>
                         <div>
                             <button type="button" class="btn btn-primary btn-sm" onclick="saveSettings()">
-                                <i class="fas fa-save"></i> 保存配置
+                                <i class="fas fa-save"></i> <span data-t="save_configuration">保存配置</span>
                             </button>
                             <button type="button" class="btn btn-secondary btn-sm ms-2" onclick="resetSettings()">
-                                <i class="fas fa-undo"></i> 重置
+                                <i class="fas fa-undo"></i> <span data-t="reset">重置</span>
                             </button>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-12">
-                                <h6>服务器设置</h6>
+                                <h6 data-t="server_settings">服务器设置</h6>
                                 <div class="mb-3">
-                                    <label for="serverHost" class="form-label">主机地址</label>
+                                    <label for="serverHost" class="form-label" data-t="host_address">主机地址</label>
                                     <input type="text" class="form-control" id="serverHost" value="{{.Config.Server.Host}}">
                                 </div>
                                 <div class="mb-3">
-                                    <label for="serverPort" class="form-label">代理端口</label>
+                                    <label for="serverPort" class="form-label" data-t="proxy_port">代理端口</label>
                                     <input type="number" class="form-control" id="serverPort" value="{{.Config.Server.Port}}" min="1" max="65535">
                                 </div>
                             </div>
@@ -46,9 +46,9 @@
 
                         <div class="row mt-4">
                             <div class="col-12">
-                                <h6>日志配置</h6>
+                                <h6 data-t="logging_configuration">日志配置</h6>
                                 <div class="mb-3">
-                                    <label for="logLevel" class="form-label">日志级别</label>
+                                    <label for="logLevel" class="form-label" data-t="log_level">日志级别</label>
                                     <select class="form-select" id="logLevel">
                                         <option value="debug" {{if eq .Config.Logging.Level "debug"}}selected{{end}}>Debug</option>
                                         <option value="info" {{if eq .Config.Logging.Level "info"}}selected{{end}}>Info</option>
@@ -57,23 +57,23 @@
                                     </select>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="logRequestTypes" class="form-label">记录请求类型</label>
+                                    <label for="logRequestTypes" class="form-label" data-t="record_request_types">记录请求类型</label>
                                     <select class="form-select" id="logRequestTypes">
-                                        <option value="all" {{if eq .Config.Logging.LogRequestTypes "all"}}selected{{end}}>全部</option>
-                                        <option value="failed" {{if eq .Config.Logging.LogRequestTypes "failed"}}selected{{end}}>仅失败</option>
-                                        <option value="success" {{if eq .Config.Logging.LogRequestTypes "success"}}selected{{end}}>仅成功</option>
+                                        <option value="all" {{if eq .Config.Logging.LogRequestTypes "all"}}selected{{end}} data-t="all">全部</option>
+                                        <option value="failed" {{if eq .Config.Logging.LogRequestTypes "failed"}}selected{{end}} data-t="only_failed">仅失败</option>
+                                        <option value="success" {{if eq .Config.Logging.LogRequestTypes "success"}}selected{{end}} data-t="only_success">仅成功</option>
                                     </select>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="logRequestBody" class="form-label">记录请求体</label>
+                                    <label for="logRequestBody" class="form-label" data-t="record_request_body">记录请求体</label>
                                     <select class="form-select" id="logRequestBody">
-                                        <option value="none" {{if eq .Config.Logging.LogRequestBody "none"}}selected{{end}}>不记录</option>
-                                        <option value="truncated" {{if eq .Config.Logging.LogRequestBody "truncated"}}selected{{end}}>截断</option>
-                                        <option value="full" {{if eq .Config.Logging.LogRequestBody "full"}}selected{{end}}>完整</option>
+                                        <option value="none" {{if eq .Config.Logging.LogRequestBody "none"}}selected{{end}} data-t="do_not_record">不记录</option>
+                                        <option value="truncated" {{if eq .Config.Logging.LogRequestBody "truncated"}}selected{{end}} data-t="truncated">截断</option>
+                                        <option value="full" {{if eq .Config.Logging.LogRequestBody "full"}}selected{{end}} data-t="full">完整</option>
                                     </select>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="logResponseBody" class="form-label">记录响应体</label>
+                                    <label for="logResponseBody" class="form-label" data-t="record_response_body">记录响应体</label>
                                     <select class="form-select" id="logResponseBody">
                                         <option value="none" {{if eq .Config.Logging.LogResponseBody "none"}}selected{{end}}>不记录</option>
                                         <option value="truncated" {{if eq .Config.Logging.LogResponseBody "truncated"}}selected{{end}}>截断</option>
@@ -81,7 +81,7 @@
                                     </select>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="logDirectory" class="form-label">日志目录</label>
+                                    <label for="logDirectory" class="form-label" data-t="log_directory">日志目录</label>
                                     <input type="text" class="form-control" id="logDirectory" value="{{.Config.Logging.LogDirectory}}">
                                 </div>
                             </div>
@@ -89,11 +89,11 @@
 
                         <div class="row mt-4">
                             <div class="col-12">
-                                <h6>校验配置</h6>
+                                <h6 data-t="validation_configuration">校验配置</h6>
                                 <div class="mb-3">
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input" id="strictAnthropicFormat" {{if .Config.Validation.StrictAnthropicFormat}}checked{{end}}>
-                                        <label class="form-check-label" for="strictAnthropicFormat">
+                                        <label class="form-check-label" for="strictAnthropicFormat" data-t="strict_anthropic_format_validation">
                                             严格 Anthropic 格式校验
                                         </label>
                                     </div>
@@ -101,7 +101,7 @@
                                 <div class="mb-3">
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input" id="validateStreaming" {{if .Config.Validation.ValidateStreaming}}checked{{end}}>
-                                        <label class="form-check-label" for="validateStreaming">
+                                        <label class="form-check-label" for="validateStreaming" data-t="validate_streaming_response">
                                             校验流式响应
                                         </label>
                                     </div>
@@ -109,7 +109,7 @@
                                 <div class="mb-3">
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input" id="disconnectOnInvalid" {{if .Config.Validation.DisconnectOnInvalid}}checked{{end}}>
-                                        <label class="form-check-label" for="disconnectOnInvalid">
+                                        <label class="form-check-label" for="disconnectOnInvalid" data-t="disconnect_on_invalid">
                                             无效时断开连接
                                         </label>
                                     </div>
@@ -119,49 +119,49 @@
 
                         <div class="row mt-4">
                             <div class="col-12">
-                                <h6>代理超时配置</h6>
+                                <h6 data-t="proxy_timeout_configuration">代理超时配置</h6>
                                 <div class="mb-3">
-                                    <label for="proxyTLSHandshake" class="form-label">TLS握手超时</label>
+                                    <label for="proxyTLSHandshake" class="form-label" data-t="tls_handshake_timeout">TLS握手超时</label>
                                     <input type="text" class="form-control" id="proxyTLSHandshake" value="{{.Config.Timeouts.Proxy.TLSHandshake}}" placeholder="10s">
-                                    <div class="form-text">请使用Go duration格式</div>
+                                    <div class="form-text" data-t="use_go_duration_format">请使用Go duration格式</div>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="proxyResponseHeader" class="form-label">响应头超时</label>
+                                    <label for="proxyResponseHeader" class="form-label" data-t="response_header_timeout">响应头超时</label>
                                     <input type="text" class="form-control" id="proxyResponseHeader" value="{{.Config.Timeouts.Proxy.ResponseHeader}}" placeholder="60s">
                                 </div>
                                 <div class="mb-3">
-                                    <label for="proxyIdleConnection" class="form-label">空闲连接超时</label>
+                                    <label for="proxyIdleConnection" class="form-label" data-t="idle_connection_timeout">空闲连接超时</label>
                                     <input type="text" class="form-control" id="proxyIdleConnection" value="{{.Config.Timeouts.Proxy.IdleConnection}}" placeholder="90s">
                                 </div>
                                 <div class="mb-3">
-                                    <label for="proxyOverallRequest" class="form-label">整体请求超时</label>
+                                    <label for="proxyOverallRequest" class="form-label" data-t="overall_request_timeout">整体请求超时</label>
                                     <input type="text" class="form-control" id="proxyOverallRequest" value="{{.Config.Timeouts.Proxy.OverallRequest}}" placeholder="留空表示无限制">
-                                    <div class="form-text">留空支持流式响应</div>
+                                    <div class="form-text" data-t="empty_for_streaming_support">留空支持流式响应</div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="row mt-4">
                             <div class="col-12">
-                                <h6>健康检查超时配置</h6>
+                                <h6 data-t="health_check_timeout_configuration">健康检查超时配置</h6>
                                 <div class="mb-3">
-                                    <label for="healthCheckTLSHandshake" class="form-label">TLS握手超时</label>
+                                    <label for="healthCheckTLSHandshake" class="form-label" data-t="hc_tls_handshake_timeout">TLS握手超时</label>
                                     <input type="text" class="form-control" id="healthCheckTLSHandshake" value="{{.Config.Timeouts.HealthCheck.TLSHandshake}}" placeholder="5s">
                                 </div>
                                 <div class="mb-3">
-                                    <label for="healthCheckResponseHeader" class="form-label">响应头超时</label>
+                                    <label for="healthCheckResponseHeader" class="form-label" data-t="hc_response_header_timeout">响应头超时</label>
                                     <input type="text" class="form-control" id="healthCheckResponseHeader" value="{{.Config.Timeouts.HealthCheck.ResponseHeader}}" placeholder="30s">
                                 </div>
                                 <div class="mb-3">
-                                    <label for="healthCheckIdleConnection" class="form-label">空闲连接超时</label>
+                                    <label for="healthCheckIdleConnection" class="form-label" data-t="hc_idle_connection_timeout">空闲连接超时</label>
                                     <input type="text" class="form-control" id="healthCheckIdleConnection" value="{{.Config.Timeouts.HealthCheck.IdleConnection}}" placeholder="60s">
                                 </div>
                                 <div class="mb-3">
-                                    <label for="healthCheckOverallRequest" class="form-label">整体请求超时</label>
+                                    <label for="healthCheckOverallRequest" class="form-label" data-t="hc_overall_request_timeout">整体请求超时</label>
                                     <input type="text" class="form-control" id="healthCheckOverallRequest" value="{{.Config.Timeouts.HealthCheck.OverallRequest}}" placeholder="30s">
                                 </div>
                                 <div class="mb-3">
-                                    <label for="healthCheckInterval" class="form-label">检查间隔</label>
+                                    <label for="healthCheckInterval" class="form-label" data-t="check_interval">检查间隔</label>
                                     <input type="text" class="form-control" id="healthCheckInterval" value="{{.Config.Timeouts.HealthCheck.CheckInterval}}" placeholder="30s">
                                 </div>
                             </div>
@@ -172,10 +172,10 @@
                             <div class="col-12">
                                 <div class="d-flex justify-content-end gap-2">
                                     <button type="button" class="btn btn-secondary" onclick="resetSettings()">
-                                        <i class="fas fa-undo"></i> 重置
+                                        <i class="fas fa-undo"></i> <span data-t="reset">重置</span>
                                     </button>
                                     <button type="button" class="btn btn-primary" onclick="saveSettings()">
-                                        <i class="fas fa-save"></i> 保存配置
+                                        <i class="fas fa-save"></i> <span data-t="save_configuration">保存配置</span>
                                     </button>
                                 </div>
                             </div>

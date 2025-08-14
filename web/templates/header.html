@@ -12,14 +12,14 @@ window.availableLanguages = {
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
         <a class="navbar-brand" href="/admin/">
-            <i class="fas fa-server"></i> <span data-t="Claude Proxy Admin">Claude 代理管理后台</span>
+            <i class="fas fa-server"></i> <span data-t="claude_proxy_admin_title">Claude 代理管理后台</span>
         </a>
         <div class="navbar-nav ms-auto">
-            <a class="nav-link {{if eq .CurrentPage "dashboard"}}active{{end}}" href="/admin/"><span data-t="Dashboard">控制台</span></a>
-            <a class="nav-link {{if eq .CurrentPage "endpoints"}}active{{end}}" href="/admin/endpoints"><span data-t="Endpoints">端点配置</span></a>
-            <a class="nav-link {{if eq .CurrentPage "taggers"}}active{{end}}" href="/admin/taggers"><span data-t="Taggers">标记器</span></a>
-            <a class="nav-link {{if eq .CurrentPage "logs"}}active{{end}}" href="/admin/logs"><span data-t="Request Logs">请求日志</span></a>
-            <a class="nav-link {{if eq .CurrentPage "settings"}}active{{end}}" href="/admin/settings"><span data-t="Settings">系统设置</span></a>
+            <a class="nav-link {{if eq .CurrentPage "dashboard"}}active{{end}}" href="/admin/"><span data-t="navigation_dashboard">控制台</span></a>
+            <a class="nav-link {{if eq .CurrentPage "endpoints"}}active{{end}}" href="/admin/endpoints"><span data-t="navigation_endpoints">端点配置</span></a>
+            <a class="nav-link {{if eq .CurrentPage "taggers"}}active{{end}}" href="/admin/taggers"><span data-t="navigation_taggers">标记器</span></a>
+            <a class="nav-link {{if eq .CurrentPage "logs"}}active{{end}}" href="/admin/logs"><span data-t="navigation_request_logs">请求日志</span></a>
+            <a class="nav-link {{if eq .CurrentPage "settings"}}active{{end}}" href="/admin/settings"><span data-t="navigation_settings">系统设置</span></a>
             <div class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" data-current-lang="{{.CurrentLanguage}}">
                     <span id="currentLanguageFlag"></span>
