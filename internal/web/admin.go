@@ -188,6 +188,9 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 	router.LoadHTMLGlob("web/templates/*")
 	router.Static("/static", "web/static")
 
+	// 注册根目录帮助页面
+	router.GET("/", s.handleHelpPage)
+
 	// 注册页面路由
 	router.GET("/admin/", s.handleDashboard)
 	router.GET("/admin/endpoints", s.handleEndpointsPage)

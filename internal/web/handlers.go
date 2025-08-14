@@ -883,3 +883,20 @@ func (s *AdminServer) handleUpdateSettings(c *gin.Context) {
 		"message": "Settings updated successfully",
 	})
 }
+
+// handleHelpPage 处理帮助页面
+func (s *AdminServer) handleHelpPage(c *gin.Context) {
+	// 获取基础 URL（从请求中推断）
+	scheme := "http"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	
+	baseURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	
+	data := s.mergeTemplateData(c, "help", map[string]interface{}{
+		"Title":   "Claude Code Setup Guide",
+		"BaseURL": baseURL,
+	})
+	s.renderHTML(c, "help.html", data)
+}

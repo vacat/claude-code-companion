@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/shared.css" rel="stylesheet">
+    <style>
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.875rem;
+            overflow-x: auto;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        .copy-btn:hover {
+            opacity: 1;
+        }
+        .position-relative:hover .copy-btn {
+            opacity: 1;
+        }
+        .nav-tabs .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+            border-color: #0d6efd;
+        }
+        .tab-content {
+            min-height: 300px;
+        }
+        .tab-pane {
+            padding-top: 1rem;
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="display-4 mb-3">
+                        <i class="fas fa-robot"></i> <span data-t="Claude Proxy Help">Claude 代理帮助</span>
+                    </h1>
+                    <p class="lead mb-4">
+                        <span data-t="Setup guide for Claude Code with proxy">使用代理设置 Claude Code 的完整指南</span>
+                    </p>
+                    <div class="d-flex gap-3">
+                        <a href="/admin/" class="btn btn-light btn-lg">
+                            <i class="fas fa-cog"></i> <span data-t="Admin Panel">管理面板</span>
+                        </a>
+                        <a href="#installation" class="btn btn-outline-light btn-lg">
+                            <i class="fas fa-download"></i> <span data-t="Installation Guide">安装指南</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-4 text-center">
+                    <i class="fas fa-terminal" style="font-size: 8rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Installation Guide Section -->
+        <section id="installation" class="mb-5">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h4 mb-0">
+                        <i class="fas fa-download text-primary"></i> 
+                        <span data-t="Install Claude Code">安装 Claude Code</span>
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <!-- OS Tabs -->
+                    <ul class="nav nav-tabs mb-4" id="osTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="windows-tab" data-bs-toggle="tab" data-bs-target="#windows" 
+                                    type="button" role="tab" aria-controls="windows" aria-selected="true">
+                                <i class="fab fa-windows"></i> Windows
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="macos-tab" data-bs-toggle="tab" data-bs-target="#macos" 
+                                    type="button" role="tab" aria-controls="macos" aria-selected="false">
+                                <i class="fab fa-apple"></i> macOS
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="linux-tab" data-bs-toggle="tab" data-bs-target="#linux" 
+                                    type="button" role="tab" aria-controls="linux" aria-selected="false">
+                                <i class="fab fa-linux"></i> Linux
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="osTabContent">
+                        <!-- Windows -->
+                        <div class="tab-pane fade show active" id="windows" role="tabpanel" aria-labelledby="windows-tab">
+                            <h5><span data-t="Windows Installation">Windows 安装</span></h5>
+                            <ol>
+                                <li class="mb-2">
+                                    <span data-t="Download installer">下载安装程序：</span>
+                                    <a href="https://claude.ai/download" target="_blank" class="btn btn-sm btn-primary ms-2">
+                                        <i class="fas fa-download"></i> <span data-t="Download">下载</span>
+                                    </a>
+                                </li>
+                                <li class="mb-2"><span data-t="Run installer and follow instructions">运行安装程序并按照说明操作</span></li>
+                                <li class="mb-2"><span data-t="Or use package manager">或使用包管理器：</span></li>
+                            </ol>
+                            
+                            <div class="position-relative">
+                                <div class="code-block">
+                                    # <span data-t="Using winget">使用 winget</span><br>
+                                    winget install Anthropic.Claude<br><br>
+                                    # <span data-t="Or using Chocolatey">或使用 Chocolatey</span><br>
+                                    choco install claude-code
+                                </div>
+                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- macOS -->
+                        <div class="tab-pane fade" id="macos" role="tabpanel" aria-labelledby="macos-tab">
+                            <h5><span data-t="macOS Installation">macOS 安装</span></h5>
+                            <ol>
+                                <li class="mb-2">
+                                    <span data-t="Download from website">从官网下载：</span>
+                                    <a href="https://claude.ai/download" target="_blank" class="btn btn-sm btn-primary ms-2">
+                                        <i class="fas fa-download"></i> <span data-t="Download">下载</span>
+                                    </a>
+                                </li>
+                                <li class="mb-2"><span data-t="Or use Homebrew">或使用 Homebrew：</span></li>
+                            </ol>
+
+                            <div class="position-relative">
+                                <div class="code-block">
+                                    # <span data-t="Install using Homebrew">使用 Homebrew 安装</span><br>
+                                    brew install --cask claude
+                                </div>
+                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Linux -->
+                        <div class="tab-pane fade" id="linux" role="tabpanel" aria-labelledby="linux-tab">
+                            <h5><span data-t="Linux Installation">Linux 安装</span></h5>
+                            <ol>
+                                <li class="mb-2">
+                                    <span data-t="Download AppImage">下载 AppImage：</span>
+                                    <a href="https://claude.ai/download" target="_blank" class="btn btn-sm btn-primary ms-2">
+                                        <i class="fas fa-download"></i> <span data-t="Download">下载</span>
+                                    </a>
+                                </li>
+                                <li class="mb-2"><span data-t="Or install via package manager">或通过包管理器安装：</span></li>
+                            </ol>
+
+                            <div class="position-relative">
+                                <div class="code-block">
+                                    # <span data-t="Ubuntu/Debian">Ubuntu/Debian</span><br>
+                                    curl -fsSL https://claude.ai/install.sh | bash<br><br>
+                                    # <span data-t="Arch Linux">Arch Linux</span><br>
+                                    yay -S claude-code<br><br>
+                                    # <span data-t="Flatpak">Flatpak</span><br>
+                                    flatpak install flathub ai.claude.Claude
+                                </div>
+                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Script Generation Section -->
+        <section id="scripts" class="mb-5">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h4 mb-0">
+                        <i class="fas fa-code text-success"></i> 
+                        <span data-t="Generate Proxy Script">生成代理脚本</span>
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        <span data-t="Generate script description">生成启动脚本来使用此代理服务器。脚本会自动设置必要的环境变量并启动 Claude Code。</span>
+                    </p>
+
+                    <!-- Script Tabs -->
+                    <ul class="nav nav-tabs mb-4" id="scriptTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="windows-script-tab" data-bs-toggle="tab" data-bs-target="#windows-script" 
+                                    type="button" role="tab" aria-controls="windows-script" aria-selected="true">
+                                <i class="fab fa-windows"></i> Windows (.bat)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="macos-script-tab" data-bs-toggle="tab" data-bs-target="#macos-script" 
+                                    type="button" role="tab" aria-controls="macos-script" aria-selected="false">
+                                <i class="fab fa-apple"></i> macOS (.command)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="linux-script-tab" data-bs-toggle="tab" data-bs-target="#linux-script" 
+                                    type="button" role="tab" aria-controls="linux-script" aria-selected="false">
+                                <i class="fab fa-linux"></i> Linux (.sh)
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Script Content -->
+                    <div class="tab-content" id="scriptTabContent">
+                        <!-- Windows Script -->
+                        <div class="tab-pane fade show active" id="windows-script" role="tabpanel" aria-labelledby="windows-script-tab">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5><span data-t="Windows Script">Windows 脚本</span> (ccc.bat)</h5>
+                                <button class="btn btn-success" onclick="downloadScript('windows')">
+                                    <i class="fas fa-download"></i> <span data-t="Download Script">下载脚本</span>
+                                </button>
+                            </div>
+                            
+                            <div class="position-relative">
+                                <div class="code-block" id="windows-script-content">
+                                    @echo off<br>
+                                    set ANTHROPIC_BASE_URL={{.BaseURL}}<br>
+                                    set ANTHROPIC_AUTH_TOKEN=hello<br>
+                                    set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1<br>
+                                    set API_TIMEOUT_MS=600000<br>
+                                    claude %*
+                                </div>
+                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- macOS Script -->
+                        <div class="tab-pane fade" id="macos-script" role="tabpanel" aria-labelledby="macos-script-tab">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5><span data-t="macOS Script">macOS 脚本</span> (ccc.command)</h5>
+                                <button class="btn btn-success" onclick="downloadScript('macos')">
+                                    <i class="fas fa-download"></i> <span data-t="Download Script">下载脚本</span>
+                                </button>
+                            </div>
+                            
+                            <div class="position-relative">
+                                <div class="code-block" id="macos-script-content">
+                                    #!/bin/bash<br>
+                                    export ANTHROPIC_BASE_URL="{{.BaseURL}}"<br>
+                                    export ANTHROPIC_AUTH_TOKEN="hello"<br>
+                                    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1<br>
+                                    export API_TIMEOUT_MS=600000<br>
+                                    claude "$@"
+                                </div>
+                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Linux Script -->
+                        <div class="tab-pane fade" id="linux-script" role="tabpanel" aria-labelledby="linux-script-tab">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5><span data-t="Linux Script">Linux 脚本</span> (ccc.sh)</h5>
+                                <button class="btn btn-success" onclick="downloadScript('linux')">
+                                    <i class="fas fa-download"></i> <span data-t="Download Script">下载脚本</span>
+                                </button>
+                            </div>
+                            
+                            <div class="position-relative">
+                                <div class="code-block" id="linux-script-content">
+                                    #!/bin/bash<br>
+                                    export ANTHROPIC_BASE_URL="{{.BaseURL}}"<br>
+                                    export ANTHROPIC_AUTH_TOKEN="hello"<br>
+                                    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1<br>
+                                    export API_TIMEOUT_MS=600000<br>
+                                    claude "$@"
+                                </div>
+                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Usage Instructions -->
+        <section id="usage" class="mb-5">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h4 mb-0">
+                        <i class="fas fa-play text-info"></i> 
+                        <span data-t="Usage Instructions">使用说明</span>
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5><span data-t="How to Use">如何使用</span></h5>
+                            <ol>
+                                <li><span data-t="Download and save script">下载并保存上述脚本到您的系统</span></li>
+                                <li><span data-t="Make script executable">使脚本可执行（Linux/macOS）：</span>
+                                    <div class="code-block mt-2">chmod +x ccc.sh  # <span data-t="or">或</span> chmod +x ccc.command</div>
+                                </li>
+                                <li><span data-t="Use script instead of claude">使用脚本代替直接调用 claude：</span>
+                                    <div class="code-block mt-2">
+                                        # <span data-t="Windows">Windows</span><br>
+                                        ccc.bat --help<br>
+                                        ccc.bat interactive<br><br>
+                                        # Linux/macOS<br>
+                                        ./ccc.sh --help<br>
+                                        ./ccc.command interactive
+                                    </div>
+                                </li>
+                            </ol>
+                        </div>
+                        <div class="col-md-6">
+                            <h5><span data-t="Environment Variables">环境变量说明</span></h5>
+                            <ul>
+                                <li><strong>ANTHROPIC_BASE_URL:</strong> <span data-t="Proxy server URL">代理服务器 URL</span></li>
+                                <li><strong>ANTHROPIC_AUTH_TOKEN:</strong> <span data-t="Authentication token">认证令牌</span></li>
+                                <li><strong>CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:</strong> <span data-t="Disable non-essential traffic">禁用非必要流量</span></li>
+                                <li><strong>API_TIMEOUT_MS:</strong> <span data-t="API timeout in milliseconds">API 超时时间（毫秒）</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    {{template "footer.html" .}}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/shared.js"></script>
+    <script>
+        // Detect OS and set active tab
+        function detectOS() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            if (userAgent.indexOf('win') > -1) return 'windows';
+            if (userAgent.indexOf('mac') > -1) return 'macos';
+            if (userAgent.indexOf('linux') > -1) return 'linux';
+            return 'windows'; // default
+        }
+
+        // Initialize tabs based on detected OS
+        document.addEventListener('DOMContentLoaded', function() {
+            const detectedOS = detectOS();
+            console.log('Detected OS:', detectedOS);
+            
+            // Always ensure that the correct tab is shown for the detected OS
+            // First, remove active from all installation tabs
+            document.querySelectorAll('#osTabs .nav-link').forEach(tab => {
+                tab.classList.remove('active');
+                tab.setAttribute('aria-selected', 'false');
+            });
+            document.querySelectorAll('#osTabContent .tab-pane').forEach(pane => {
+                pane.classList.remove('show', 'active');
+            });
+            
+            // Then activate the correct installation tab
+            const installationTab = document.getElementById(detectedOS + '-tab');
+            const installationPane = document.getElementById(detectedOS);
+            if (installationTab && installationPane) {
+                installationTab.classList.add('active');
+                installationTab.setAttribute('aria-selected', 'true');
+                installationPane.classList.add('show', 'active');
+            }
+            
+            // Do the same for script tabs
+            document.querySelectorAll('#scriptTabs .nav-link').forEach(tab => {
+                tab.classList.remove('active');
+                tab.setAttribute('aria-selected', 'false');
+            });
+            document.querySelectorAll('#scriptTabContent .tab-pane').forEach(pane => {
+                pane.classList.remove('show', 'active');
+            });
+            
+            // Then activate the correct script tab
+            const scriptTab = document.getElementById(detectedOS + '-script-tab');
+            const scriptPane = document.getElementById(detectedOS + '-script');
+            if (scriptTab && scriptPane) {
+                scriptTab.classList.add('active');
+                scriptTab.setAttribute('aria-selected', 'true');
+                scriptPane.classList.add('show', 'active');
+            }
+        });
+
+        // Copy to clipboard function
+        function copyToClipboard(button) {
+            const codeBlock = button.parentNode.querySelector('.code-block');
+            const text = codeBlock.innerText;
+            
+            navigator.clipboard.writeText(text).then(function() {
+                const icon = button.querySelector('i');
+                const originalClass = icon.className;
+                icon.className = 'fas fa-check';
+                button.classList.remove('btn-outline-light');
+                button.classList.add('btn-success');
+                
+                setTimeout(function() {
+                    icon.className = originalClass;
+                    button.classList.remove('btn-success');
+                    button.classList.add('btn-outline-light');
+                }, 2000);
+            });
+        }
+
+        // Download script function
+        function downloadScript(platform) {
+            let content, filename;
+            
+            switch(platform) {
+                case 'windows':
+                    content = document.getElementById('windows-script-content').innerText;
+                    filename = 'ccc.bat';
+                    break;
+                case 'macos':
+                    content = document.getElementById('macos-script-content').innerText;
+                    filename = 'ccc.command';
+                    break;
+                case 'linux':
+                    content = document.getElementById('linux-script-content').innerText;
+                    filename = 'ccc.sh';
+                    break;
+            }
+
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
