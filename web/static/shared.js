@@ -138,6 +138,75 @@ function initializeTooltips(container = document) {
     });
 }
 
+// Language switching functionality
+function switchLanguage(lang) {
+    // Set language cookie for 1 year
+    const expiryDate = new Date();
+    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+    document.cookie = `claude_proxy_lang=${lang}; expires=${expiryDate.toUTCString()}; path=/`;
+    
+    // Update URL parameter and reload page
+    const url = new URL(window.location);
+    url.searchParams.set('lang', lang);
+    window.location.href = url.toString();
+}
+
+function updateLanguageDropdown() {
+    // Get current language from dropdown data attribute first, then fallback to other methods
+    const dropdownElement = document.getElementById('languageDropdown');
+    let currentLang = dropdownElement ? dropdownElement.getAttribute('data-current-lang') : null;
+    
+    if (!currentLang) {
+        // Fallback: get from URL parameter
+        currentLang = new URLSearchParams(window.location.search).get('lang');
+    }
+    
+    if (!currentLang) {
+        // Fallback: get from cookie
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'claude_proxy_lang') {
+                currentLang = value;
+                break;
+            }
+        }
+    }
+    
+    // Default to zh-cn if no language found
+    if (!currentLang) {
+        currentLang = 'zh-cn';
+    }
+    
+    // Update dropdown display
+    const flagElement = document.getElementById('currentLanguageFlag');
+    const textElement = document.getElementById('currentLanguageText');
+    
+    if (flagElement && textElement) {
+        switch (currentLang) {
+            case 'en':
+                flagElement.textContent = 'US';
+                flagElement.style.backgroundColor = '#007bff'; // Blue for US
+                flagElement.style.display = 'inline-block'; // Ensure visibility
+                textElement.textContent = 'English';
+                break;
+            case 'ja':
+                flagElement.textContent = 'JP';
+                flagElement.style.backgroundColor = '#28a745'; // Green for JP
+                flagElement.style.display = 'inline-block'; // Ensure visibility
+                textElement.textContent = '日本語';
+                break;
+            case 'zh-cn':
+            default:
+                flagElement.textContent = 'CN';
+                flagElement.style.backgroundColor = '#dc3545'; // Red for CN
+                flagElement.style.display = 'inline-block'; // Ensure visibility
+                textElement.textContent = '中文';
+                break;
+        }
+    }
+}
+
 // Common DOM ready initialization
 function initializeCommonFeatures() {
     // Format duration cells
@@ -158,4 +227,7 @@ function initializeCommonFeatures() {
     
     // Initialize Bootstrap tooltips
     initializeTooltips();
+    
+    // Update language dropdown
+    updateLanguageDropdown();
 }

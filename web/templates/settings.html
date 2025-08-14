@@ -195,6 +195,7 @@
         
         // 页面加载时保存原始配置
         document.addEventListener('DOMContentLoaded', function() {
+            initializeCommonFeatures();
             originalConfig = collectFormData();
         });
         

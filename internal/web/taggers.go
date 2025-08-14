@@ -29,7 +29,7 @@ type TagResponse struct {
 
 // handleTaggersPage 显示tagger管理页面
 func (s *AdminServer) handleTaggersPage(c *gin.Context) {
-	data := s.mergeTemplateData("taggers", map[string]interface{}{
+	data := s.mergeTemplateData(c, "taggers", map[string]interface{}{
 		"Title": "Tagger Management",
 	})
 	s.renderHTML(c, "taggers.html", data)

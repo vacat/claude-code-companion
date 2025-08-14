@@ -93,16 +93,18 @@ func (w *captureResponseWriter) GetHTML() string {
 }
 
 // getBaseTemplateData returns common template data for all pages
-func (s *AdminServer) getBaseTemplateData(currentPage string) map[string]interface{} {
+func (s *AdminServer) getBaseTemplateData(c *gin.Context, currentPage string) map[string]interface{} {
+	lang := s.i18nManager.GetDetector().DetectLanguage(c)
 	return map[string]interface{}{
-		"BuildVersion": s.buildVersion,
-		"CurrentPage":  currentPage,
+		"BuildVersion":    s.buildVersion,
+		"CurrentPage":     currentPage,
+		"CurrentLanguage": string(lang),
 	}
 }
 
 // mergeTemplateData merges base template data with page-specific data
-func (s *AdminServer) mergeTemplateData(currentPage string, pageData map[string]interface{}) map[string]interface{} {
-	baseData := s.getBaseTemplateData(currentPage)
+func (s *AdminServer) mergeTemplateData(c *gin.Context, currentPage string, pageData map[string]interface{}) map[string]interface{} {
+	baseData := s.getBaseTemplateData(c, currentPage)
 	for key, value := range pageData {
 		baseData[key] = value
 	}

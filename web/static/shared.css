@@ -253,3 +253,43 @@ input, textarea, select {
     padding-left: 0;
     padding-right: 0;
 }
+
+/* Language dropdown styles */
+.flag-text, #currentLanguageFlag {
+    display: inline-block;
+    width: 24px;
+    height: 16px;
+    line-height: 16px;
+    text-align: center;
+    color: white;
+    font-size: 0.7em;
+    font-weight: bold;
+    border-radius: 2px;
+    margin-right: 0.5rem;
+    letter-spacing: -0.5px;
+}
+
+.flag-text {
+    margin-right: 0.5rem;
+}
+
+#languageDropdown {
+    white-space: nowrap;
+}
+
+#currentLanguageText {
+    margin-left: 0.25rem;
+}
+
+/* Different colors for different countries */
+.dropdown-item .flag-text:first-child {
+    background-color: #dc3545; /* Red for CN */
+}
+
+.dropdown-item[onclick*="'en'"] .flag-text {
+    background-color: #007bff; /* Blue for US */
+}
+
+.dropdown-item[onclick*="'ja'"] .flag-text {
+    background-color: #28a745; /* Green for JP */
+}

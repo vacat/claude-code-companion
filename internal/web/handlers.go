@@ -44,7 +44,7 @@ func (s *AdminServer) handleDashboard(c *gin.Context) {
 	
 	overallSuccessRate := calculateSuccessRate(successRequests, totalRequests)
 	
-	data := s.mergeTemplateData("dashboard", map[string]interface{}{
+	data := s.mergeTemplateData(c, "dashboard", map[string]interface{}{
 		"Title":             "Claude Proxy Dashboard",
 		"TotalEndpoints":    len(endpoints),
 		"ActiveEndpoints":   activeEndpoints,
@@ -75,7 +75,7 @@ func (s *AdminServer) handleEndpointsPage(c *gin.Context) {
 		})
 	}
 	
-	data := s.mergeTemplateData("endpoints", map[string]interface{}{
+	data := s.mergeTemplateData(c, "endpoints", map[string]interface{}{
 		"Title":     "Endpoints Configuration",
 		"Endpoints": endpointStats,
 	})
@@ -125,7 +125,7 @@ func (s *AdminServer) handleLogsPage(c *gin.Context) {
 		pages = append(pages, i)
 	}
 	
-	data := s.mergeTemplateData("logs", map[string]interface{}{
+	data := s.mergeTemplateData(c, "logs", map[string]interface{}{
 		"Title":       "Request Logs",
 		"Logs":        logs,
 		"Total":       total,
@@ -151,7 +151,7 @@ func (s *AdminServer) handleSettingsPage(c *gin.Context) {
 		}
 	}
 	
-	data := s.mergeTemplateData("settings", map[string]interface{}{
+	data := s.mergeTemplateData(c, "settings", map[string]interface{}{
 		"Title":        "Settings",
 		"Config":       s.config,
 		"EnabledCount": enabledCount,

@@ -393,6 +393,7 @@
         let isAuthVisible = false;   // auth value是否可见
 
         document.addEventListener('DOMContentLoaded', function() {
+            initializeCommonFeatures();
             endpointModal = new bootstrap.Modal(document.getElementById('endpointModal'));
             loadEndpoints();
             

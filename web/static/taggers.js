@@ -6,6 +6,7 @@ let editingTagger = null;
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
+    initializeCommonFeatures();
     loadTaggers();
     loadTags();
     

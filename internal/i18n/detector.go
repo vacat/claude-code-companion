@@ -85,7 +85,7 @@ func (d *Detector) parseAcceptLanguage(acceptLang string) Language {
 
 // setLanguageCookie sets the language preference cookie
 func (d *Detector) setLanguageCookie(c *gin.Context, lang Language) {
-	c.SetCookie(LangCookieName, string(lang), 86400*30, "/", "", false, false) // 30 days
+	c.SetCookie(LangCookieName, string(lang), 86400*365, "/", "", false, false) // 1 year
 }
 
 // GetLanguageFromContext gets the current language from gin context
