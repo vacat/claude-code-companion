@@ -32,7 +32,7 @@ func (s *AdminServer) handleTaggersPage(c *gin.Context) {
 	data := s.mergeTemplateData("taggers", map[string]interface{}{
 		"Title": "Tagger Management",
 	})
-	c.HTML(http.StatusOK, "taggers.html", data)
+	s.renderHTML(c, "taggers.html", data)
 }
 
 // handleGetTaggers 获取所有tagger配置

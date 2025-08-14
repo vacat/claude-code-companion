@@ -7,6 +7,7 @@ import (
 	"claude-proxy/internal/conversion"
 	"claude-proxy/internal/endpoint"
 	"claude-proxy/internal/health"
+	"claude-proxy/internal/i18n"
 	"claude-proxy/internal/logger"
 	"claude-proxy/internal/modelrewrite"
 	"claude-proxy/internal/tagging"
@@ -26,6 +27,7 @@ type Server struct {
 	taggingManager  *tagging.Manager       // 新增：tagging系统管理器
 	modelRewriter   *modelrewrite.Rewriter // 新增：模型重写器
 	converter       conversion.Converter   // 新增：格式转换器
+	i18nManager     *i18n.Manager          // 新增：国际化管理器
 	router          *gin.Engine
 	configFilePath  string
 }
@@ -60,8 +62,24 @@ func NewServer(cfg *config.Config, configFilePath string, buildVersion string) (
 	// 初始化格式转换器
 	converter := conversion.NewConverter(log)
 
+	// 初始化国际化管理器
+	i18nConfig := &i18n.Config{
+		DefaultLanguage: i18n.Language(cfg.I18n.DefaultLanguage),
+		LocalesPath:     cfg.I18n.LocalesPath,
+		Enabled:         cfg.I18n.Enabled,
+	}
+	// 如果配置为空，使用默认配置
+	if cfg.I18n.DefaultLanguage == "" {
+		i18nConfig = i18n.DefaultConfig()
+	}
+	
+	i18nManager, err := i18n.NewManager(i18nConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize i18n manager: %v", err)
+	}
+
 	// 创建管理界面服务器（永远启用）
-	adminServer := web.NewAdminServer(cfg, endpointManager, taggingManager, log, configFilePath, buildVersion)
+	adminServer := web.NewAdminServer(cfg, endpointManager, taggingManager, log, configFilePath, buildVersion, i18nManager)
 
 	server := &Server{
 		config:          cfg,
@@ -73,6 +91,7 @@ func NewServer(cfg *config.Config, configFilePath string, buildVersion string) (
 		taggingManager:  taggingManager, // 新增：设置tagging管理器
 		modelRewriter:   modelRewriter,  // 新增：设置模型重写器
 		converter:       converter,      // 新增：设置格式转换器
+		i18nManager:     i18nManager,    // 新增：设置国际化管理器
 		configFilePath:  configFilePath,
 	}
 

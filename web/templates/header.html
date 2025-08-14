@@ -1,14 +1,14 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
         <a class="navbar-brand" href="/admin/">
-            <i class="fas fa-server"></i> Claude 代理管理后台
+            <i class="fas fa-server"></i> <span data-t="Claude Proxy Admin">Claude 代理管理后台</span>
         </a>
         <div class="navbar-nav ms-auto">
-            <a class="nav-link {{if eq .CurrentPage "dashboard"}}active{{end}}" href="/admin/">控制台</a>
-            <a class="nav-link {{if eq .CurrentPage "endpoints"}}active{{end}}" href="/admin/endpoints">端点配置</a>
+            <a class="nav-link {{if eq .CurrentPage "dashboard"}}active{{end}}" href="/admin/"><span data-t="Dashboard">控制台</span></a>
+            <a class="nav-link {{if eq .CurrentPage "endpoints"}}active{{end}}" href="/admin/endpoints"><span data-t="Endpoints">端点配置</span></a>
             <a class="nav-link {{if eq .CurrentPage "taggers"}}active{{end}}" href="/admin/taggers">Taggers</a>
-            <a class="nav-link {{if eq .CurrentPage "logs"}}active{{end}}" href="/admin/logs">请求日志</a>
-            <a class="nav-link {{if eq .CurrentPage "settings"}}active{{end}}" href="/admin/settings">系统设置</a>
+            <a class="nav-link {{if eq .CurrentPage "logs"}}active{{end}}" href="/admin/logs"><span data-t="Request Logs">请求日志</span></a>
+            <a class="nav-link {{if eq .CurrentPage "settings"}}active{{end}}" href="/admin/settings"><span data-t="Settings">系统设置</span></a>
             <a class="nav-link" href="https://github.com/kxn/claude-proxy" target="_blank" title="GitHub 仓库">
                 <i class="fab fa-github"></i>
             </a>

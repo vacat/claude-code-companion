@@ -133,3 +133,9 @@ tagging:
                     return False
             # 或使用外部脚本文件
             # script_file: /path/to/custom.star
+
+# 国际化配置 (Internationalization)
+i18n:
+    enabled: true                    # 是否启用国际化支持
+    default_language: zh-cn          # 默认语言 (zh-cn | en | ja)
+    locales_path: web/locales        # 语言文件目录路径

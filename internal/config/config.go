@@ -19,6 +19,14 @@ type Config struct {
 	Validation  ValidationConfig  `yaml:"validation"`
 	Tagging     TaggingConfig     `yaml:"tagging"`     // 标签系统配置（永远启用）
 	Timeouts    TimeoutConfig     `yaml:"timeouts"`    // 超时配置
+	I18n        I18nConfig        `yaml:"i18n"`        // 国际化配置
+}
+
+// I18nConfig 国际化配置
+type I18nConfig struct {
+	Enabled         bool   `yaml:"enabled"`          // 是否启用国际化
+	DefaultLanguage string `yaml:"default_language"` // 默认语言
+	LocalesPath     string `yaml:"locales_path"`     // 语言文件路径
 }
 
 type ServerConfig struct {

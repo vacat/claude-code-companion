@@ -53,7 +53,7 @@ func (s *AdminServer) handleDashboard(c *gin.Context) {
 		"OverallSuccessRate": overallSuccessRate,
 		"Endpoints":         endpointStats,
 	})
-	c.HTML(http.StatusOK, "dashboard.html", data)
+	s.renderHTML(c, "dashboard.html", data)
 }
 
 func (s *AdminServer) handleEndpointsPage(c *gin.Context) {
@@ -79,7 +79,7 @@ func (s *AdminServer) handleEndpointsPage(c *gin.Context) {
 		"Title":     "Endpoints Configuration",
 		"Endpoints": endpointStats,
 	})
-	c.HTML(http.StatusOK, "endpoints.html", data)
+	s.renderHTML(c, "endpoints.html", data)
 }
 
 func (s *AdminServer) handleLogsPage(c *gin.Context) {
@@ -139,7 +139,7 @@ func (s *AdminServer) handleLogsPage(c *gin.Context) {
 		"NextPage":    page + 1,
 		"Limit":       limit,
 	})
-	c.HTML(http.StatusOK, "logs.html", data)
+	s.renderHTML(c, "logs.html", data)
 }
 
 func (s *AdminServer) handleSettingsPage(c *gin.Context) {
@@ -156,7 +156,7 @@ func (s *AdminServer) handleSettingsPage(c *gin.Context) {
 		"Config":       s.config,
 		"EnabledCount": enabledCount,
 	})
-	c.HTML(http.StatusOK, "settings.html", data)
+	s.renderHTML(c, "settings.html", data)
 }
 
 func (s *AdminServer) handleGetEndpoints(c *gin.Context) {

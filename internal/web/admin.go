@@ -2,9 +2,11 @@ package web
 
 import (
 	"fmt"
+	"strings"
 
 	"claude-proxy/internal/config"
 	"claude-proxy/internal/endpoint"
+	"claude-proxy/internal/i18n"
 	"claude-proxy/internal/logger"
 	"claude-proxy/internal/tagging"
 
@@ -24,9 +26,10 @@ type AdminServer struct {
 	configFilePath    string
 	hotUpdateHandler  HotUpdateHandler
 	buildVersion      string
+	i18nManager       *i18n.Manager
 }
 
-func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, taggingManager *tagging.Manager, log *logger.Logger, configFilePath string, buildVersion string) *AdminServer {
+func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, taggingManager *tagging.Manager, log *logger.Logger, configFilePath string, buildVersion string, i18nManager *i18n.Manager) *AdminServer {
 	return &AdminServer{
 		config:          cfg,
 		endpointManager: endpointManager,
@@ -34,12 +37,59 @@ func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, taggi
 		logger:          log,
 		configFilePath:  configFilePath,
 		buildVersion:    buildVersion,
+		i18nManager:     i18nManager,
 	}
 }
 
 // SetHotUpdateHandler sets the hot update handler
 func (s *AdminServer) SetHotUpdateHandler(handler HotUpdateHandler) {
 	s.hotUpdateHandler = handler
+}
+
+// renderHTML renders template with i18n support
+func (s *AdminServer) renderHTML(c *gin.Context, templateName string, data map[string]interface{}) {
+	// Always detect language fresh
+	lang := s.i18nManager.GetDetector().DetectLanguage(c)
+	i18n.SetLanguageToContext(c, lang)
+	
+	// If i18n is disabled or language is default, render normally
+	if s.i18nManager == nil || !s.i18nManager.IsEnabled() || lang == s.i18nManager.GetDefaultLanguage() {
+		c.HTML(200, templateName, data)
+		return
+	}
+	
+	// For non-default languages, we need to post-process
+	// Create a custom writer that captures the output
+	originalWriter := c.Writer
+	captureWriter := &captureResponseWriter{ResponseWriter: originalWriter}
+	c.Writer = captureWriter
+	
+	// Render template
+	c.HTML(200, templateName, data)
+	
+	// Process the captured HTML through translator
+	html := captureWriter.GetHTML()
+	translator := s.i18nManager.GetTranslator()
+	translatedHTML := translator.ProcessHTML(html, lang, s.i18nManager.GetTranslation)
+	
+	// Write the translated HTML to original writer
+	c.Writer = originalWriter
+	c.Writer.Write([]byte(translatedHTML))
+}
+
+// captureResponseWriter captures response for post-processing
+type captureResponseWriter struct {
+	gin.ResponseWriter
+	body []byte
+}
+
+func (w *captureResponseWriter) Write(data []byte) (int, error) {
+	w.body = append(w.body, data...)
+	return len(data), nil
+}
+
+func (w *captureResponseWriter) GetHTML() string {
+	return string(w.body)
 }
 
 // getBaseTemplateData returns common template data for all pages
@@ -155,5 +205,53 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 		api.GET("/config", s.handleGetConfig)
 		api.PUT("/settings", s.handleUpdateSettings)
 	}
+}
+
+// i18nMiddleware provides internationalization support
+func (s *AdminServer) i18nMiddleware() gin.HandlerFunc {
+	return gin.HandlerFunc(func(c *gin.Context) {
+		if s.i18nManager == nil || !s.i18nManager.IsEnabled() {
+			c.Next()
+			return
+		}
+
+		// Detect user's preferred language
+		lang := s.i18nManager.GetDetector().DetectLanguage(c)
+		i18n.SetLanguageToContext(c, lang)
+
+		// Only apply translation for /admin/ pages
+		if strings.HasPrefix(c.Request.URL.Path, "/admin/") && 
+		   !strings.HasPrefix(c.Request.URL.Path, "/admin/api/") {
+			// Override HTML response to process translations
+			originalWriter := c.Writer
+			c.Writer = &translatingResponseWriter{
+				ResponseWriter: originalWriter,
+				lang:           lang,
+				i18nManager:    s.i18nManager,
+			}
+		}
+
+		c.Next()
+	})
+}
+
+// translatingResponseWriter wraps gin.ResponseWriter to process translations
+type translatingResponseWriter struct {
+	gin.ResponseWriter
+	lang        i18n.Language
+	i18nManager *i18n.Manager
+}
+
+func (w *translatingResponseWriter) Write(data []byte) (int, error) {
+	// Always process if it looks like HTML content
+	html := string(data)
+	if strings.Contains(html, "<!DOCTYPE html") || strings.Contains(html, "<html") {
+		// Process translations
+		translator := w.i18nManager.GetTranslator()
+		translatedHTML := translator.ProcessHTML(html, w.lang, w.i18nManager.GetTranslation)
+		return w.ResponseWriter.Write([]byte(translatedHTML))
+	}
+
+	return w.ResponseWriter.Write(data)
 }
 
