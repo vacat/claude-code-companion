@@ -13,16 +13,16 @@
 
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>Tagger 管理</h1>
+            <h1>标记器管理</h1>
             <button id="addTaggerBtn" class="btn btn-success">
-                <i class="fas fa-plus-circle"></i> 添加 Tagger
+                <i class="fas fa-plus-circle"></i> 添加标记器
             </button>
         </div>
 
         <!-- Tagging System Status -->
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="card-title mb-0">Tagging 系统状态</h5>
+                <h5 class="card-title mb-0">标记系统状态</h5>
             </div>
             <div class="card-body">
                 <div class="row">
@@ -35,7 +35,7 @@
                     <div class="col-md-3">
                         <div class="text-center">
                             <div id="taggerCount" class="fs-4 fw-bold">0</div>
-                            <small class="text-muted">活跃 Taggers</small>
+                            <small class="text-muted">活跃标记器</small>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -57,7 +57,7 @@
         <!-- Taggers Table -->
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="card-title mb-0">Taggers 列表</h5>
+                <h5 class="card-title mb-0">标记器列表</h5>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -73,7 +73,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Taggers will be loaded here -->
+                            <!-- 标记器将在此加载 -->
                         </tbody>
                     </table>
                 </div>
@@ -87,18 +87,18 @@
             </div>
             <div class="card-body">
                 <div id="tagsContainer">
-                    <!-- Tags will be loaded here -->
+                    <!-- 标签将在此加载 -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Add/Edit Tagger Modal -->
+    <!-- 添加/编辑标记器对话框 -->
     <div class="modal fade" id="taggerModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="taggerModalTitle">添加 Tagger</h5>
+                    <h5 class="modal-title" id="taggerModalTitle">添加标记器</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">

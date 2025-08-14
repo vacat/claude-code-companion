@@ -108,7 +108,7 @@
                                             <th>路径</th>
                                             <th>认证方式</th>
                                             <th>代理</th>
-                                            <th>Tags</th>
+                                            <th>标签</th>
                                             <th>状态</th>
                                             <th>启用</th>
                                             <th width="160">操作</th>
@@ -139,7 +139,7 @@
                                             <th>路径</th>
                                             <th>认证方式</th>
                                             <th>代理</th>
-                                            <th>Tags</th>
+                                            <th>标签</th>
                                             <th>状态</th>
                                             <th>启用</th>
                                             <th width="160">操作</th>
@@ -221,7 +221,7 @@
                                     </div>
                                     <div class="col-4">
                                         <label for="endpoint-tags" class="form-label">
-                                            <i class="fas fa-tags form-label-icon"></i>Tags
+                                            <i class="fas fa-tags form-label-icon"></i>标签
                                         </label>
                                         <input type="text" class="form-control" id="endpoint-tags" 
                                                placeholder="用逗号分隔">
@@ -605,7 +605,7 @@
                 if (endpoint.tags && endpoint.tags.length > 0) {
                     tagsDisplay = endpoint.tags.map(tag => `<span class="badge bg-info me-1 mb-1">${tag}</span>`).join('');
                 } else {
-                    tagsDisplay = '<span class="text-muted">Universal</span>';
+                    tagsDisplay = '<span class="text-muted">通用</span>';
                 }
                 
                 row.innerHTML = `

@@ -1,0 +1,389 @@
+# Claude Proxy 中文术语统一文档
+
+本文档整理了Claude Proxy Web管理界面中所有的中文文本，并对术语进行统一。
+
+## 1. 导航和页面标题
+
+### 主导航栏
+- Claude 代理管理后台 (Claude Proxy Admin)
+- 控制台 (Dashboard)
+- 端点配置 (Endpoints)
+- 请求日志 (Request Logs) 
+- 系统设置 (Settings)
+- 标记器 (Taggers)
+
+### 页面标题
+- Claude Proxy Dashboard
+- Endpoints Configuration  
+- Request Logs
+- Settings
+- 标记器管理 (Tagger Management)
+
+## 2. Dashboard 控制台页面
+
+### 统计卡片
+- 端点总数 (Total Endpoints)
+- 活跃端点 (Active Endpoints)  
+- 请求总数 (Total Requests)
+- 成功率 (Success Rate)
+
+### 端点状态表格
+- 端点状态 (Endpoint Status)
+- 名称 (Name)
+- URL
+- 状态 (Status)
+  - 活跃 (Active)
+  - 不可用 (Inactive) 
+  - 检测中 (Checking)
+- 优先级 (Priority)
+- 总请求数 (Total Requests)
+- 成功率 (Success Rate)
+- 最后失败时间 (Last Failed Time)
+- 从未失败 (Never Failed)
+
+## 3. Endpoints 端点配置页面
+
+### 页面标题和说明
+- 端点配置
+- 配置变更自动保存，实时生效
+- 添加端点
+
+### 端点分类
+- 特殊端点 (有特定标签的端点)
+- 通用端点 (支持所有请求类型的端点)
+
+### 表格列标题
+- 拖拽行来重新排序
+- 优先级
+- 名称
+- URL
+- 类型
+- 路径
+- 认证方式
+- 代理
+- 标签 (Tags)
+- 状态
+- 启用
+- 操作
+
+### 端点编辑对话框
+#### Tab标签
+- 基本配置
+- 高级配置
+
+#### 基本配置字段
+- 名称 (必填)
+- 启用
+- 启用此端点
+- URL (必填)
+- 标签 (Tags)
+- 用逗号分隔
+- 留空则为万能endpoint
+- 端点类型 (必填)
+  - Anthropic (Claude)
+  - OpenAI Compatible
+- 选择端点的API兼容类型
+- 路径前缀 (必填)
+- OpenAI兼容端点的API路径
+- 认证方式 (必填)
+  - API Key (x-api-key 请求头)
+  - Auth Token (Authorization Bearer)
+- 认证值 (必填)
+- 输入您的 API Key 或 Token
+
+#### 高级配置
+##### 代理配置
+- 代理配置
+- 启用代理
+- 配置HTTP或SOCKS5代理以访问上游端点
+- 代理类型
+  - HTTP
+  - SOCKS5
+- 代理地址
+- 格式: 主机:端口
+- 用户名 (可选)
+- 代理认证用户名
+- 密码 (可选)
+- 代理认证密码
+- 说明：
+  - 留空用户名和密码表示无需认证
+  - HTTP代理支持 CONNECT 方法用于HTTPS
+  - SOCKS5代理支持TCP连接代理
+
+##### 模型重写配置
+- 模型重写配置
+- 启用模型重写
+- 配置规则将匹配的Claude模型重写为其他模型
+- 添加规则
+- 选择预设模型
+  - Haiku 系列
+  - Sonnet 系列
+  - Opus 系列
+  - 所有 Claude
+  - 自定义通配符
+- 通配符模式
+- 目标模型 (如: deepseek-chat)
+- 推荐: deepseek-chat
+- 预设模型模式：
+  - Haiku系列: claude-*haiku*
+  - Sonnet系列: claude-*sonnet*
+  - Opus系列: claude-*opus*
+  - 所有Claude: claude-*
+
+#### 对话框按钮
+- 取消
+- 保存
+
+### 端点操作
+- 编辑
+- 复制
+- 删除
+- 确定要删除端点 "xxx" 吗？
+- 确定要复制端点 "xxx" 吗？
+
+## 4. Logs 请求日志页面
+
+### 页面标题和控制
+- 请求日志 (共 X 条)
+- 仅失败请求
+- 显示全部
+- 仅显示失败
+- 刷新
+- 筛选中：仅显示失败请求（状态码 ≥ 400 或错误）
+
+### 日志表格
+- 时间
+- 请求ID
+- 端点
+- 模型
+- 标签 (Tags)
+- 状态
+- 耗时
+- 请求大小
+- 响应大小
+- 流式
+  - SSE
+  - JSON
+
+### 分页
+- 上一页
+- 下一页
+- 第 X / Y 页，共 Z 条记录，每页显示 N 条
+
+### 日志详情对话框
+- 请求详情
+- 请求详情 - X 次尝试
+- 基本信息
+- 请求数据
+- 响应数据
+- 有修改
+- 尝试 X: 
+- URL 对比
+- 客户端原始 URL
+- 发送给上游 URL
+- 请求头对比
+- 客户端原始请求头
+- 发送给上游请求头
+- 请求体对比 (X 字节)
+- 客户端原始请求体
+- 发送给上游请求体
+- 响应头对比
+- 上游原始响应头
+- 发送给客户端响应头
+- 响应体对比 (X 字节)
+- 上游原始响应体
+- 发送给客户端响应体
+- 无请求体
+- 无响应体
+- 原始
+- 最终
+- 错误：
+
+## 5. Settings 系统设置页面
+
+### 页面标题
+- 服务器配置
+- 编辑配置并保存
+- 保存配置
+- 重置
+
+### 配置分组
+#### 服务器设置
+- 主机地址
+- 代理端口
+
+#### 日志配置
+- 日志级别
+  - Debug
+  - Info
+  - Warn
+  - Error
+- 记录请求类型
+  - 全部
+  - 仅失败
+  - 仅成功
+- 记录请求体
+  - 不记录
+  - 截断
+  - 完整
+- 记录响应体
+  - 不记录
+  - 截断
+  - 完整
+- 日志目录
+
+#### 校验配置
+- 严格 Anthropic 格式校验
+- 校验流式响应
+- 无效时断开连接
+
+#### 代理超时配置
+- TLS握手超时
+- 响应头超时
+- 空闲连接超时
+- 整体请求超时
+- 请使用Go duration格式
+- 留空表示无限制
+- 留空支持流式响应
+
+#### 健康检查超时配置
+- TLS握手超时
+- 响应头超时
+- 空闲连接超时
+- 整体请求超时
+- 检查间隔
+
+## 6. 标记器管理页面
+
+### 页面标题
+- 标记器管理 (Tagger Management)
+- 添加标记器 (Add Tagger)
+
+### 系统状态
+- 标记系统状态 (Tagging System Status)
+- 已启用
+- 系统状态
+- 活跃标记器 (Active Taggers)
+- 已注册标签
+- 管道超时
+
+### 标记器列表
+- 标记器列表 (Taggers List)
+- 名称
+- 类型
+- 标签
+- 优先级
+- 状态
+- 操作
+
+### 已注册标签
+- 已注册标签
+
+### 标记器编辑对话框
+- 添加标记器 (Add Tagger)
+- 名称
+- 优先级
+- 类型
+  - 选择类型
+  - 内置类型
+  - Starlark 脚本
+- 标签
+- 内置类型
+  - 选择内置类型
+  - Path Matcher
+  - Header Matcher
+  - Method Matcher
+  - Query Parameter Matcher
+  - JSON Body Matcher
+  - User Message Matcher
+- 配置
+- 启用
+- 取消
+- 保存
+
+## 7. 通用术语统一
+
+### 状态相关
+- 活跃/激活 → 统一使用"活跃" (Active)
+- 不可用/非活跃 → 统一使用"不可用" (Inactive)
+- 启用/开启 → 统一使用"启用" (Enabled)
+- 禁用/关闭 → 统一使用"禁用" (Disabled)
+
+### 操作相关
+- 保存 (Save)
+- 取消 (Cancel)
+- 编辑 (Edit)
+- 删除 (Delete)
+- 复制 (Copy)
+- 添加 (Add)
+- 重置 (Reset)
+- 刷新 (Refresh)
+
+### 技术术语
+- 端点 (Endpoint) - 统一使用，不使用"终端"
+- 请求 (Request)
+- 响应 (Response)
+- 代理 (Proxy)
+- 认证 (Authentication)
+- 配置 (Configuration)
+- 日志 (Log)
+- 标签 (Tag)
+- 优先级 (Priority)
+- 超时 (Timeout)
+- 成功率 (Success Rate)
+
+### 数据相关
+- 请求体 (Request Body)
+- 响应体 (Response Body)
+- 请求头 (Request Headers)
+- 响应头 (Response Headers)
+- 请求大小 (Request Size)
+- 响应大小 (Response Size)
+
+### 提示信息
+- 必填字段标记：<span class="text-danger">*</span>
+- 可选字段标记：(可选)
+- 字段说明使用 <small class="text-muted"> 样式
+
+## 8. 错误消息和确认对话框
+
+### 确认对话框
+- "确定要删除端点 "xxx" 吗？"
+- "确定要复制端点 "xxx" 吗？"
+
+### 成功消息
+- "端点保存成功"
+- "配置已保存"
+- "端点创建成功"
+- "端点更新成功"
+- "端点删除成功"
+- "端点复制成功"
+
+### 错误消息
+- "保存失败"
+- "加载失败"
+- "端点未找到"
+- "配置验证失败"
+
+## 9. 数据格式显示
+
+### 时间格式
+- 详细时间：2006-01-02 15:04:05
+- 简短时间：15:04:05
+
+### 文件大小
+- 以字节 (B) 为单位显示
+- 可以考虑添加 KB/MB 格式化
+
+### 持续时间
+- 以毫秒 (ms) 为单位显示
+- 可以考虑添加秒 (s) 格式化
+
+## 10. 备注
+
+1. 所有中文文本都应该保持简洁明了
+2. 技术术语保持一致性，避免同义词混用
+3. 用户界面文字应该友好易懂
+4. 错误信息应该清晰指出问题所在
+5. 确认对话框应该让用户明确知道操作后果
+6. 状态显示应该使用统一的词汇和颜色编码

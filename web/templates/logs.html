@@ -40,7 +40,7 @@
                                         <th>请求ID</th>
                                         <th>端点</th>
                                         <th>模型</th>
-                                        <th>Tags</th>
+                                        <th>标签</th>
                                         <th>状态</th>
                                         <th>耗时</th>
                                         <th>请求大小</th>
@@ -608,7 +608,7 @@
                             <tr><th>请求体大小:</th><td>${log.request_body_size} 字节</td></tr>
                             <tr><th>响应体大小:</th><td>${log.response_body_size} 字节</td></tr>
                             <tr><th>流式响应:</th><td>${log.is_streaming ? '是 (SSE)' : '否'}</td></tr>
-                            <tr><th>Tags:</th><td>${log.tags && log.tags.length > 0 ? log.tags.map(tag => `<span class="badge bg-primary me-1">${escapeHtml(tag)}</span>`).join('') : '<small class="text-muted">无</small>'}</td></tr>
+                            <tr><th>标签:</th><td>${log.tags && log.tags.length > 0 ? log.tags.map(tag => `<span class="badge bg-primary me-1">${escapeHtml(tag)}</span>`).join('') : '<small class="text-muted">无</small>'}</td></tr>
                             <tr><th>Content-Type覆盖:</th><td>${log.content_type_override ? `<span class="badge bg-warning text-dark">${escapeHtml(log.content_type_override)}</span>` : '<small class="text-muted">无</small>'}</td></tr>
                             ${log.error ? `<tr><th>错误:</th><td class="text-danger">${escapeHtml(log.error)}</td></tr>` : ''}
                         </table>
