@@ -32,7 +32,7 @@ type Server struct {
 	configFilePath  string
 }
 
-func NewServer(cfg *config.Config, configFilePath string, buildVersion string) (*Server, error) {
+func NewServer(cfg *config.Config, configFilePath string, version string) (*Server, error) {
 	logConfig := logger.LogConfig{
 		Level:           cfg.Logging.Level,
 		LogRequestTypes: cfg.Logging.LogRequestTypes,
@@ -81,7 +81,7 @@ func NewServer(cfg *config.Config, configFilePath string, buildVersion string) (
 	}
 
 	// 创建管理界面服务器（永远启用）
-	adminServer := web.NewAdminServer(cfg, endpointManager, taggingManager, log, configFilePath, buildVersion, i18nManager)
+	adminServer := web.NewAdminServer(cfg, endpointManager, taggingManager, log, configFilePath, version, i18nManager)
 
 	server := &Server{
 		config:          cfg,

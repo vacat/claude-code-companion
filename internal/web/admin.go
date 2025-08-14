@@ -25,18 +25,18 @@ type AdminServer struct {
 	logger            *logger.Logger
 	configFilePath    string
 	hotUpdateHandler  HotUpdateHandler
-	buildVersion      string
+	version           string
 	i18nManager       *i18n.Manager
 }
 
-func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, taggingManager *tagging.Manager, log *logger.Logger, configFilePath string, buildVersion string, i18nManager *i18n.Manager) *AdminServer {
+func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, taggingManager *tagging.Manager, log *logger.Logger, configFilePath string, version string, i18nManager *i18n.Manager) *AdminServer {
 	return &AdminServer{
 		config:          cfg,
 		endpointManager: endpointManager,
 		taggingManager:  taggingManager,
 		logger:          log,
 		configFilePath:  configFilePath,
-		buildVersion:    buildVersion,
+		version:         version,
 		i18nManager:     i18nManager,
 	}
 }
@@ -108,7 +108,7 @@ func (s *AdminServer) getBaseTemplateData(c *gin.Context, currentPage string) ma
 	}
 	
 	return map[string]interface{}{
-		"BuildVersion":       s.buildVersion,
+		"Version":            s.version,
 		"CurrentPage":        currentPage,
 		"CurrentLanguage":    string(lang),
 		"AvailableLanguages": availableLanguages,

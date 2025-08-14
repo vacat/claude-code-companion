@@ -19,16 +19,15 @@ var (
 	port       = flag.Int("port", 0, "Override proxy server port")
 	version    = flag.Bool("version", false, "Show version information")
 	
-	// These will be set by build process
-	Version      = "1.0.0"
-	BuildVersion = "unknown"
+	// This will be set by build process
+	Version = "dev"
 )
 
 func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Printf("Claude Proxy Server v%s\n", Version)
+		fmt.Printf("Claude Proxy Server %s\n", Version)
 		os.Exit(0)
 	}
 
@@ -45,7 +44,7 @@ func main() {
 	if err := initHTTPClientsFromConfig(cfg); err != nil {
 		log.Fatalf("Failed to initialize HTTP clients: %v", err)
 	}
-	proxyServer, err := proxy.NewServer(cfg, *configFile, BuildVersion)
+	proxyServer, err := proxy.NewServer(cfg, *configFile, Version)
 	if err != nil {
 		log.Fatalf("Failed to create proxy server: %v", err)
 	}
@@ -60,7 +59,7 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-	fmt.Printf("\n=== Claude API Proxy Server v%s ===\n", Version)
+	fmt.Printf("\n=== Claude API Proxy Server %s ===\n", Version)
 	fmt.Printf("Proxy Server: http://%s:%d\n", cfg.Server.Host, cfg.Server.Port)
 	fmt.Printf("Admin Interface: http://%s:%d/admin/\n", cfg.Server.Host, cfg.Server.Port)
 	fmt.Printf("Configuration File: %s\n", *configFile)
