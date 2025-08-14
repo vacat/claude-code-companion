@@ -60,7 +60,7 @@ func (s *Server) handleProxy(c *gin.Context) {
 	}
 
 	// 尝试向选择的端点发送请求，失败时回退到其他端点
-	success, shouldRetry := s.tryProxyRequest(c, selectedEndpoint, requestBody, requestID, startTime, path, taggedRequest)
+	success, shouldRetry := s.tryProxyRequest(c, selectedEndpoint, requestBody, requestID, startTime, path, taggedRequest, 1)
 	if success {
 		return
 	}
@@ -130,8 +130,8 @@ func (s *Server) selectEndpointForRequest(taggedRequest *tagging.TaggedRequest) 
 }
 
 // tryProxyRequest attempts to proxy the request to the given endpoint
-func (s *Server) tryProxyRequest(c *gin.Context, ep *endpoint.Endpoint, requestBody []byte, requestID string, startTime time.Time, path string, taggedRequest *tagging.TaggedRequest) (success, shouldRetry bool) {
-	success, _ = s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest)
+func (s *Server) tryProxyRequest(c *gin.Context, ep *endpoint.Endpoint, requestBody []byte, requestID string, startTime time.Time, path string, taggedRequest *tagging.TaggedRequest, attemptNumber int) (success, shouldRetry bool) {
+	success, _ = s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest, attemptNumber)
 	if success {
 		s.endpointManager.RecordRequest(ep.ID, true)
 		
@@ -161,18 +161,19 @@ func (s *Server) rebuildRequestBody(c *gin.Context, requestBody []byte) {
 }
 
 // tryEndpointList 尝试端点列表，返回(成功, 尝试次数)
-func (s *Server) tryEndpointList(c *gin.Context, endpoints []utils.EndpointSorter, path string, requestBody []byte, requestID string, startTime time.Time, taggedRequest *tagging.TaggedRequest, phase string) (bool, int) {
+func (s *Server) tryEndpointList(c *gin.Context, endpoints []utils.EndpointSorter, path string, requestBody []byte, requestID string, startTime time.Time, taggedRequest *tagging.TaggedRequest, phase string, startingAttemptNumber int) (bool, int) {
 	attemptedCount := 0
 	
 	for _, epInterface := range endpoints {
 		ep := epInterface.(*endpoint.Endpoint)
 		attemptedCount++
-		s.logger.Debug(fmt.Sprintf("%s: Attempting endpoint %s", phase, ep.Name))
+		currentAttempt := startingAttemptNumber + attemptedCount - 1
+		s.logger.Debug(fmt.Sprintf("%s: Attempting endpoint %s (attempt #%d)", phase, ep.Name, currentAttempt))
 		
-		success, shouldRetry := s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest)
+		success, shouldRetry := s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest, currentAttempt)
 		if success {
 			s.endpointManager.RecordRequest(ep.ID, true)
-			s.logger.Debug(fmt.Sprintf("%s: Request succeeded on endpoint %s", phase, ep.Name))
+			s.logger.Debug(fmt.Sprintf("%s: Request succeeded on endpoint %s (attempt #%d)", phase, ep.Name, currentAttempt))
 			return true, attemptedCount
 		}
 		
@@ -265,7 +266,7 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 		
 		if len(taggedEndpoints) > 0 {
 			s.logger.Debug(fmt.Sprintf("Phase 1: Trying %d tagged endpoints", len(taggedEndpoints)))
-			success, attemptedCount := s.tryEndpointList(c, taggedEndpoints, path, requestBody, requestID, startTime, taggedRequest, "Phase 1")
+			success, attemptedCount := s.tryEndpointList(c, taggedEndpoints, path, requestBody, requestID, startTime, taggedRequest, "Phase 1", totalAttempted+1)
 			if success {
 				return
 			}
@@ -279,7 +280,7 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 		
 		if len(universalEndpoints) > 0 {
 			s.logger.Debug(fmt.Sprintf("Phase 2: Trying %d universal endpoints", len(universalEndpoints)))
-			success, attemptedCount := s.tryEndpointList(c, universalEndpoints, path, requestBody, requestID, startTime, taggedRequest, "Phase 2")
+			success, attemptedCount := s.tryEndpointList(c, universalEndpoints, path, requestBody, requestID, startTime, taggedRequest, "Phase 2", totalAttempted+1)
 			if success {
 				return
 			}
@@ -304,7 +305,7 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 		}
 		
 		s.logger.Debug(fmt.Sprintf("Trying %d universal endpoints for untagged request", len(universalEndpoints)))
-		success, attemptedCount := s.tryEndpointList(c, universalEndpoints, path, requestBody, requestID, startTime, taggedRequest, "Universal")
+		success, attemptedCount := s.tryEndpointList(c, universalEndpoints, path, requestBody, requestID, startTime, taggedRequest, "Universal", totalAttempted+1)
 		if success {
 			return
 		}
@@ -362,7 +363,9 @@ func (s *Server) extractModelFromRequest(requestBody []byte) string {
 	return utils.ExtractModelFromRequestBody(string(requestBody))
 }
 
-func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path string, requestBody []byte, requestID string, startTime time.Time, taggedRequest *tagging.TaggedRequest) (bool, bool) {
+func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path string, requestBody []byte, requestID string, startTime time.Time, taggedRequest *tagging.TaggedRequest, attemptNumber int) (bool, bool) {
+	// 为这个端点记录独立的开始时间
+	endpointStartTime := time.Now()
 	targetURL := ep.GetFullURL(path)
 	
 	// Extract tags from taggedRequest
@@ -376,9 +379,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	if err != nil {
 		s.logger.Error("Failed to create request", err)
 		// 记录创建请求失败的日志
-		duration := time.Since(startTime)
+		duration := time.Since(endpointStartTime)
 		createRequestError := fmt.Sprintf("Failed to create request: %v", err)
-		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, requestBody, c, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "", "", "")
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, requestBody, c, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "", "", "", attemptNumber)
 		return false, false
 	}
 
@@ -387,8 +390,8 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	if err != nil {
 		s.logger.Error("Model rewrite failed", err)
 		// 记录模型重写失败的日志
-		duration := time.Since(startTime)
-		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, requestBody, c, nil, nil, nil, duration, err, false, tags, "", "", "")
+		duration := time.Since(endpointStartTime)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, requestBody, c, nil, nil, nil, duration, err, false, tags, "", "", "", attemptNumber)
 		return false, false
 	}
 
@@ -398,8 +401,8 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		finalRequestBody, err = io.ReadAll(tempReq.Body)
 		if err != nil {
 			s.logger.Error("Failed to read rewritten request body", err)
-			duration := time.Since(startTime)
-			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, nil, nil, nil, duration, err, false, tags, "", originalModel, rewrittenModel)
+			duration := time.Since(endpointStartTime)
+			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, nil, nil, nil, duration, err, false, tags, "", originalModel, rewrittenModel, attemptNumber)
 			return false, false
 		}
 	} else {
@@ -413,8 +416,8 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		convertedBody, ctx, err := s.converter.ConvertRequest(finalRequestBody, ep.EndpointType)
 		if err != nil {
 			s.logger.Error("Request format conversion failed", err)
-			duration := time.Since(startTime)
-			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, nil, nil, nil, duration, err, false, tags, "", originalModel, rewrittenModel)
+			duration := time.Since(endpointStartTime)
+			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, nil, nil, nil, duration, err, false, tags, "", originalModel, rewrittenModel, attemptNumber)
 			return false, true // 转换失败，尝试下一个端点
 		}
 		finalRequestBody = convertedBody
@@ -431,9 +434,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	if err != nil {
 		s.logger.Error("Failed to create final request", err)
 		// 记录创建请求失败的日志
-		duration := time.Since(startTime)
+		duration := time.Since(endpointStartTime)
 		createRequestError := fmt.Sprintf("Failed to create final request: %v", err)
-		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "", originalModel, rewrittenModel)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "", originalModel, rewrittenModel, attemptNumber)
 		return false, false
 	}
 
@@ -461,22 +464,22 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	client, err := ep.CreateProxyClient(s.config.Timeouts.Proxy)
 	if err != nil {
 		s.logger.Error("Failed to create proxy client for endpoint", err)
-		duration := time.Since(startTime)
-		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
+		duration := time.Since(endpointStartTime)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
 		return false, true
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		duration := time.Since(startTime)
-		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
+		duration := time.Since(endpointStartTime)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
 		return false, true
 	}
 	defer resp.Body.Close()
 
 	// 只有2xx状态码才认为是成功，其他所有状态码都尝试下一个端点
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		duration := time.Since(startTime)
+		duration := time.Since(endpointStartTime)
 		body, _ := io.ReadAll(resp.Body)
 		
 		// 解压响应体用于日志记录
@@ -486,7 +489,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			decompressedBody = body // 如果解压失败，使用原始数据
 		}
 		
-		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, nil, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, nil, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
 		s.logger.Debug(fmt.Sprintf("HTTP error %d from endpoint %s, trying next endpoint", resp.StatusCode, ep.Name))
 		return false, true
 	}
@@ -495,9 +498,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	if err != nil {
 		s.logger.Error("Failed to read response body", err)
 		// 记录读取响应体失败的日志
-		duration := time.Since(startTime)
+		duration := time.Since(endpointStartTime)
 		readError := fmt.Sprintf("Failed to read response body: %v", err)
-		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, nil, duration, fmt.Errorf(readError), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, nil, duration, fmt.Errorf(readError), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
 		return false, false
 	}
 
@@ -507,9 +510,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	if err != nil {
 		s.logger.Error("Failed to decompress response body", err)
 		// 记录解压响应体失败的日志
-		duration := time.Since(startTime)
+		duration := time.Since(endpointStartTime)
 		decompressError := fmt.Sprintf("Failed to decompress response body: %v", err)
-		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, responseBody, duration, fmt.Errorf(decompressError), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, responseBody, duration, fmt.Errorf(decompressError), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
 		return false, false
 	}
 
@@ -546,18 +549,18 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			// 如果是usage统计验证失败，尝试下一个endpoint
 			if strings.Contains(err.Error(), "invalid usage stats") {
 				s.logger.Info(fmt.Sprintf("Usage validation failed for endpoint %s: %v", ep.Name, err))
-				duration := time.Since(startTime)
+				duration := time.Since(endpointStartTime)
 				errorLog := fmt.Sprintf("Usage validation failed: %v", err)
-				s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
+				s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
 				return false, true // 验证失败，尝试下一个endpoint
 			}
 			
 			if s.config.Validation.DisconnectOnInvalid {
 				s.logger.Error("Invalid response format, disconnecting", err)
 				// 记录验证失败的请求日志
-				duration := time.Since(startTime)
+				duration := time.Since(endpointStartTime)
 				validationError := fmt.Sprintf("Response validation failed: %v", err)
-				s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags, "", originalModel, rewrittenModel)
+				s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags, "", originalModel, rewrittenModel, attemptNumber)
 				c.Header("Connection", "close")
 				c.AbortWithStatus(http.StatusBadGateway)
 				return false, false
@@ -630,12 +633,13 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	// 发送最终响应体给客户端
 	c.Writer.Write(finalResponseBody)
 
-	duration := time.Since(startTime)
+	duration := time.Since(endpointStartTime)
 	// 创建日志条目，记录修改前后的完整数据
 	requestLog := s.logger.CreateRequestLog(requestID, ep.URL, c.Request.Method, path)
 	requestLog.RequestBodySize = len(requestBody)
 	requestLog.Tags = tags
 	requestLog.ContentTypeOverride = overrideInfo
+	requestLog.AttemptNumber = attemptNumber
 	
 	// 记录原始客户端请求数据
 	requestLog.OriginalRequestURL = c.Request.URL.String()
@@ -747,11 +751,12 @@ func (s *Server) isRequestExpectingStream(req *http.Request) bool {
 }
 
 // logSimpleRequest creates and logs a simple request log entry for error cases
-func (s *Server) logSimpleRequest(requestID, endpoint, method, path string, originalRequestBody []byte, finalRequestBody []byte, c *gin.Context, req *http.Request, resp *http.Response, responseBody []byte, duration time.Duration, err error, isStreaming bool, tags []string, contentTypeOverride string, originalModel, rewrittenModel string) {
+func (s *Server) logSimpleRequest(requestID, endpoint, method, path string, originalRequestBody []byte, finalRequestBody []byte, c *gin.Context, req *http.Request, resp *http.Response, responseBody []byte, duration time.Duration, err error, isStreaming bool, tags []string, contentTypeOverride string, originalModel, rewrittenModel string, attemptNumber int) {
 	requestLog := s.logger.CreateRequestLog(requestID, endpoint, method, path)
 	requestLog.RequestBodySize = len(originalRequestBody)
 	requestLog.Tags = tags
 	requestLog.ContentTypeOverride = contentTypeOverride
+	requestLog.AttemptNumber = attemptNumber
 	
 	// 记录原始客户端请求数据
 	if c != nil {

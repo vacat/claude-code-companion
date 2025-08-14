@@ -42,6 +42,7 @@
                                         <th>模型</th>
                                         <th>标签</th>
                                         <th>状态</th>
+                                        <th>重试</th>
                                         <th>耗时</th>
                                         <th>请求大小</th>
                                         <th>响应大小</th>
@@ -83,10 +84,27 @@
                                             {{end}}
                                         </td>
                                         <td>
-                                            {{if lt .StatusCode 400}}
+                                            {{if and (gt .StatusCode 0) (lt .StatusCode 400)}}
                                                 <span class="badge bg-success">{{.StatusCode}}</span>
                                             {{else}}
                                                 <span class="badge bg-danger">{{.StatusCode}}</span>
+                                            {{end}}
+                                        </td>
+                                        <td>
+                                            {{if .AttemptNumber}}
+                                                {{if eq .AttemptNumber 2}}
+                                                    <span class="badge bg-warning text-dark">#1</span>
+                                                {{else if eq .AttemptNumber 3}}
+                                                    <span class="badge bg-warning text-dark">#2</span>
+                                                {{else if eq .AttemptNumber 4}}
+                                                    <span class="badge bg-warning text-dark">#3</span>
+                                                {{else if eq .AttemptNumber 5}}
+                                                    <span class="badge bg-warning text-dark">#4</span>
+                                                {{else if eq .AttemptNumber 6}}
+                                                    <span class="badge bg-warning text-dark">#5</span>
+                                                {{else if gt .AttemptNumber 6}}
+                                                    <span class="badge bg-warning text-dark">#5+</span>
+                                                {{end}}
                                             {{end}}
                                         </td>
                                         <td class="duration-cell" data-ms="{{.DurationMs}}">{{.DurationMs}}ms</td>

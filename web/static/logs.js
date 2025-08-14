@@ -70,11 +70,14 @@ function generateLogAttemptHtml(log, attemptNum) {
     const requestChanges = hasRequestChanges(log);
     const responseChanges = hasResponseChanges(log);
     
+    // Use actual attempt number from log if available
+    const displayAttemptNum = log.attempt_number || attemptNum;
+    
     return `
         <div class="card mb-3">
             <div class="card-header">
                 <h6 class="mb-0">
-                    尝试 ${attemptNum}: ${escapeHtml(log.endpoint)} 
+                    ${displayAttemptNum > 1 ? `重试 #${displayAttemptNum - 1}` : '首次尝试'}: ${escapeHtml(log.endpoint)} 
                     <span class="badge ${badgeClass}">${log.status_code}</span>
                     <span class="badge bg-secondary">${log.duration_ms}ms</span>
                     ${log.model ? 
@@ -401,6 +404,12 @@ function displayLogDetails(log) {
                     <tr><th>请求方法:</th><td>${escapeHtml(log.method)}</td></tr>
                     <tr><th>路径:</th><td>${escapeHtml(log.path)}</td></tr>
                     <tr><th>状态码:</th><td>${log.status_code}</td></tr>
+                    <tr><th>重试次数:</th><td>
+                        ${log.attempt_number && log.attempt_number > 1 ? 
+                            `<span class="badge bg-warning text-dark">#${log.attempt_number - 1}</span>` : 
+                            '<span class="text-muted">无重试</span>'
+                        }
+                    </td></tr>
                     <tr><th>模型:</th><td>
                         ${log.model ? 
                             (log.model_rewrite_applied ? 

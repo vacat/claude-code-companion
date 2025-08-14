@@ -19,6 +19,7 @@ type RequestLog struct {
 	Path                 string            `json:"path"`
 	StatusCode           int               `json:"status_code"`
 	DurationMs           int64             `json:"duration_ms"`
+	AttemptNumber        int               `json:"attempt_number"`        // 尝试次数（1表示第一次，2表示第一次重试，等等）
 	RequestHeaders       map[string]string `json:"request_headers"`
 	RequestBody          string            `json:"request_body"`
 	ResponseHeaders      map[string]string `json:"response_headers"`

@@ -72,6 +72,7 @@ func (s *SQLiteStorage) initDatabase() error {
 		path TEXT NOT NULL,
 		status_code INTEGER DEFAULT 0,
 		duration_ms INTEGER DEFAULT 0,
+		attempt_number INTEGER DEFAULT 1,
 		request_headers TEXT DEFAULT '{}',
 		request_body TEXT DEFAULT '',
 		request_body_size INTEGER DEFAULT 0,
@@ -120,6 +121,13 @@ func (s *SQLiteStorage) initDatabase() error {
 		if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 			fmt.Printf("Note: %v (this is expected if upgrading from older version)\n", err)
 		}
+	}
+
+	// Add attempt_number column for retry tracking
+	attemptNumberSQL := `ALTER TABLE request_logs ADD COLUMN attempt_number INTEGER DEFAULT 1;`
+	_, err3 := s.db.Exec(attemptNumberSQL)
+	if err3 != nil && !strings.Contains(err3.Error(), "duplicate column name") {
+		fmt.Printf("Note: %v (this is expected if upgrading from older version)\n", err3)
 	}
 
 	// Add original/final request/response fields for before/after comparison
@@ -181,7 +189,7 @@ func (s *SQLiteStorage) SaveLog(log *RequestLog) {
 
 	insertSQL := `
 	INSERT INTO request_logs (
-		timestamp, request_id, endpoint, method, path, status_code, duration_ms,
+		timestamp, request_id, endpoint, method, path, status_code, duration_ms, attempt_number,
 		request_headers, request_body, request_body_size,
 		response_headers, response_body, response_body_size,
 		is_streaming, model, error, tags, content_type_override,
@@ -190,11 +198,11 @@ func (s *SQLiteStorage) SaveLog(log *RequestLog) {
 		original_response_headers, original_response_body,
 		final_request_url, final_request_headers, final_request_body,
 		final_response_headers, final_response_body
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.Exec(insertSQL,
 		log.Timestamp, log.RequestID, log.Endpoint, log.Method, log.Path,
-		log.StatusCode, log.DurationMs,
+		log.StatusCode, log.DurationMs, log.AttemptNumber,
 		string(requestHeaders), log.RequestBody, log.RequestBodySize,
 		string(responseHeaders), log.ResponseBody, log.ResponseBodySize,
 		log.IsStreaming, log.Model, log.Error, string(tags), log.ContentTypeOverride,
@@ -234,7 +242,7 @@ func (s *SQLiteStorage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestL
 
 	// Get logs with pagination
 	querySQL := fmt.Sprintf(`
-		SELECT timestamp, request_id, endpoint, method, path, status_code, duration_ms,
+		SELECT timestamp, request_id, endpoint, method, path, status_code, duration_ms, attempt_number,
 			   request_headers, request_body, request_body_size,
 			   response_headers, response_body, response_body_size,
 			   is_streaming, model, error, tags, content_type_override,
@@ -263,7 +271,7 @@ func (s *SQLiteStorage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestL
 
 		err := rows.Scan(
 			&log.Timestamp, &log.RequestID, &log.Endpoint, &log.Method, &log.Path,
-			&log.StatusCode, &log.DurationMs,
+			&log.StatusCode, &log.DurationMs, &log.AttemptNumber,
 			&requestHeaders, &log.RequestBody, &log.RequestBodySize,
 			&responseHeaders, &log.ResponseBody, &log.ResponseBodySize,
 			&log.IsStreaming, &log.Model, &log.Error, &tagsJSON, &log.ContentTypeOverride,
@@ -302,7 +310,7 @@ func (s *SQLiteStorage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, 
 	defer s.mutex.RUnlock()
 
 	querySQL := `
-		SELECT timestamp, request_id, endpoint, method, path, status_code, duration_ms,
+		SELECT timestamp, request_id, endpoint, method, path, status_code, duration_ms, attempt_number,
 			   request_headers, request_body, request_body_size,
 			   response_headers, response_body, response_body_size,
 			   is_streaming, model, error, tags, content_type_override,
@@ -330,7 +338,7 @@ func (s *SQLiteStorage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, 
 
 		err := rows.Scan(
 			&log.Timestamp, &log.RequestID, &log.Endpoint, &log.Method, &log.Path,
-			&log.StatusCode, &log.DurationMs,
+			&log.StatusCode, &log.DurationMs, &log.AttemptNumber,
 			&requestHeaders, &log.RequestBody, &log.RequestBodySize,
 			&responseHeaders, &log.ResponseBody, &log.ResponseBodySize,
 			&log.IsStreaming, &log.Model, &log.Error, &tagsJSON, &log.ContentTypeOverride,
