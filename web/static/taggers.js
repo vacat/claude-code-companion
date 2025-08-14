@@ -273,9 +273,6 @@ function onBuiltinTypeChange() {
             addConfigField('header_name', 'text', 'Header Name', 'Content-Type');
             addConfigField('expected_value', 'text', 'Expected Value', 'application/json');
             break;
-        case 'method':
-            addConfigField('allowed_methods', 'text', 'Allowed Methods (comma-separated)', 'POST,PUT');
-            break;
         case 'query':
             addConfigField('param_name', 'text', 'Parameter Name', 'beta');
             addConfigField('expected_value', 'text', 'Expected Value', 'true');
@@ -286,6 +283,12 @@ function onBuiltinTypeChange() {
             break;
         case 'user-message':
             addConfigField('expected_value', 'text', 'Expected Value (supports wildcards)', '*#use-claude*');
+            break;
+        case 'model':
+            addConfigField('expected_value', 'text', 'Expected Model (supports wildcards)', 'claude-3*');
+            break;
+        case 'thinking':
+            addConfigField('min_budget_tokens', 'number', 'Min Budget Tokens (optional, default: 0)', '0');
             break;
     }
 }

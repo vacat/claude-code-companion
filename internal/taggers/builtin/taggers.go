@@ -109,58 +109,54 @@ func (ht *HeaderTagger) ShouldTag(request *http.Request) (bool, error) {
 	return wildcardMatch(ht.expectedValue, headerValue)
 }
 
-// MethodTagger HTTP方法匹配tagger
-type MethodTagger struct {
+// ModelTagger 模型匹配tagger (专门匹配请求体中的model字段)
+type ModelTagger struct {
 	BaseTagger
-	methods []string
+	expectedValue string
 }
 
-// NewMethodTagger 创建HTTP方法匹配tagger
-func NewMethodTagger(name, tag string, config map[string]interface{}) (interfaces.Tagger, error) {
-	methodsInterface, ok := config["methods"]
-	if !ok {
-		return nil, fmt.Errorf("method tagger requires 'methods' in config")
+// NewModelTagger 创建模型匹配tagger
+func NewModelTagger(name, tag string, config map[string]interface{}) (interfaces.Tagger, error) {
+	expectedValue, ok := config["expected_value"].(string)
+	if !ok || expectedValue == "" {
+		return nil, fmt.Errorf("model tagger requires 'expected_value' in config")
 	}
 
-	var methods []string
-	switch v := methodsInterface.(type) {
-	case []interface{}:
-		methods = make([]string, len(v))
-		for i, method := range v {
-			if str, ok := method.(string); ok {
-				methods[i] = strings.ToUpper(str)
-			} else {
-				return nil, fmt.Errorf("method tagger 'methods' must be array of strings")
-			}
-		}
-	case []string:
-		methods = make([]string, len(v))
-		for i, method := range v {
-			methods[i] = strings.ToUpper(method)
-		}
-	case string:
-		methods = []string{strings.ToUpper(v)}
-	default:
-		return nil, fmt.Errorf("method tagger 'methods' must be string or array of strings")
-	}
-
-	if len(methods) == 0 {
-		return nil, fmt.Errorf("method tagger requires at least one method")
-	}
-
-	return &MethodTagger{
-		BaseTagger: BaseTagger{name: name, tag: tag},
-		methods:    methods,
+	return &ModelTagger{
+		BaseTagger:    BaseTagger{name: name, tag: tag},
+		expectedValue: expectedValue,
 	}, nil
 }
 
-func (mt *MethodTagger) ShouldTag(request *http.Request) (bool, error) {
-	requestMethod := strings.ToUpper(request.Method)
-	for _, method := range mt.methods {
-		if method == requestMethod {
-			return true, nil
-		}
+func (mt *ModelTagger) ShouldTag(request *http.Request) (bool, error) {
+	// 只处理JSON内容类型
+	contentType := request.Header.Get("Content-Type")
+	if !strings.Contains(contentType, "application/json") {
+		return false, nil
 	}
+
+	// 从请求上下文中获取预处理的请求体数据
+	bodyContent, ok := request.Context().Value("cached_body").([]byte)
+	if !ok || len(bodyContent) == 0 {
+		return false, nil
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(bodyContent, &jsonData); err != nil {
+		return false, nil // JSON解析失败，不匹配
+	}
+
+	// 提取model字段
+	modelValue, ok := jsonData["model"]
+	if !ok {
+		return false, nil
+	}
+
+	if strValue, ok := modelValue.(string); ok {
+		// 使用统一的通配符匹配函数
+		return wildcardMatch(mt.expectedValue, strValue)
+	}
+
 	return false, nil
 }
 
@@ -398,4 +394,100 @@ func (ut *UserMessageTagger) extractLatestUserMessage(data map[string]interface{
 	}
 
 	return "", fmt.Errorf("no user message found")
+}
+
+// ThinkingTagger thinking模式匹配tagger
+type ThinkingTagger struct {
+	BaseTagger
+	minBudgetTokens int
+}
+
+// NewThinkingTagger 创建thinking模式匹配tagger
+func NewThinkingTagger(name, tag string, config map[string]interface{}) (interfaces.Tagger, error) {
+	minBudgetTokens := 0 // 默认值为0
+	
+	if budgetInterface, ok := config["min_budget_tokens"]; ok {
+		if budgetFloat, ok := budgetInterface.(float64); ok {
+			minBudgetTokens = int(budgetFloat)
+		} else if budgetInt, ok := budgetInterface.(int); ok {
+			minBudgetTokens = budgetInt
+		} else {
+			return nil, fmt.Errorf("thinking tagger 'min_budget_tokens' must be a number")
+		}
+	}
+
+	if minBudgetTokens < 0 {
+		return nil, fmt.Errorf("thinking tagger 'min_budget_tokens' must be non-negative")
+	}
+
+	return &ThinkingTagger{
+		BaseTagger:      BaseTagger{name: name, tag: tag},
+		minBudgetTokens: minBudgetTokens,
+	}, nil
+}
+
+func (tt *ThinkingTagger) ShouldTag(request *http.Request) (bool, error) {
+	// 只处理JSON内容类型
+	contentType := request.Header.Get("Content-Type")
+	if !strings.Contains(contentType, "application/json") {
+		return false, nil
+	}
+
+	// 从请求上下文中获取预处理的请求体数据
+	bodyContent, ok := request.Context().Value("cached_body").([]byte)
+	if !ok || len(bodyContent) == 0 {
+		return false, nil
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(bodyContent, &jsonData); err != nil {
+		return false, nil // JSON解析失败，不匹配
+	}
+
+	// 检查是否启用了thinking模式
+	thinkingInterface, ok := jsonData["thinking"]
+	if !ok {
+		return false, nil
+	}
+
+	thinkingData, ok := thinkingInterface.(map[string]interface{})
+	if !ok {
+		return false, nil
+	}
+
+	// 检查enabled字段
+	enabled, ok := thinkingData["enabled"]
+	if !ok {
+		return false, nil
+	}
+
+	enabledBool, ok := enabled.(bool)
+	if !ok || !enabledBool {
+		return false, nil
+	}
+
+	// 如果设置了最小budget_tokens要求，检查budget_tokens字段
+	if tt.minBudgetTokens > 0 {
+		budgetTokens, ok := thinkingData["budget_tokens"]
+		if !ok {
+			return false, nil
+		}
+
+		var budgetValue int
+		switch v := budgetTokens.(type) {
+		case float64:
+			budgetValue = int(v)
+		case int:
+			budgetValue = v
+		default:
+			return false, nil
+		}
+
+		if budgetValue < tt.minBudgetTokens {
+			return false, nil
+		}
+	}
+
+	// thinking已启用且满足budget_tokens要求
+	return true, nil
 }
