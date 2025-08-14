@@ -5,50 +5,80 @@ import (
 	"strings"
 )
 
-// Translator handles comment-style translation processing
+// Translator handles data-t attribute translation processing
 type Translator struct {
-	// commentPattern matches pattern: >text<!-- t:translation -->
-	commentPattern *regexp.Regexp
+	// dataPattern matches pattern: data-t="translation_key"
+	dataPattern *regexp.Regexp
 }
 
 // NewTranslator creates a new translator
 func NewTranslator() *Translator {
 	// Pattern explanation:
-	// data-t="([^"]+)"  - matches data-t attribute with translation
-	// >([^<]+)<         - matches text content between tags
-	pattern := regexp.MustCompile(`data-t="([^"]+)">([^<]+)<`)
+	// data-t="([^"]+)"  - captures the translation key from data-t attribute
+	// This pattern will match any element with data-t attribute
+	pattern := regexp.MustCompile(`data-t="([^"]+)"`)
 	
 	return &Translator{
-		commentPattern: pattern,
+		dataPattern: pattern,
 	}
 }
 
-// ProcessHTML processes HTML content and replaces comment-style translations
+// ProcessHTML processes HTML content and replaces data-t translations
 func (t *Translator) ProcessHTML(html string, lang Language, getTranslation func(string, Language) string) string {
 	if lang == LanguageZhCN {
 		// For Chinese (default), return original HTML
 		return html
 	}
 	
-	// Find all comment-style translation markers
-	matches := t.commentPattern.FindAllStringSubmatch(html, -1)
 	result := html
 	
+	// Pattern to match: data-t="key">content</tag>
+	fullPattern := regexp.MustCompile(`(<[^>]*data-t="([^"]+)"[^>]*>)([^<]*)(</[^>]+>)`)
+	matches := fullPattern.FindAllStringSubmatch(result, -1)
+	
 	for _, match := range matches {
-		if len(match) >= 3 {
-			commentTranslation := strings.TrimSpace(match[1])  // Total Endpoints
-			originalText := strings.TrimSpace(match[2])  // 端点总数
+		if len(match) >= 5 {
+			fullMatch := match[0]      // Full matched string
+			openTag := match[1]       // Opening tag with data-t
+			translationKey := match[2] // Translation key from data-t
+			content := match[3]       // Content between tags
+			closeTag := match[4]      // Closing tag
 			
-			// Get translation from manager (fallback to attribute translation)
-			translation := getTranslation(originalText, lang)
-			if translation == originalText && commentTranslation != "" {
-				// If no translation found in language files, use attribute translation
-				translation = commentTranslation
+			// Get translation using the translation key
+			translation := getTranslation(translationKey, lang)
+			if translation == translationKey {
+				// If no translation found, keep original content
+				translation = content
 			}
 			
-			// Replace the text content while keeping the structure  
-			replacement := ">" + translation + "<"
-			result = strings.Replace(result, ">"+originalText+"<", replacement, 1)
+			// Replace content while preserving tag structure
+			if strings.TrimSpace(content) != "" {
+				replacement := openTag + translation + closeTag
+				result = strings.Replace(result, fullMatch, replacement, 1)
+			}
+		}
+	}
+	
+	// Handle self-closing tags with placeholder, alt, title attributes
+	selfClosingPattern := regexp.MustCompile(`(<(?:input|img|br|hr|meta)[^>]*data-t="([^"]+)"[^>]*(?:placeholder|alt|title)=")([^"]*)(\"[^>]*>)`)
+	selfClosingMatches := selfClosingPattern.FindAllStringSubmatch(result, -1)
+	
+	for _, match := range selfClosingMatches {
+		if len(match) >= 5 {
+			fullMatch := match[0]
+			beforeAttr := match[1]
+			translationKey := match[2]
+			originalValue := match[3]
+			afterAttr := match[4]
+			
+			// Get translation
+			translation := getTranslation(translationKey, lang)
+			if translation == translationKey {
+				translation = originalValue
+			}
+			
+			replacement := beforeAttr + translation + afterAttr
+			result = strings.Replace(result, fullMatch, replacement, 1)
 		}
 	}
 	
@@ -59,15 +89,32 @@ func (t *Translator) ProcessHTML(html string, lang Language, getTranslation func
 func (t *Translator) ExtractTranslations(html string) map[string]string {
 	translations := make(map[string]string)
 	
-	matches := t.commentPattern.FindAllStringSubmatch(html, -1)
+	// Pattern to extract data-t keys and their corresponding content
+	fullPattern := regexp.MustCompile(`<[^>]*data-t="([^"]+)"[^>]*>([^<]*)</[^>]+>`)
+	matches := fullPattern.FindAllStringSubmatch(html, -1)
 	
 	for _, match := range matches {
 		if len(match) >= 3 {
-			originalText := strings.TrimSpace(match[1])
-			commentTranslation := strings.TrimSpace(match[2])
+			translationKey := strings.TrimSpace(match[1])
+			content := strings.TrimSpace(match[2])
 			
-			if originalText != "" && commentTranslation != "" {
-				translations[originalText] = commentTranslation
+			if translationKey != "" && content != "" {
+				translations[translationKey] = content
+			}
+		}
+	}
+	
+	// Also extract from self-closing tags
+	selfClosingPattern := regexp.MustCompile(`<(?:input|img|br|hr|meta)[^>]*data-t="([^"]+)"[^>]*(?:placeholder|alt|title)="([^"]*)"[^>]*>`)
+	selfClosingMatches := selfClosingPattern.FindAllStringSubmatch(html, -1)
+	
+	for _, match := range selfClosingMatches {
+		if len(match) >= 3 {
+			translationKey := strings.TrimSpace(match[1])
+			content := strings.TrimSpace(match[2])
+			
+			if translationKey != "" && content != "" {
+				translations[translationKey] = content
 			}
 		}
 	}
@@ -75,37 +122,28 @@ func (t *Translator) ExtractTranslations(html string) map[string]string {
 	return translations
 }
 
-// ValidateTranslationMarkers validates comment-style translation markers in HTML
+// ValidateTranslationMarkers validates data-t translation markers in HTML
 func (t *Translator) ValidateTranslationMarkers(html string) []ValidationError {
 	var errors []ValidationError
 	
-	matches := t.commentPattern.FindAllStringSubmatch(html, -1)
+	matches := t.dataPattern.FindAllStringSubmatch(html, -1)
 	
 	for i, match := range matches {
-		if len(match) < 3 {
+		if len(match) < 2 {
 			errors = append(errors, ValidationError{
 				Index:   i,
-				Message: "Invalid translation marker format",
+				Message: "Invalid data-t marker format",
 				Pattern: match[0],
 			})
 			continue
 		}
 		
-		originalText := strings.TrimSpace(match[1])
-		commentTranslation := strings.TrimSpace(match[2])
+		translationKey := strings.TrimSpace(match[1])
 		
-		if originalText == "" {
+		if translationKey == "" {
 			errors = append(errors, ValidationError{
 				Index:   i,
-				Message: "Empty original text",
-				Pattern: match[0],
-			})
-		}
-		
-		if commentTranslation == "" {
-			errors = append(errors, ValidationError{
-				Index:   i,
-				Message: "Empty translation text",
+				Message: "Empty translation key",
 				Pattern: match[0],
 			})
 		}
@@ -123,25 +161,17 @@ type ValidationError struct {
 
 // GenerateTranslationTemplate generates a translation template from HTML
 func (t *Translator) GenerateTranslationTemplate(html string, targetLang Language) map[string]string {
-	template := make(map[string]string)
-	
-	// Extract existing translations from comments
-	extracted := t.ExtractTranslations(html)
-	
-	for original, translation := range extracted {
-		template[original] = translation
-	}
-	
-	return template
+	// Extract existing translations based on data-t keys and content
+	return t.ExtractTranslations(html)
 }
 
-// HasTranslationMarkers checks if HTML contains any translation markers
+// HasTranslationMarkers checks if HTML contains any data-t markers
 func (t *Translator) HasTranslationMarkers(html string) bool {
-	return t.commentPattern.MatchString(html)
+	return t.dataPattern.MatchString(html)
 }
 
-// CountTranslationMarkers counts the number of translation markers in HTML
+// CountTranslationMarkers counts the number of data-t markers in HTML
 func (t *Translator) CountTranslationMarkers(html string) int {
-	matches := t.commentPattern.FindAllString(html, -1)
+	matches := t.dataPattern.FindAllString(html, -1)
 	return len(matches)
 }

@@ -44,7 +44,7 @@ func (m *Manager) loadTranslations() error {
 		return nil
 	}
 	
-	supportedLangs := []Language{LanguageEn, LanguageJa}
+	supportedLangs := []Language{LanguageEn}
 	
 	for _, lang := range supportedLangs {
 		filename := filepath.Join(m.config.LocalesPath, string(lang)+".json")
@@ -146,7 +146,7 @@ func (m *Manager) AddTranslation(lang Language, original, translation string) {
 
 // GetAvailableLanguages returns all available languages
 func (m *Manager) GetAvailableLanguages() []Language {
-	return []Language{LanguageZhCN, LanguageEn, LanguageJa}
+	return []Language{LanguageZhCN, LanguageEn}
 }
 
 // GetLanguageInfo returns display information for a language
@@ -156,8 +156,6 @@ func (m *Manager) GetLanguageInfo(lang Language) map[string]string {
 		return map[string]string{"flag": "CN", "name": "中文"}
 	case LanguageEn:
 		return map[string]string{"flag": "US", "name": "English"}
-	case LanguageJa:
-		return map[string]string{"flag": "JP", "name": "日本語"}
 	default:
 		return map[string]string{"flag": "??", "name": string(lang)}
 	}

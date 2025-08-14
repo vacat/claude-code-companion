@@ -75,8 +75,8 @@ func (d *Detector) parseAcceptLanguage(acceptLang string) Language {
 			return LanguageZhCN
 		case strings.HasPrefix(strings.ToLower(lang), "en"):
 			return LanguageEn
-		case strings.HasPrefix(strings.ToLower(lang), "ja"):
-			return LanguageJa
+		default:
+			return d.defaultLang
 		}
 	}
 	

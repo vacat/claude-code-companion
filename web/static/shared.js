@@ -259,9 +259,6 @@ function updateLanguageDropdown() {
                 case 'en':
                     flagElement.style.backgroundColor = '#007bff'; // Blue for US
                     break;
-                case 'ja':
-                    flagElement.style.backgroundColor = '#28a745'; // Green for JP
-                    break;
                 case 'zh-cn':
                 default:
                     flagElement.style.backgroundColor = '#dc3545'; // Red for CN
