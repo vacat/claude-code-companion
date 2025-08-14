@@ -132,14 +132,14 @@ func (e *Endpoint) GetFullURL(path string) string {
 	// 根据端点类型自动添加正确的路径前缀
 	switch e.EndpointType {
 	case "anthropic":
-		// Anthropic 端点固定使用 /v1/messages
-		return e.URL + "/v1/messages"
+		// Anthropic 端点使用完整的传入路径
+		return e.URL + path
 	case "openai":
 		// OpenAI 端点使用配置的路径前缀（不需要路径转换）
 		return e.URL + e.PathPrefix
 	default:
-		// 向后兼容：默认使用 anthropic 格式
-		return e.URL + "/v1/messages"
+		// 向后兼容：默认使用完整的传入路径（anthropic格式）
+		return e.URL + path
 	}
 }
 
