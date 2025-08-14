@@ -114,7 +114,7 @@ jobs:
       run: |
         echo "Event name: ${{ github.event_name }}"
         echo "Create release input: ${{ inputs.create_release }}"
-        echo "Input type: ${{ type(inputs.create_release) }}"
+        echo "Input value type: boolean"
     
     - name: Get version info for release
       id: version
