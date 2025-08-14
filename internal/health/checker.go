@@ -7,17 +7,19 @@ import (
 	"io"
 	"net/http"
 
+	"claude-proxy/internal/config"
 	"claude-proxy/internal/endpoint"
-	"claude-proxy/internal/utils"
 )
 
 type Checker struct {
-	extractor *RequestExtractor
+	extractor       *RequestExtractor
+	healthTimeouts  config.HealthCheckTimeoutConfig
 }
 
-func NewChecker() *Checker {
+func NewChecker(healthTimeouts config.HealthCheckTimeoutConfig) *Checker {
 	return &Checker{
-		extractor: NewRequestExtractor(),
+		extractor:      NewRequestExtractor(),
+		healthTimeouts: healthTimeouts,
 	}
 }
 
@@ -76,8 +78,11 @@ func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
 		req.Header.Set("Authorization", ep.GetAuthHeader())
 	}
 
-	// 执行请求
-	client := utils.GetHealthClient()
+	// 执行请求 - 使用端点特定的HTTP客户端
+	client, err := ep.CreateHealthClient(c.healthTimeouts)
+	if err != nil {
+		return fmt.Errorf("failed to create health client for endpoint: %v", err)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {

@@ -8,6 +8,70 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.css" rel="stylesheet">
     <link href="/static/shared.css" rel="stylesheet">
+    <style>
+        /* 对话框布局优化 */
+        .modal-body {
+            padding: 1rem 1.5rem;
+        }
+        
+        /* Tab Content Styling - 减少内容高度 */
+        .tab-content {
+            min-height: 300px;
+        }
+        
+        .tab-pane {
+            padding: 0.75rem 0;
+        }
+        
+        /* 减少表单元素间距 */
+        .tab-pane .mb-3 {
+            margin-bottom: 0.75rem !important;
+        }
+        
+        .tab-pane .mb-4 {
+            margin-bottom: 1rem !important;
+        }
+        
+        /* Advanced tab section headers */
+        .tab-pane h6 {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Alert styling in advanced tab */
+        .tab-pane .alert {
+            font-size: 0.875rem;
+            padding: 0.5rem 0.75rem;
+        }
+        
+        /* Tab navigation styling */
+        .nav-tabs .nav-link {
+            border-bottom: 2px solid transparent;
+            color: #6c757d;
+        }
+        
+        .nav-tabs .nav-link.active {
+            border-bottom: 2px solid #0d6efd;
+            color: #0d6efd;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            border-bottom: 2px solid #0d6efd;
+            color: #0d6efd;
+        }
+        
+        /* 确保认证值输入框高度一致 */
+        #endpoint-auth-value {
+            height: calc(1.5em + 0.75rem + 2px) !important;
+            resize: none;
+        }
+        
+        /* 表单标签图标样式 */
+        .form-label-icon {
+            margin-right: 0.25rem;
+            color: #6c757d;
+        }
+    </style>
 </head>
 <body>
     {{template "header.html" .}}
@@ -43,6 +107,7 @@
                                             <th>类型</th>
                                             <th>路径</th>
                                             <th>认证方式</th>
+                                            <th>代理</th>
                                             <th>Tags</th>
                                             <th>状态</th>
                                             <th>启用</th>
@@ -73,6 +138,7 @@
                                             <th>类型</th>
                                             <th>路径</th>
                                             <th>认证方式</th>
+                                            <th>代理</th>
                                             <th>Tags</th>
                                             <th>状态</th>
                                             <th>启用</th>
@@ -92,6 +158,7 @@
                                 <ul class="mb-0">
                                     <li><strong>优先级：</strong> 根据行序自动设置</li>
                                     <li><strong>认证方式：</strong> 'api_key' 使用 x-api-key 请求头，'auth_token' 使用 Authorization Bearer</li>
+                                    <li><strong>代理：</strong> 支持HTTP和SOCKS5代理，可选认证，图标🔐表示需要认证</li>
                                     <li><strong>状态：</strong> 实时端点可用性状态</li>
                                     <li><strong>路径前缀：</strong> 所有端点自动设置为 /v1</li>
                                     <li><strong>拖拽排序：</strong> 点击并拖拽任意行来重新排序端点</li>
@@ -107,7 +174,7 @@
 
     <!-- 添加/编辑端点模态框 -->
     <div class="modal fade" id="endpointModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="endpointModalTitle">添加端点</h5>
@@ -117,106 +184,206 @@
                     <form id="endpointForm">
                         <input type="hidden" id="endpoint-id" />
                         
-                        <!-- 第一行：名称和启用状态 -->
-                        <div class="row mb-3">
-                            <div class="col-9">
-                                <label for="endpoint-name" class="form-label">名称 <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="endpoint-name" required>
-                            </div>
-                            <div class="col-3 d-flex align-items-end">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="endpoint-enabled" checked>
-                                    <label class="form-check-label" for="endpoint-enabled">
-                                        启用
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 第二行：URL -->
-                        <div class="mb-3">
-                            <label for="endpoint-url" class="form-label">URL <span class="text-danger">*</span></label>
-                            <input type="url" class="form-control" id="endpoint-url" required
-                                   placeholder="https://api.example.com">
-                        </div>
-
-                        <!-- 第三行：端点类型和路径前缀 -->
-                        <div class="row mb-3">
-                            <div class="col-6">
-                                <label for="endpoint-type" class="form-label">端点类型 <span class="text-danger">*</span></label>
-                                <select class="form-select" id="endpoint-type" required onchange="onEndpointTypeChange()">
-                                    <option value="anthropic">Anthropic (Claude)</option>
-                                    <option value="openai">OpenAI Compatible</option>
-                                </select>
-                                <small class="form-text text-muted">选择端点的API兼容类型</small>
-                            </div>
-                            <div class="col-6" id="path-prefix-group" style="display: none;">
-                                <label for="endpoint-path-prefix" class="form-label">路径前缀 <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="endpoint-path-prefix" 
-                                       placeholder="/v1/chat/completions">
-                                <small class="form-text text-muted">OpenAI兼容端点的API路径</small>
-                            </div>
-                        </div>
-
-                        <!-- 第四行：认证方式和Tags -->
-                        <div class="row mb-3">
-                            <div class="col-6">
-                                <label for="endpoint-auth-type" class="form-label">认证方式 <span class="text-danger">*</span></label>
-                                <select class="form-select" id="endpoint-auth-type" required onchange="onAuthTypeChange()">
-                                    <option value="api_key">API Key (x-api-key 请求头)</option>
-                                    <option value="auth_token" selected>Auth Token (Authorization Bearer)</option>
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <label for="endpoint-tags" class="form-label">Tags</label>
-                                <input type="text" class="form-control" id="endpoint-tags" 
-                                       placeholder="输入tags，用逗号分隔 (例: api-v1, claude-3)">
-                                <small class="form-text text-muted">留空则为万能endpoint，支持所有tags的请求</small>
-                            </div>
-                        </div>
-
-                        <!-- 第五行：认证值 -->
-                        <div class="mb-3">
-                            <label for="endpoint-auth-value" class="form-label">认证值 <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <textarea class="form-control" id="endpoint-auth-value" rows="2" required
-                                          placeholder="输入您的 API Key 或 Token"></textarea>
-                                <button class="btn btn-outline-secondary" type="button" id="toggle-auth-visibility" onclick="toggleAuthVisibility()">
-                                    <i class="fas fa-eye" id="auth-eye-icon"></i>
+                        <!-- Tab Navigation -->
+                        <ul class="nav nav-tabs mb-3" id="endpointModalTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic-tab-pane" 
+                                        type="button" role="tab" aria-controls="basic-tab-pane" aria-selected="true">
+                                    <i class="fas fa-cog"></i> 基本配置
                                 </button>
-                            </div>
-                            <small class="form-text text-muted">认证值默认隐藏以保障安全</small>
-                        </div>
-
-                        <!-- 模型重写配置区域 -->
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label class="form-label mb-0">模型重写配置</label>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="model-rewrite-enabled">
-                                    <label class="form-check-label" for="model-rewrite-enabled">启用模型重写</label>
-                                </div>
-                            </div>
-                            
-                            <div id="model-rewrite-rules" style="display: none;">
-                                <small class="form-text text-muted mb-2 d-block">配置规则将匹配的Claude模型重写为其他模型</small>
-                                
-                                <div id="rewrite-rules-list">
-                                    <!-- 动态生成的规则列表 -->
-                                </div>
-                                
-                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="addRewriteRule()">
-                                    <i class="fas fa-plus"></i> 添加规则
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced-tab-pane" 
+                                        type="button" role="tab" aria-controls="advanced-tab-pane" aria-selected="false">
+                                    <i class="fas fa-sliders-h"></i> 高级配置
                                 </button>
-                                
-                                <div class="mt-2">
-                                    <small class="text-muted">
-                                        <strong>预设模型模式：</strong><br>
-                                        • Haiku系列: claude-*haiku*<br>
-                                        • Sonnet系列: claude-*sonnet*<br>  
-                                        • Opus系列: claude-*opus*<br>
-                                        • 所有Claude: claude-*
-                                    </small>
+                            </li>
+                        </ul>
+
+                        <!-- Tab Content -->
+                        <div class="tab-content" id="endpointModalTabContent">
+                            <!-- Basic Configuration Tab -->
+                            <div class="tab-pane fade show active" id="basic-tab-pane" role="tabpanel" aria-labelledby="basic-tab">
+                                <!-- 第一行：名称和启用状态 -->
+                                <div class="row mb-3">
+                                    <div class="col-9">
+                                        <label for="endpoint-name" class="form-label">
+                                            <i class="fas fa-tag form-label-icon"></i>名称 <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="endpoint-name" required>
+                                    </div>
+                                    <div class="col-3">
+                                        <h6 class="mb-2">
+                                            <i class="fas fa-power-off form-label-icon"></i> 启用
+                                        </h6>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="endpoint-enabled" checked>
+                                            <label class="form-check-label" for="endpoint-enabled">
+                                                启用此端点
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 第二行：URL 和 Tags -->
+                                <div class="row mb-3">
+                                    <div class="col-8">
+                                        <label for="endpoint-url" class="form-label">
+                                            <i class="fas fa-link form-label-icon"></i>URL <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="url" class="form-control" id="endpoint-url" required
+                                               placeholder="https://api.example.com">
+                                    </div>
+                                    <div class="col-4">
+                                        <label for="endpoint-tags" class="form-label">
+                                            <i class="fas fa-tags form-label-icon"></i>Tags
+                                        </label>
+                                        <input type="text" class="form-control" id="endpoint-tags" 
+                                               placeholder="用逗号分隔">
+                                        <small class="form-text text-muted">留空则为万能endpoint</small>
+                                    </div>
+                                </div>
+
+                                <!-- 第三行：端点类型和路径前缀 -->
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <label for="endpoint-type" class="form-label">
+                                            <i class="fas fa-cogs form-label-icon"></i>端点类型 <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select" id="endpoint-type" required onchange="onEndpointTypeChange()">
+                                            <option value="anthropic">Anthropic (Claude)</option>
+                                            <option value="openai">OpenAI Compatible</option>
+                                        </select>
+                                        <small class="form-text text-muted">选择端点的API兼容类型</small>
+                                    </div>
+                                    <div class="col-6" id="path-prefix-group" style="display: none;">
+                                        <label for="endpoint-path-prefix" class="form-label">
+                                            <i class="fas fa-route form-label-icon"></i>路径前缀 <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="endpoint-path-prefix" 
+                                               placeholder="/v1/chat/completions">
+                                        <small class="form-text text-muted">OpenAI兼容端点的API路径</small>
+                                    </div>
+                                </div>
+
+                                <!-- 第四行：认证方式和认证值 -->
+                                <div class="row mb-3">
+                                    <div class="col-4">
+                                        <label for="endpoint-auth-type" class="form-label">
+                                            <i class="fas fa-key form-label-icon"></i>认证方式 <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select" id="endpoint-auth-type" required onchange="onAuthTypeChange()">
+                                            <option value="api_key">API Key (x-api-key 请求头)</option>
+                                            <option value="auth_token" selected>Auth Token (Authorization Bearer)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-8">
+                                        <label for="endpoint-auth-value" class="form-label">
+                                            <i class="fas fa-shield-alt form-label-icon"></i>认证值 <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" id="endpoint-auth-value" required
+                                                   placeholder="输入您的 API Key 或 Token">
+                                            <button class="btn btn-outline-secondary" type="button" id="toggle-auth-visibility" onclick="toggleAuthVisibility()">
+                                                <i class="fas fa-eye" id="auth-eye-icon"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Advanced Configuration Tab -->
+                            <div class="tab-pane fade" id="advanced-tab-pane" role="tabpanel" aria-labelledby="advanced-tab">
+                                <!-- 代理配置区域 -->
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-shield-alt"></i> 代理配置
+                                        </h6>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="proxy-enabled">
+                                            <label class="form-check-label" for="proxy-enabled">启用代理</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="proxy-config" style="display: none;">
+                                        <small class="form-text text-muted mb-3 d-block">配置HTTP或SOCKS5代理以访问上游端点</small>
+                                        
+                                        <!-- 代理类型和地址 -->
+                                        <div class="row mb-3">
+                                            <div class="col-4">
+                                                <label for="proxy-type" class="form-label">代理类型</label>
+                                                <select class="form-select" id="proxy-type">
+                                                    <option value="http">HTTP</option>
+                                                    <option value="socks5">SOCKS5</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-8">
+                                                <label for="proxy-address" class="form-label">代理地址</label>
+                                                <input type="text" class="form-control" id="proxy-address" 
+                                                       placeholder="127.0.0.1:1080">
+                                                <small class="form-text text-muted">格式: 主机:端口</small>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 代理认证 -->
+                                        <div class="row mb-3">
+                                            <div class="col-6">
+                                                <label for="proxy-username" class="form-label">用户名 (可选)</label>
+                                                <input type="text" class="form-control" id="proxy-username" 
+                                                       placeholder="代理认证用户名">
+                                            </div>
+                                            <div class="col-6">
+                                                <label for="proxy-password" class="form-label">密码 (可选)</label>
+                                                <input type="password" class="form-control" id="proxy-password" 
+                                                       placeholder="代理认证密码">
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="alert alert-info p-2">
+                                            <small class="text-muted">
+                                                <strong>说明：</strong><br>
+                                                • 留空用户名和密码表示无需认证<br>
+                                                • HTTP代理支持 CONNECT 方法用于HTTPS<br>
+                                                • SOCKS5代理支持TCP连接代理
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 模型重写配置区域 -->
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-exchange-alt"></i> 模型重写配置
+                                        </h6>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="model-rewrite-enabled">
+                                            <label class="form-check-label" for="model-rewrite-enabled">启用模型重写</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="model-rewrite-rules" style="display: none;">
+                                        <small class="form-text text-muted mb-3 d-block">配置规则将匹配的Claude模型重写为其他模型</small>
+                                        
+                                        <div id="rewrite-rules-list">
+                                            <!-- 动态生成的规则列表 -->
+                                        </div>
+                                        
+                                        <button type="button" class="btn btn-outline-primary btn-sm mb-3" onclick="addRewriteRule()">
+                                            <i class="fas fa-plus"></i> 添加规则
+                                        </button>
+                                        
+                                        <div class="alert alert-info p-2">
+                                            <small class="text-muted">
+                                                <strong>预设模型模式：</strong><br>
+                                                • Haiku系列: claude-*haiku*<br>
+                                                • Sonnet系列: claude-*sonnet*<br>  
+                                                • Opus系列: claude-*opus*<br>
+                                                • 所有Claude: claude-*
+                                            </small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -335,7 +502,7 @@
         }
 
         function updateEndpointRowStatus(row, endpoint) {
-            const statusCell = row.children[8]; // 调整索引：增加了类型和路径列
+            const statusCell = row.children[9]; // 调整索引：增加了代理列，原来是8，现在是9
             
             // Update status
             let statusBadge = '';
@@ -437,6 +604,16 @@
                     ? '<span class="badge bg-primary">api_key</span>'
                     : '<span class="badge bg-secondary">auth_token</span>';
                 
+                // 构建代理状态显示
+                let proxyDisplay = '';
+                if (endpoint.proxy && endpoint.proxy.type && endpoint.proxy.address) {
+                    const proxyType = endpoint.proxy.type.toUpperCase();
+                    const hasAuth = endpoint.proxy.username ? ' 🔐' : '';
+                    proxyDisplay = `<span class="badge bg-warning" title="代理: ${endpoint.proxy.type}://${endpoint.proxy.address}">${proxyType}${hasAuth}</span>`;
+                } else {
+                    proxyDisplay = '<span class="text-muted">无</span>';
+                }
+                
                 // 构建tags显示
                 let tagsDisplay = '';
                 if (endpoint.tags && endpoint.tags.length > 0) {
@@ -457,6 +634,7 @@
                     <td>${endpointTypeBadge}</td>
                     <td>${pathDisplay}</td>
                     <td>${authTypeBadge}</td>
+                    <td>${proxyDisplay}</td>
                     <td>${tagsDisplay}</td>
                     <td>${statusBadge}</td>
                     <td>${enabledBadge}</td>
@@ -517,8 +695,14 @@
             // 重置auth visibility
             resetAuthVisibility();
             
+            // 清空代理配置
+            loadProxyConfig(null);
+            
             // 清空模型重写配置
             loadModelRewriteConfig(null);
+            
+            // 重置到基本配置tab
+            resetModalTabs();
             
             endpointModal.show();
         }
@@ -555,10 +739,35 @@
             document.getElementById('endpoint-auth-value').value = '*'.repeat(Math.min(endpoint.auth_value.length, 50));
             resetAuthVisibility();
             
+            // 加载代理配置
+            loadProxyConfig(endpoint.proxy);
+            
             // 加载模型重写配置
             loadModelRewriteConfig(endpoint.model_rewrite);
             
+            // 重置到基本配置tab
+            resetModalTabs();
+            
             endpointModal.show();
+        }
+
+        // 重置模态框tabs到基本配置
+        function resetModalTabs() {
+            // 重置tab状态
+            const basicTab = document.getElementById('basic-tab');
+            const advancedTab = document.getElementById('advanced-tab');
+            const basicPane = document.getElementById('basic-tab-pane');
+            const advancedPane = document.getElementById('advanced-tab-pane');
+            
+            // 激活基本配置tab
+            basicTab.classList.add('active');
+            basicTab.setAttribute('aria-selected', 'true');
+            basicPane.classList.add('show', 'active');
+            
+            // 去激活高级配置tab
+            advancedTab.classList.remove('active');
+            advancedTab.setAttribute('aria-selected', 'false');
+            advancedPane.classList.remove('show', 'active');
         }
 
         function toggleAuthVisibility() {
@@ -612,7 +821,8 @@
                 auth_type: document.getElementById('endpoint-auth-type').value,
                 auth_value: authValue,
                 enabled: document.getElementById('endpoint-enabled').checked,
-                tags: tags
+                tags: tags,
+                proxy: collectProxyData() // 新增：收集代理配置
             };
 
             const isEditing = editingEndpointName !== null;
@@ -811,6 +1021,12 @@
 
         // ===== Modal Functions =====
 
+        // 代理配置启用/禁用切换
+        document.getElementById('proxy-enabled').addEventListener('change', function() {
+            const proxyConfigDiv = document.getElementById('proxy-config');
+            proxyConfigDiv.style.display = this.checked ? 'block' : 'none';
+        });
+
         // 模型重写启用/禁用切换
         document.getElementById('model-rewrite-enabled').addEventListener('change', function() {
             const rulesDiv = document.getElementById('model-rewrite-rules');
@@ -905,6 +1121,61 @@
                 console.error('Test failed:', error);
                 alert('测试失败，请检查网络连接');
             });
+        }
+
+        // 收集代理配置数据
+        function collectProxyData() {
+            const enabled = document.getElementById('proxy-enabled').checked;
+            if (!enabled) {
+                return null;
+            }
+
+            const type = document.getElementById('proxy-type').value;
+            const address = document.getElementById('proxy-address').value.trim();
+            const username = document.getElementById('proxy-username').value.trim();
+            const password = document.getElementById('proxy-password').value.trim();
+            
+            if (!address) {
+                return null; // 地址为空时不保存代理配置
+            }
+
+            const proxyConfig = {
+                type: type,
+                address: address
+            };
+
+            // 只有当用户名和密码都不为空时才添加认证信息
+            if (username && password) {
+                proxyConfig.username = username;
+                proxyConfig.password = password;
+            }
+
+            return proxyConfig;
+        }
+
+        // 加载代理配置到表单
+        function loadProxyConfig(config) {
+            const checkbox = document.getElementById('proxy-enabled');
+            const configDiv = document.getElementById('proxy-config');
+            
+            if (config) {
+                checkbox.checked = true;
+                configDiv.style.display = 'block';
+                
+                document.getElementById('proxy-type').value = config.type || 'http';
+                document.getElementById('proxy-address').value = config.address || '';
+                document.getElementById('proxy-username').value = config.username || '';
+                document.getElementById('proxy-password').value = config.password || '';
+            } else {
+                checkbox.checked = false;
+                configDiv.style.display = 'none';
+                
+                // 重置表单字段
+                document.getElementById('proxy-type').value = 'http';
+                document.getElementById('proxy-address').value = '';
+                document.getElementById('proxy-username').value = '';
+                document.getElementById('proxy-password').value = '';
+            }
         }
 
         // 收集模型重写配置数据

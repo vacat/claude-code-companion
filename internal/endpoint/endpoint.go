@@ -2,11 +2,13 @@ package endpoint
 
 import (
 	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
 	"claude-proxy/internal/config"
 	"claude-proxy/internal/interfaces"
+	"claude-proxy/internal/proxyclient"
 	"claude-proxy/internal/utils"
 )
 
@@ -32,6 +34,7 @@ type Endpoint struct {
 	Priority        int                      `json:"priority"`
 	Tags            []string                 `json:"tags"`           // 新增：支持的tag列表
 	ModelRewrite    *config.ModelRewriteConfig `json:"model_rewrite,omitempty"` // 新增：模型重写配置
+	Proxy           *config.ProxyConfig      `json:"proxy,omitempty"` // 新增：代理配置
 	Status          Status                   `json:"status"`
 	LastCheck       time.Time                `json:"last_check"`
 	FailureCount    int                      `json:"failure_count"`
@@ -61,6 +64,7 @@ func NewEndpoint(config config.EndpointConfig) *Endpoint {
 		Priority:       config.Priority,
 		Tags:           config.Tags,       // 新增：从配置中复制tags
 		ModelRewrite:   config.ModelRewrite, // 新增：从配置中复制模型重写配置
+		Proxy:          config.Proxy,      // 新增：从配置中复制代理配置
 		Status:         StatusActive,
 		LastCheck:      time.Now(),
 		RequestHistory: utils.NewCircularBuffer(100, 140*time.Second), // 100个记录，140秒窗口
@@ -199,4 +203,30 @@ func (e *Endpoint) MarkActive() {
 
 func generateID(name string) string {
 	return fmt.Sprintf("endpoint-%s-%d", name, time.Now().Unix())
+}
+
+// CreateProxyClient 为这个端点创建支持代理的HTTP客户端
+func (e *Endpoint) CreateProxyClient(timeoutConfig config.ProxyTimeoutConfig) (*http.Client, error) {
+	e.mutex.RLock()
+	proxyConfig := e.Proxy
+	e.mutex.RUnlock()
+	
+	return proxyclient.CreateHTTPClient(proxyConfig, timeoutConfig)
+}
+
+// CreateHealthClient 为健康检查创建HTTP客户端（使用与代理相同的配置，但超时较短）
+func (e *Endpoint) CreateHealthClient(timeoutConfig config.HealthCheckTimeoutConfig) (*http.Client, error) {
+	e.mutex.RLock()
+	proxyConfig := e.Proxy
+	e.mutex.RUnlock()
+	
+	// 将健康检查超时配置转换为代理超时配置格式
+	proxyTimeoutConfig := config.ProxyTimeoutConfig{
+		TLSHandshake:     timeoutConfig.TLSHandshake,
+		ResponseHeader:   timeoutConfig.ResponseHeader,
+		IdleConnection:   timeoutConfig.IdleConnection,
+		OverallRequest:   timeoutConfig.OverallRequest,
+	}
+	
+	return proxyclient.CreateHTTPClient(proxyConfig, proxyTimeoutConfig)
 }

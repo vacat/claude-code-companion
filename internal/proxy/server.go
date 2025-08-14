@@ -46,7 +46,7 @@ func NewServer(cfg *config.Config, configFilePath string, buildVersion string) (
 
 	endpointManager := endpoint.NewManager(cfg)
 	responseValidator := validator.NewResponseValidator(cfg.Validation.StrictAnthropicFormat, cfg.Validation.ValidateStreaming)
-	healthChecker := health.NewChecker()
+	healthChecker := health.NewChecker(cfg.Timeouts.HealthCheck)
 
 	// 初始化tagging系统
 	taggingManager := tagging.NewManager()

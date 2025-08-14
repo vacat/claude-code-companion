@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"time"
@@ -36,6 +37,15 @@ type EndpointConfig struct {
 	Priority     int                 `yaml:"priority"`
 	Tags         []string            `yaml:"tags"`         // 新增：支持的tag列表
 	ModelRewrite *ModelRewriteConfig `yaml:"model_rewrite,omitempty"` // 新增：模型重写配置
+	Proxy        *ProxyConfig        `yaml:"proxy,omitempty"`         // 新增：代理配置
+}
+
+// 新增：代理配置结构
+type ProxyConfig struct {
+	Type     string `yaml:"type" json:"type"`         // "http" | "socks5"
+	Address  string `yaml:"address" json:"address"`   // 代理服务器地址，如 "127.0.0.1:1080"
+	Username string `yaml:"username,omitempty" json:"username,omitempty"` // 代理认证用户名（可选）
+	Password string `yaml:"password,omitempty" json:"password,omitempty"` // 代理认证密码（可选）
 }
 
 // 新增：模型重写配置结构
@@ -330,6 +340,11 @@ func validateConfig(config *Config) error {
 		return fmt.Errorf("openai endpoint configuration error: %v", err)
 	}
 
+	// 验证代理配置
+	if err := validateProxyConfigs(config.Endpoints); err != nil {
+		return fmt.Errorf("proxy configuration error: %v", err)
+	}
+
 	return nil
 }
 
@@ -575,5 +590,60 @@ func validateOpenAIEndpoints(endpoints []EndpointConfig) error {
 			}
 		}
 	}
+	return nil
+}
+
+// validateProxyConfigs 验证端点的代理配置
+func validateProxyConfigs(endpoints []EndpointConfig) error {
+	for i, endpoint := range endpoints {
+		if endpoint.Proxy == nil {
+			continue // 没有配置代理，跳过验证
+		}
+		
+		if err := validateProxyConfig(endpoint.Proxy, fmt.Sprintf("endpoint[%d] '%s'", i, endpoint.Name)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ValidateProxyConfig 验证单个代理配置（导出函数）
+func ValidateProxyConfig(config *ProxyConfig, context string) error {
+	return validateProxyConfig(config, context)
+}
+
+// validateProxyConfig 验证单个代理配置
+func validateProxyConfig(config *ProxyConfig, context string) error {
+	if config.Type == "" {
+		return fmt.Errorf("%s: proxy type is required", context)
+	}
+	
+	// 验证代理类型
+	validTypes := []string{"http", "socks5"}
+	validType := false
+	for _, vt := range validTypes {
+		if config.Type == vt {
+			validType = true
+			break
+		}
+	}
+	if !validType {
+		return fmt.Errorf("%s: invalid proxy type '%s', must be one of: %v", context, config.Type, validTypes)
+	}
+	
+	if config.Address == "" {
+		return fmt.Errorf("%s: proxy address is required", context)
+	}
+	
+	// 验证地址格式（简单检查是否包含端口）
+	if _, _, err := net.SplitHostPort(config.Address); err != nil {
+		return fmt.Errorf("%s: invalid proxy address '%s': %v", context, config.Address, err)
+	}
+	
+	// 验证认证配置一致性
+	if (config.Username != "" && config.Password == "") || (config.Username == "" && config.Password != "") {
+		return fmt.Errorf("%s: proxy username and password must both be provided or both be empty", context)
+	}
+	
 	return nil
 }

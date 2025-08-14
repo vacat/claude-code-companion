@@ -457,7 +457,14 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		req.URL.RawQuery = c.Request.URL.RawQuery
 	}
 
-	client := utils.GetProxyClient()
+	// 为这个端点创建支持代理的HTTP客户端
+	client, err := ep.CreateProxyClient(s.config.Timeouts.Proxy)
+	if err != nil {
+		s.logger.Error("Failed to create proxy client for endpoint", err)
+		duration := time.Since(startTime)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel)
+		return false, true
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {

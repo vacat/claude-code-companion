@@ -238,7 +238,7 @@ func (s *AdminServer) saveEndpointsToConfig(endpointConfigs []config.EndpointCon
 }
 
 // createEndpointConfigFromRequest 从请求创建端点配置，自动设置优先级
-func createEndpointConfigFromRequest(name, url, endpointType, pathPrefix, authType, authValue string, enabled bool, priority int, tags []string) config.EndpointConfig {
+func createEndpointConfigFromRequest(name, url, endpointType, pathPrefix, authType, authValue string, enabled bool, priority int, tags []string, proxy *config.ProxyConfig) config.EndpointConfig {
 	// 如果没有指定endpoint_type，默认为anthropic（向后兼容）
 	if endpointType == "" {
 		endpointType = "anthropic"
@@ -254,20 +254,22 @@ func createEndpointConfigFromRequest(name, url, endpointType, pathPrefix, authTy
 		Enabled:      enabled,
 		Priority:     priority,
 		Tags:         tags,
+		Proxy:        proxy, // 新增：支持代理配置
 	}
 }
 
 // handleCreateEndpoint 创建新端点
 func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 	var request struct {
-		Name         string   `json:"name" binding:"required"`
-		URL          string   `json:"url" binding:"required"`
-		EndpointType string   `json:"endpoint_type"` // "anthropic" | "openai"
-		PathPrefix   string   `json:"path_prefix"`   // OpenAI 端点的路径前缀
-		AuthType     string   `json:"auth_type" binding:"required"`
-		AuthValue    string   `json:"auth_value" binding:"required"`
-		Enabled      bool     `json:"enabled"`
-		Tags         []string `json:"tags"`
+		Name         string               `json:"name" binding:"required"`
+		URL          string               `json:"url" binding:"required"`
+		EndpointType string               `json:"endpoint_type"` // "anthropic" | "openai"
+		PathPrefix   string               `json:"path_prefix"`   // OpenAI 端点的路径前缀
+		AuthType     string               `json:"auth_type" binding:"required"`
+		AuthValue    string               `json:"auth_value" binding:"required"`
+		Enabled      bool                 `json:"enabled"`
+		Tags         []string             `json:"tags"`
+		Proxy        *config.ProxyConfig  `json:"proxy,omitempty"` // 新增：代理配置
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -279,6 +281,14 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 	if request.AuthType != "api_key" && request.AuthType != "auth_token" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "auth_type must be 'api_key' or 'auth_token'"})
 		return
+	}
+
+	// 验证代理配置（如果提供）
+	if request.Proxy != nil {
+		if err := config.ValidateProxyConfig(request.Proxy, fmt.Sprintf("endpoint '%s'", request.Name)); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid proxy config: " + err.Error()})
+			return
+		}
 	}
 
 	// 设置默认值 - 移除timeout相关逻辑
@@ -298,7 +308,7 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 	newEndpoint := createEndpointConfigFromRequest(
 		request.Name, request.URL, request.EndpointType, request.PathPrefix,
 		request.AuthType, request.AuthValue, 
-		request.Enabled, maxPriority+1, request.Tags)
+		request.Enabled, maxPriority+1, request.Tags, request.Proxy)
 	currentEndpoints = append(currentEndpoints, newEndpoint)
 
 	// 使用热更新机制
@@ -320,19 +330,28 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 	endpointName := c.Param("id") // 使用名称作为ID
 
 	var request struct {
-		Name         string   `json:"name"`
-		URL          string   `json:"url"`
-		EndpointType string   `json:"endpoint_type"`
-		PathPrefix   string   `json:"path_prefix"` // OpenAI 端点的路径前缀
-		AuthType     string   `json:"auth_type"`
-		AuthValue    string   `json:"auth_value"`
-		Enabled      bool     `json:"enabled"`
-		Tags         []string `json:"tags"`
+		Name         string               `json:"name"`
+		URL          string               `json:"url"`
+		EndpointType string               `json:"endpoint_type"`
+		PathPrefix   string               `json:"path_prefix"` // OpenAI 端点的路径前缀
+		AuthType     string               `json:"auth_type"`
+		AuthValue    string               `json:"auth_value"`
+		Enabled      bool                 `json:"enabled"`
+		Tags         []string             `json:"tags"`
+		Proxy        *config.ProxyConfig  `json:"proxy,omitempty"` // 新增：代理配置
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format: " + err.Error()})
 		return
+	}
+
+	// 验证代理配置（如果提供）
+	if request.Proxy != nil {
+		if err := config.ValidateProxyConfig(request.Proxy, fmt.Sprintf("endpoint '%s'", endpointName)); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid proxy config: " + err.Error()})
+			return
+		}
 	}
 
 	// 获取当前所有端点
@@ -367,6 +386,9 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 			
 			// 更新tags字段
 			currentEndpoints[i].Tags = request.Tags
+			
+			// 更新代理配置
+			currentEndpoints[i].Proxy = request.Proxy
 			
 			found = true
 			break
@@ -512,6 +534,16 @@ func (s *AdminServer) handleCopyEndpoint(c *gin.Context) {
 			Rules:   make([]config.ModelRewriteRule, len(sourceEndpoint.ModelRewrite.Rules)),
 		}
 		copy(newEndpoint.ModelRewrite.Rules, sourceEndpoint.ModelRewrite.Rules)
+	}
+
+	// 深度复制Proxy配置
+	if sourceEndpoint.Proxy != nil {
+		newEndpoint.Proxy = &config.ProxyConfig{
+			Type:     sourceEndpoint.Proxy.Type,
+			Address:  sourceEndpoint.Proxy.Address,
+			Username: sourceEndpoint.Proxy.Username,
+			Password: sourceEndpoint.Proxy.Password,
+		}
 	}
 
 	// 添加到端点列表
