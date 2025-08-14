@@ -115,23 +115,31 @@
                         <!-- Windows -->
                         <div class="tab-pane fade show active" id="windows" role="tabpanel" aria-labelledby="windows-tab">
                             <h5><span data-t="Windows Installation">Windows 安装</span></h5>
+                            <p class="text-muted mb-3">
+                                <span data-t="Windows install note">Claude Code 需要 Node.js 18 或更高版本</span>
+                            </p>
                             <ol>
-                                <li class="mb-2">
-                                    <span data-t="Download installer">下载安装程序：</span>
-                                    <a href="https://claude.ai/download" target="_blank" class="btn btn-sm btn-primary ms-2">
-                                        <i class="fas fa-download"></i> <span data-t="Download">下载</span>
-                                    </a>
-                                </li>
-                                <li class="mb-2"><span data-t="Run installer and follow instructions">运行安装程序并按照说明操作</span></li>
-                                <li class="mb-2"><span data-t="Or use package manager">或使用包管理器：</span></li>
+                                <li class="mb-2"><span data-t="Method 1: NPM Install">方法 1：NPM 安装（推荐）</span></li>
+                            </ol>
+                            
+                            <div class="position-relative mb-4">
+                                <div class="code-block">
+                                    # <span data-t="Install via NPM">通过 NPM 安装</span><br>
+                                    npm install -g @anthropic-ai/claude-code
+                                </div>
+                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+
+                            <ol start="2">
+                                <li class="mb-2"><span data-t="Method 2: Native Install">方法 2：原生安装（Beta）</span></li>
                             </ol>
                             
                             <div class="position-relative">
                                 <div class="code-block">
-                                    # <span data-t="Using winget">使用 winget</span><br>
-                                    winget install Anthropic.Claude<br><br>
-                                    # <span data-t="Or using Chocolatey">或使用 Chocolatey</span><br>
-                                    choco install claude-code
+                                    # <span data-t="Using PowerShell">使用 PowerShell</span><br>
+                                    irm https://claude.ai/install.ps1 | iex
                                 </div>
                                 <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
                                     <i class="fas fa-copy"></i>
@@ -142,20 +150,31 @@
                         <!-- macOS -->
                         <div class="tab-pane fade" id="macos" role="tabpanel" aria-labelledby="macos-tab">
                             <h5><span data-t="macOS Installation">macOS 安装</span></h5>
+                            <p class="text-muted mb-3">
+                                <span data-t="macOS install note">Claude Code 需要 Node.js 18 或更高版本</span>
+                            </p>
                             <ol>
-                                <li class="mb-2">
-                                    <span data-t="Download from website">从官网下载：</span>
-                                    <a href="https://claude.ai/download" target="_blank" class="btn btn-sm btn-primary ms-2">
-                                        <i class="fas fa-download"></i> <span data-t="Download">下载</span>
-                                    </a>
-                                </li>
-                                <li class="mb-2"><span data-t="Or use Homebrew">或使用 Homebrew：</span></li>
+                                <li class="mb-2"><span data-t="Method 1: NPM Install">方法 1：NPM 安装（推荐）</span></li>
+                            </ol>
+
+                            <div class="position-relative mb-4">
+                                <div class="code-block">
+                                    # <span data-t="Install via NPM">通过 NPM 安装</span><br>
+                                    npm install -g @anthropic-ai/claude-code
+                                </div>
+                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+
+                            <ol start="2">
+                                <li class="mb-2"><span data-t="Method 2: Native Install">方法 2：原生安装（Beta）</span></li>
                             </ol>
 
                             <div class="position-relative">
                                 <div class="code-block">
-                                    # <span data-t="Install using Homebrew">使用 Homebrew 安装</span><br>
-                                    brew install --cask claude
+                                    # <span data-t="Install using curl">使用 curl 安装</span><br>
+                                    curl -fsSL claude.ai/install.sh | bash
                                 </div>
                                 <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
                                     <i class="fas fa-copy"></i>
@@ -166,24 +185,31 @@
                         <!-- Linux -->
                         <div class="tab-pane fade" id="linux" role="tabpanel" aria-labelledby="linux-tab">
                             <h5><span data-t="Linux Installation">Linux 安装</span></h5>
+                            <p class="text-muted mb-3">
+                                <span data-t="Linux install note">Claude Code 需要 Node.js 18 或更高版本（仅限NPM方式）</span>
+                            </p>
                             <ol>
-                                <li class="mb-2">
-                                    <span data-t="Download AppImage">下载 AppImage：</span>
-                                    <a href="https://claude.ai/download" target="_blank" class="btn btn-sm btn-primary ms-2">
-                                        <i class="fas fa-download"></i> <span data-t="Download">下载</span>
-                                    </a>
-                                </li>
-                                <li class="mb-2"><span data-t="Or install via package manager">或通过包管理器安装：</span></li>
+                                <li class="mb-2"><span data-t="Method 1: NPM Install">方法 1：NPM 安装（推荐）</span></li>
+                            </ol>
+
+                            <div class="position-relative mb-4">
+                                <div class="code-block">
+                                    # <span data-t="Install via NPM">通过 NPM 安装</span><br>
+                                    npm install -g @anthropic-ai/claude-code
+                                </div>
+                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+
+                            <ol start="2">
+                                <li class="mb-2"><span data-t="Method 2: Native Install">方法 2：原生安装（Beta）</span></li>
                             </ol>
 
                             <div class="position-relative">
                                 <div class="code-block">
-                                    # <span data-t="Ubuntu/Debian">Ubuntu/Debian</span><br>
-                                    curl -fsSL https://claude.ai/install.sh | bash<br><br>
-                                    # <span data-t="Arch Linux">Arch Linux</span><br>
-                                    yay -S claude-code<br><br>
-                                    # <span data-t="Flatpak">Flatpak</span><br>
-                                    flatpak install flathub ai.claude.Claude
+                                    # <span data-t="Install using curl">使用 curl 安装</span><br>
+                                    curl -fsSL claude.ai/install.sh | bash
                                 </div>
                                 <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
                                     <i class="fas fa-copy"></i>
