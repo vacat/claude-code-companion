@@ -269,28 +269,28 @@ function onBuiltinTypeChange() {
     
     switch (builtinType) {
         case 'path':
-            addConfigField('path_pattern', 'text', 'Path Pattern', '/v1/*');
+            addConfigField('path_pattern', 'text', '路径(支持通配符)', '/v1/*');
             break;
         case 'header':
-            addConfigField('header_name', 'text', 'Header Name', 'Content-Type');
-            addConfigField('expected_value', 'text', 'Expected Value', 'application/json');
+            addConfigField('header_name', 'text', 'HTTP 头名称', 'Content-Type');
+            addConfigField('expected_value', 'text', 'HTTP 头内容(支持通配符)', 'application/json');
             break;
         case 'query':
-            addConfigField('param_name', 'text', 'Parameter Name', 'beta');
-            addConfigField('expected_value', 'text', 'Expected Value', 'true');
+            addConfigField('param_name', 'text', 'HTTP 参数名', 'beta');
+            addConfigField('expected_value', 'text', 'HTTP 参数内容(支持通配符)', 'true');
             break;
         case 'body-json':
-            addConfigField('json_path', 'text', 'JSON Path', 'model');
-            addConfigField('expected_value', 'text', 'Expected Value', 'claude-3*');
+            addConfigField('json_path', 'text', 'JSON 路径', 'messages[0].text');
+            addConfigField('expected_value', 'text', '字段内容(支持通配符)', 'claude-3*');
             break;
         case 'user-message':
-            addConfigField('expected_value', 'text', 'Expected Value (supports wildcards)', '*#use-claude*');
+            addConfigField('expected_value', 'text', 'Prompt内容(支持通配符)', '*#use-claude*');
             break;
         case 'model':
-            addConfigField('expected_value', 'text', 'Expected Model (supports wildcards)', 'claude-3*');
+            addConfigField('expected_value', 'text', '模型名(支持通配符)', 'claude-3*');
             break;
         case 'thinking':
-            addConfigField('min_budget_tokens', 'number', 'Min Budget Tokens (optional, default: 0)', '0');
+            addConfigField('min_budget_tokens', 'number', '最小 Budget Tokens (optional, default: 0)', '0');
             break;
     }
 }

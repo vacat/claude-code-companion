@@ -660,7 +660,6 @@ function addRewriteRule(sourcePattern = '', targetModel = '') {
         <div class="col-5">
             <input type="text" class="form-control target-model-input" 
                    placeholder="目标模型 (如: deepseek-chat)" value="${targetModel}">
-            <small class="text-muted">推荐: deepseek-chat</small>
         </div>
         <div class="col-2">
             <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRewriteRule(this)">
