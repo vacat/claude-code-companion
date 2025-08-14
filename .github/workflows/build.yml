@@ -105,10 +105,16 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.create_release == 'true')
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && (inputs.create_release == true || inputs.create_release != false))
     
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Debug inputs
+      run: |
+        echo "Event name: ${{ github.event_name }}"
+        echo "Create release input: ${{ inputs.create_release }}"
+        echo "Input type: ${{ type(inputs.create_release) }}"
     
     - name: Get version info for release
       id: version
