@@ -7,6 +7,17 @@ on:
     branches: [ master, main ]
   release:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a release after build'
+        required: false
+        default: 'true'
+        type: boolean
+
+permissions:
+  contents: write
+  actions: read
 
 jobs:
   build:
@@ -55,12 +66,15 @@ jobs:
           if ! git diff-index --quiet HEAD 2>/dev/null; then
             VERSION="$VERSION-dirty"
           fi
-          if [ "${{ github.event_name }}" = "release" ]; then
+          # Add release suffix for release events or manual dispatch with create_release=true
+          if [ "${{ github.event_name }}" = "release" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="$VERSION-release"
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=$VERSION" >> $GITHUB_OUTPUT
         else
           echo "VERSION=dev" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=dev" >> $GITHUB_OUTPUT
         fi
 
     - name: Build binary
@@ -91,23 +105,60 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.create_release == 'true')
     
     steps:
+    - uses: actions/checkout@v4
+    
+    - name: Get version info for release
+      id: version
+      run: |
+        DATE=$(date +%Y%m%d)
+        HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        if [ "$HASH" != "unknown" ]; then
+          VERSION="$DATE-$HASH-release"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=$VERSION" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=dev" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=dev" >> $GITHUB_OUTPUT
+        fi
+    
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
         path: artifacts
 
-    - name: Upload release assets
+    - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
+        tag_name: ${{ steps.version.outputs.TAG_NAME }}
+        name: Release ${{ steps.version.outputs.VERSION }}
+        body: |
+          ## Release ${{ steps.version.outputs.VERSION }}
+          
+          Automatically generated release from commit ${{ github.sha }}.
+          
+          ### Build Information
+          - Build date: ${{ steps.version.outputs.VERSION }}
+          - Commit: ${{ github.sha }}
+          - Workflow: ${{ github.workflow }}
+          
+          ### Downloads
+          Choose the appropriate binary for your platform:
+          - **Windows**: claude-proxy-windows-amd64.zip
+          - **Linux x64**: claude-proxy-linux-amd64.tar.gz  
+          - **Linux ARM64**: claude-proxy-linux-arm64.tar.gz
+          - **macOS Intel**: claude-proxy-darwin-amd64.tar.gz
+          - **macOS Apple Silicon**: claude-proxy-darwin-arm64.tar.gz
         files: |
           artifacts/claude-proxy-windows-amd64/claude-proxy-windows-amd64.zip
           artifacts/claude-proxy-linux-amd64/claude-proxy-linux-amd64.tar.gz
           artifacts/claude-proxy-linux-arm64/claude-proxy-linux-arm64.tar.gz
           artifacts/claude-proxy-darwin-amd64/claude-proxy-darwin-amd64.tar.gz
           artifacts/claude-proxy-darwin-arm64/claude-proxy-darwin-arm64.tar.gz
+        draft: false
+        prerelease: false
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
