@@ -130,6 +130,71 @@ function saveAsFileFromButton(button) {
     }
 }
 
+// Copy to clipboard functionality
+function copyToClipboard(content) {
+    if (!content || content.trim() === '') {
+        showAlert('内容为空，无法复制', 'warning');
+        return;
+    }
+
+    // Try to use modern clipboard API first
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(content).then(() => {
+            showAlert('已复制到剪贴板', 'success');
+        }).catch(err => {
+            console.error('Clipboard API failed:', err);
+            fallbackCopyToClipboard(content);
+        });
+    } else {
+        // Fallback for older browsers or non-secure contexts
+        fallbackCopyToClipboard(content);
+    }
+}
+
+function fallbackCopyToClipboard(content) {
+    try {
+        // Create a temporary textarea element
+        const textarea = document.createElement('textarea');
+        textarea.value = content;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '-9999px';
+        document.body.appendChild(textarea);
+        
+        // Select and copy
+        textarea.select();
+        textarea.setSelectionRange(0, 99999);
+        const successful = document.execCommand('copy');
+        
+        document.body.removeChild(textarea);
+        
+        if (successful) {
+            showAlert('已复制到剪贴板', 'success');
+        } else {
+            showAlert('复制失败，请手动复制', 'danger');
+        }
+    } catch (err) {
+        console.error('Fallback copy failed:', err);
+        showAlert('复制失败，请手动复制', 'danger');
+    }
+}
+
+function copyFromButton(button) {
+    const encodedContent = button.getAttribute('data-content');
+    if (!encodedContent) {
+        showAlert('无内容可复制', 'warning');
+        return;
+    }
+    
+    try {
+        const content = safeBase64Decode(encodedContent);
+        copyToClipboard(content);
+    } catch (error) {
+        console.error('解码内容失败:', error);
+        showAlert('内容解码失败', 'danger');
+    }
+}
+
 // Bootstrap tooltip initialization helper
 function initializeTooltips(container = document) {
     const tooltipTriggerList = [].slice.call(container.querySelectorAll('[data-bs-toggle="tooltip"]'));

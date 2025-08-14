@@ -43,6 +43,66 @@
     overflow-y: auto;
     white-space: pre-wrap;
     word-break: break-all;
+    position: relative;
+}
+
+/* Content box with floating action overlay */
+.json-pretty-container {
+    position: relative;
+    display: block;
+}
+
+.floating-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 6px;
+    padding: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.json-pretty-container:hover .floating-actions {
+    opacity: 1;
+    visibility: visible;
+}
+
+.floating-action-btn {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    color: #495057;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    transition: all 0.15s ease;
+    text-decoration: none;
+}
+
+.floating-action-btn:hover {
+    background: #f8f9fa;
+    border-color: #adb5bd;
+    color: #0d6efd;
+    transform: translateY(-1px);
+}
+
+.floating-action-btn:active {
+    transform: translateY(0);
+}
+
+.floating-action-btn i {
+    font-size: 0.7rem;
 }
 
 /* Model rewrite related styles */
