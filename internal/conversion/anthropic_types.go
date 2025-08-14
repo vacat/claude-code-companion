@@ -47,8 +47,9 @@ type AnthropicContentBlock struct {
 
 	// tool_result（由 user 发回）
 	// Anthropic: {type:"tool_result", tool_use_id:"...", content:[{type:"text", text:"..."}, ...], is_error?:bool}
+	// content 可能是字符串或者 []AnthropicContentBlock 数组
 	ToolUseID string             `json:"tool_use_id,omitempty"`
-	Content   []AnthropicContentBlock `json:"content,omitempty"`
+	Content   interface{}        `json:"content,omitempty"`
 	IsError   *bool              `json:"is_error,omitempty"`
 }
 
@@ -174,8 +175,13 @@ func (m *AnthropicMessage) GetContentBlocks() []AnthropicContentBlock {
 					block.ToolUseID = toolUseID
 				}
 				if content, exists := blockMap["content"]; exists {
-					// 递归处理嵌套的 content
-					if contentArray, ok := content.([]interface{}); ok {
+					// content 可能是字符串或者 []interface{} 数组
+					if contentStr, ok := content.(string); ok {
+						// content 是字符串，直接设置
+						block.Content = contentStr
+					} else if contentArray, ok := content.([]interface{}); ok {
+						// content 是数组，递归处理嵌套的 content
+						var contentBlocks []AnthropicContentBlock
 						for _, contentItem := range contentArray {
 							if contentMap, ok := contentItem.(map[string]interface{}); ok {
 								contentBlock := AnthropicContentBlock{}
@@ -185,9 +191,10 @@ func (m *AnthropicMessage) GetContentBlocks() []AnthropicContentBlock {
 								if text, exists := contentMap["text"].(string); exists {
 									contentBlock.Text = text
 								}
-								block.Content = append(block.Content, contentBlock)
+								contentBlocks = append(contentBlocks, contentBlock)
 							}
 						}
+						block.Content = contentBlocks
 					}
 				}
 				if isError, exists := blockMap["is_error"].(bool); exists {

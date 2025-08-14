@@ -174,17 +174,43 @@ func (c *RequestConverter) Convert(anthropicReq []byte) ([]byte, *ConversionCont
 					// 因上下文不可靠，这里严格要求 tool_use_id 存在：
 					return nil, nil, errors.New("user.tool_result is missing tool_use_id")
 				}
-				// Anthropic 的 tool_result.content 常为 text 块组成
-				var sb strings.Builder
-				for _, c := range tr.Content {
-					if c.Type == "text" {
-						sb.WriteString(c.Text)
+				
+				// 提取 tool_result 的内容
+				var content string
+				switch v := tr.Content.(type) {
+				case string:
+					// content 是字符串，直接使用
+					content = v
+				case []AnthropicContentBlock:
+					// content 是 AnthropicContentBlock 数组，提取文本
+					var sb strings.Builder
+					for _, c := range v {
+						if c.Type == "text" {
+							sb.WriteString(c.Text)
+						}
 					}
+					content = sb.String()
+				case []interface{}:
+					// content 是 interface{} 数组，尝试提取文本
+					var sb strings.Builder
+					for _, item := range v {
+						if blockMap, ok := item.(map[string]interface{}); ok {
+							if typ, exists := blockMap["type"].(string); exists && typ == "text" {
+								if text, exists := blockMap["text"].(string); exists {
+									sb.WriteString(text)
+								}
+							}
+						}
+					}
+					content = sb.String()
+				default:
+					content = ""
 				}
+				
 				out.Messages = append(out.Messages, OpenAIMessage{
 					Role:       "tool",
 					ToolCallID: tr.ToolUseID,
-					Content:    strings.TrimSpace(sb.String()),
+					Content:    strings.TrimSpace(content),
 				})
 			}
 
