@@ -1,3 +1,14 @@
+<!-- Language data for JavaScript -->
+<script>
+window.availableLanguages = {
+    {{range .AvailableLanguages}}
+    "{{.code}}": {
+        "flag": "{{.flag}}",
+        "name": "{{.name}}"
+    },{{end}}
+};
+</script>
+
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
         <a class="navbar-brand" href="/admin/">
@@ -15,9 +26,9 @@
                     <span id="currentLanguageText"></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
-                    <li><a class="dropdown-item" href="#" onclick="switchLanguage('zh-cn')"><span class="flag-text">CN</span> 中文</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="switchLanguage('en')"><span class="flag-text">US</span> English</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="switchLanguage('ja')"><span class="flag-text">JP</span> 日本語</a></li>
+                    {{range .AvailableLanguages}}
+                    <li><a class="dropdown-item" href="#" onclick="switchLanguage('{{.code}}')"><span class="flag-text">{{.flag}}</span> {{.name}}</a></li>
+                    {{end}}
                 </ul>
             </div>
             <a class="nav-link" href="https://github.com/kxn/claude-proxy" target="_blank" title="GitHub 仓库">

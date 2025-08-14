@@ -95,10 +95,23 @@ func (w *captureResponseWriter) GetHTML() string {
 // getBaseTemplateData returns common template data for all pages
 func (s *AdminServer) getBaseTemplateData(c *gin.Context, currentPage string) map[string]interface{} {
 	lang := s.i18nManager.GetDetector().DetectLanguage(c)
+	
+	// Build available languages data
+	availableLanguages := make([]map[string]interface{}, 0)
+	for _, availableLang := range s.i18nManager.GetAvailableLanguages() {
+		langInfo := s.i18nManager.GetLanguageInfo(availableLang)
+		availableLanguages = append(availableLanguages, map[string]interface{}{
+			"code": string(availableLang),
+			"flag": langInfo["flag"],
+			"name": langInfo["name"],
+		})
+	}
+	
 	return map[string]interface{}{
-		"BuildVersion":    s.buildVersion,
-		"CurrentPage":     currentPage,
-		"CurrentLanguage": string(lang),
+		"BuildVersion":       s.buildVersion,
+		"CurrentPage":        currentPage,
+		"CurrentLanguage":    string(lang),
+		"AvailableLanguages": availableLanguages,
 	}
 }
 

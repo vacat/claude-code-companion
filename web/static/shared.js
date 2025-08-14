@@ -182,27 +182,32 @@ function updateLanguageDropdown() {
     const flagElement = document.getElementById('currentLanguageFlag');
     const textElement = document.getElementById('currentLanguageText');
     
-    if (flagElement && textElement) {
-        switch (currentLang) {
-            case 'en':
-                flagElement.textContent = 'US';
-                flagElement.style.backgroundColor = '#007bff'; // Blue for US
-                flagElement.style.display = 'inline-block'; // Ensure visibility
-                textElement.textContent = 'English';
-                break;
-            case 'ja':
-                flagElement.textContent = 'JP';
-                flagElement.style.backgroundColor = '#28a745'; // Green for JP
-                flagElement.style.display = 'inline-block'; // Ensure visibility
-                textElement.textContent = '日本語';
-                break;
-            case 'zh-cn':
-            default:
-                flagElement.textContent = 'CN';
-                flagElement.style.backgroundColor = '#dc3545'; // Red for CN
-                flagElement.style.display = 'inline-block'; // Ensure visibility
-                textElement.textContent = '中文';
-                break;
+    if (flagElement && textElement && window.availableLanguages) {
+        const langInfo = window.availableLanguages[currentLang];
+        if (langInfo) {
+            flagElement.textContent = langInfo.flag;
+            textElement.textContent = langInfo.name;
+            flagElement.style.display = 'inline-block';
+            
+            // Set flag color based on language
+            switch (currentLang) {
+                case 'en':
+                    flagElement.style.backgroundColor = '#007bff'; // Blue for US
+                    break;
+                case 'ja':
+                    flagElement.style.backgroundColor = '#28a745'; // Green for JP
+                    break;
+                case 'zh-cn':
+                default:
+                    flagElement.style.backgroundColor = '#dc3545'; // Red for CN
+                    break;
+            }
+        } else {
+            // Fallback for unknown language
+            flagElement.textContent = '??';
+            textElement.textContent = currentLang;
+            flagElement.style.backgroundColor = '#6c757d'; // Gray for unknown
+            flagElement.style.display = 'inline-block';
         }
     }
 }

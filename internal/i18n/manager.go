@@ -144,6 +144,25 @@ func (m *Manager) AddTranslation(lang Language, original, translation string) {
 	m.translations[lang][original] = translation
 }
 
+// GetAvailableLanguages returns all available languages
+func (m *Manager) GetAvailableLanguages() []Language {
+	return []Language{LanguageZhCN, LanguageEn, LanguageJa}
+}
+
+// GetLanguageInfo returns display information for a language
+func (m *Manager) GetLanguageInfo(lang Language) map[string]string {
+	switch lang {
+	case LanguageZhCN:
+		return map[string]string{"flag": "CN", "name": "中文"}
+	case LanguageEn:
+		return map[string]string{"flag": "US", "name": "English"}
+	case LanguageJa:
+		return map[string]string{"flag": "JP", "name": "日本語"}
+	default:
+		return map[string]string{"flag": "??", "name": string(lang)}
+	}
+}
+
 // GetAllTranslations returns all translations for debugging
 func (m *Manager) GetAllTranslations() map[Language]map[string]string {
 	m.mu.RLock()
