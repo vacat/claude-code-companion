@@ -48,7 +48,6 @@ func NewServer(cfg *config.Config, configFilePath string, buildVersion string) (
 
 	endpointManager := endpoint.NewManager(cfg)
 	responseValidator := validator.NewResponseValidator(cfg.Validation.StrictAnthropicFormat, cfg.Validation.ValidateStreaming)
-	healthChecker := health.NewChecker(cfg.Timeouts.HealthCheck)
 
 	// 初始化tagging系统
 	taggingManager := tagging.NewManager()
@@ -61,6 +60,9 @@ func NewServer(cfg *config.Config, configFilePath string, buildVersion string) (
 
 	// 初始化格式转换器
 	converter := conversion.NewConverter(log)
+
+	// 初始化健康检查器（需要在模型重写器和转换器之后）
+	healthChecker := health.NewChecker(cfg.Timeouts.HealthCheck, modelRewriter, converter)
 
 	// 初始化国际化管理器
 	i18nConfig := &i18n.Config{

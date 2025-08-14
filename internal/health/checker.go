@@ -8,18 +8,24 @@ import (
 	"net/http"
 
 	"claude-proxy/internal/config"
+	"claude-proxy/internal/conversion"
 	"claude-proxy/internal/endpoint"
+	"claude-proxy/internal/modelrewrite"
 )
 
 type Checker struct {
 	extractor       *RequestExtractor
 	healthTimeouts  config.HealthCheckTimeoutConfig
+	modelRewriter   *modelrewrite.Rewriter
+	converter       conversion.Converter
 }
 
-func NewChecker(healthTimeouts config.HealthCheckTimeoutConfig) *Checker {
+func NewChecker(healthTimeouts config.HealthCheckTimeoutConfig, modelRewriter *modelrewrite.Rewriter, converter conversion.Converter) *Checker {
 	return &Checker{
 		extractor:      NewRequestExtractor(),
 		healthTimeouts: healthTimeouts,
+		modelRewriter:  modelRewriter,
+		converter:      converter,
 	}
 }
 
@@ -59,11 +65,48 @@ func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
 		return fmt.Errorf("failed to marshal health check request: %v", err)
 	}
 
-	// 构造HTTP请求
+	// 获取目标URL（稍后可能会被格式转换修改）
 	targetURL := ep.GetFullURL("/messages")
-	req, err := http.NewRequest("POST", targetURL, bytes.NewReader(requestBody))
+	
+	// 创建临时HTTP请求用于模型重写处理
+	tempReq, err := http.NewRequest("POST", targetURL, bytes.NewReader(requestBody))
 	if err != nil {
-		return fmt.Errorf("failed to create health check request: %v", err)
+		return fmt.Errorf("failed to create temporary request for model rewrite: %v", err)
+	}
+
+	// 复制从实际请求中提取的头部（用于模型重写）
+	for key, value := range requestInfo.Headers {
+		tempReq.Header.Set(key, value)
+	}
+
+	// 应用模型重写（如果配置了）
+	_, _, err = c.modelRewriter.RewriteRequest(tempReq, ep.ModelRewrite)
+	if err != nil {
+		return fmt.Errorf("model rewrite failed during health check: %v", err)
+	}
+
+	// 如果进行了模型重写，获取重写后的请求体
+	finalRequestBody, err := io.ReadAll(tempReq.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read rewritten request body: %v", err)
+	}
+
+	// 格式转换（在模型重写之后）
+	if c.converter.ShouldConvert(ep.EndpointType) {
+		convertedBody, _, err := c.converter.ConvertRequest(finalRequestBody, ep.EndpointType)
+		if err != nil {
+			return fmt.Errorf("request format conversion failed during health check: %v", err)
+		}
+		finalRequestBody = convertedBody
+		
+		// 对于OpenAI端点，需要更新目标URL
+		targetURL = ep.GetFullURL("/chat/completions")
+	}
+
+	// 构造最终的HTTP请求
+	req, err := http.NewRequest("POST", targetURL, bytes.NewReader(finalRequestBody))
+	if err != nil {
+		return fmt.Errorf("failed to create final health check request: %v", err)
 	}
 
 	// 复制从实际请求中提取的头部（包含默认值）
