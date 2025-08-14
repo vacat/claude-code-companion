@@ -67,7 +67,7 @@ function renderTaggers() {
     tbody.innerHTML = '';
     
     if (taggers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No taggers configured</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No taggers configured</td></tr>';
         return;
     }
     
@@ -76,10 +76,12 @@ function renderTaggers() {
         row.innerHTML = `
             <td>
                 <strong>${escapeHtml(tagger.name)}</strong>
-                ${tagger.builtin_type ? `<br><small class="text-muted">${escapeHtml(tagger.builtin_type)}</small>` : ''}
             </td>
             <td>
                 <span class="badge ${tagger.type === 'builtin' ? 'bg-primary' : 'bg-info'}">${escapeHtml(tagger.type)}</span>
+            </td>
+            <td>
+                ${tagger.builtin_type ? `<span class="badge bg-secondary">${escapeHtml(tagger.builtin_type)}</span>` : ''}
             </td>
             <td><span class="badge bg-secondary">${escapeHtml(tagger.tag)}</span></td>
             <td>${tagger.priority}</td>
