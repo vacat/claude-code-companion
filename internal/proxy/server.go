@@ -220,3 +220,24 @@ func (s *Server) updateValidatorConfig(newValidation config.ValidationConfig) {
 	s.validator = validator.NewResponseValidator(newValidation.StrictAnthropicFormat, newValidation.ValidateStreaming)
 	s.config.Validation = newValidation
 }
+
+// saveConfigToFile 将当前配置保存到文件
+func (s *Server) saveConfigToFile() error {
+	return config.SaveConfig(s.config, s.configFilePath)
+}
+
+// createOAuthTokenRefreshCallback 创建 OAuth token 刷新后的回调函数
+func (s *Server) createOAuthTokenRefreshCallback() func(*endpoint.Endpoint) error {
+	return func(ep *endpoint.Endpoint) error {
+		// 更新内存中的配置
+		for i, cfgEndpoint := range s.config.Endpoints {
+			if cfgEndpoint.Name == ep.Name {
+				s.config.Endpoints[i].OAuthConfig = ep.OAuthConfig
+				break
+			}
+		}
+		
+		// 保存到配置文件
+		return s.saveConfigToFile()
+	}
+}

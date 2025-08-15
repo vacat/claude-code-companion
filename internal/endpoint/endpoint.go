@@ -250,6 +250,11 @@ func (e *Endpoint) CreateHealthClient(timeoutConfig config.HealthCheckTimeoutCon
 
 // RefreshOAuthToken 刷新 OAuth token
 func (e *Endpoint) RefreshOAuthToken(timeoutConfig config.ProxyTimeoutConfig) error {
+	return e.RefreshOAuthTokenWithCallback(timeoutConfig, nil)
+}
+
+// RefreshOAuthTokenWithCallback 刷新 OAuth token 并可选地调用回调函数
+func (e *Endpoint) RefreshOAuthTokenWithCallback(timeoutConfig config.ProxyTimeoutConfig, onTokenRefreshed func(*Endpoint) error) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	
@@ -276,11 +281,24 @@ func (e *Endpoint) RefreshOAuthToken(timeoutConfig config.ProxyTimeoutConfig) er
 	// 更新配置
 	e.OAuthConfig = newOAuthConfig
 	
+	// 如果提供了回调函数，调用它来处理配置持久化
+	if onTokenRefreshed != nil {
+		if err := onTokenRefreshed(e); err != nil {
+			// 回调失败，但token已经刷新成功，只记录错误
+			return fmt.Errorf("oauth token refreshed successfully but failed to persist to config file: %v", err)
+		}
+	}
+	
 	return nil
 }
 
 // GetAuthHeaderWithRefresh 获取认证头部，如果需要会自动刷新OAuth token
 func (e *Endpoint) GetAuthHeaderWithRefresh(timeoutConfig config.ProxyTimeoutConfig) (string, error) {
+	return e.GetAuthHeaderWithRefreshCallback(timeoutConfig, nil)
+}
+
+// GetAuthHeaderWithRefreshCallback 获取认证头部，如果需要会自动刷新OAuth token，支持回调
+func (e *Endpoint) GetAuthHeaderWithRefreshCallback(timeoutConfig config.ProxyTimeoutConfig, onTokenRefreshed func(*Endpoint) error) (string, error) {
 	// 首先尝试获取认证头部
 	authHeader, err := e.GetAuthHeader()
 	
@@ -288,7 +306,7 @@ func (e *Endpoint) GetAuthHeaderWithRefresh(timeoutConfig config.ProxyTimeoutCon
 		if err != nil {
 			// 如果获取失败且token确实过期，尝试刷新
 			if oauth.IsTokenExpired(e.OAuthConfig) {
-				if refreshErr := e.RefreshOAuthToken(timeoutConfig); refreshErr != nil {
+				if refreshErr := e.RefreshOAuthTokenWithCallback(timeoutConfig, onTokenRefreshed); refreshErr != nil {
 					return "", fmt.Errorf("failed to refresh oauth token: %v", refreshErr)
 				}
 				// 重新获取认证头部
@@ -301,7 +319,7 @@ func (e *Endpoint) GetAuthHeaderWithRefresh(timeoutConfig config.ProxyTimeoutCon
 		// 即使获取成功，也检查是否应该主动刷新
 		if oauth.ShouldRefreshToken(e.OAuthConfig) {
 			// 主动刷新，但如果失败不影响当前请求
-			if refreshErr := e.RefreshOAuthToken(timeoutConfig); refreshErr != nil {
+			if refreshErr := e.RefreshOAuthTokenWithCallback(timeoutConfig, onTokenRefreshed); refreshErr != nil {
 				// 刷新失败，记录日志但继续使用当前token
 				// 这里可以添加日志记录
 			} else {

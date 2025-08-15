@@ -453,7 +453,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	if ep.AuthType == "api_key" {
 		req.Header.Set("x-api-key", ep.AuthValue)
 	} else {
-		authHeader, err := ep.GetAuthHeaderWithRefresh(s.config.Timeouts.Proxy)
+		authHeader, err := ep.GetAuthHeaderWithRefreshCallback(s.config.Timeouts.Proxy, s.createOAuthTokenRefreshCallback())
 		if err != nil {
 			s.logger.Error(fmt.Sprintf("Failed to get auth header: %v", err), err)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})

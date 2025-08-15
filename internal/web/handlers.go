@@ -411,6 +411,23 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 						c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid oauth config: " + err.Error()})
 						return
 					}
+					
+					// 检查内存中是否已有更新的 OAuth token（防止覆盖已刷新的token）
+					if currentEndpoints[i].AuthType == "oauth" && currentEndpoints[i].OAuthConfig != nil {
+						currentExpiresAt := currentEndpoints[i].OAuthConfig.ExpiresAt
+						requestExpiresAt := request.OAuthConfig.ExpiresAt
+						
+						// 如果内存中的过期时间比 WebUI 发送的更大，说明后台已刷新token，拒绝更新
+						if currentExpiresAt > requestExpiresAt && requestExpiresAt > 0 {
+							c.JSON(http.StatusConflict, gin.H{
+								"error": "Cannot update OAuth config: token has been refreshed in background. Please reload the page to get the latest configuration.",
+								"current_expires_at": currentExpiresAt,
+								"request_expires_at": requestExpiresAt,
+							})
+							return
+						}
+					}
+					
 					// 设置OAuth配置，清空auth_value
 					currentEndpoints[i].OAuthConfig = request.OAuthConfig
 					currentEndpoints[i].AuthValue = ""
