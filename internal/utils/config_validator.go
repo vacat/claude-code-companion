@@ -30,12 +30,13 @@ func (v *EndpointConfigValidator) ValidateEndpoint(endpoint EndpointConfig, inde
 		return fmt.Errorf("endpoint %d: url cannot be empty", index)
 	}
 	
-	if endpoint.GetAuthType() != "api_key" && endpoint.GetAuthType() != "auth_token" {
-		return fmt.Errorf("endpoint %d: invalid auth_type '%s', must be 'api_key' or 'auth_token'", index, endpoint.GetAuthType())
+	if endpoint.GetAuthType() != "api_key" && endpoint.GetAuthType() != "auth_token" && endpoint.GetAuthType() != "oauth" {
+		return fmt.Errorf("endpoint %d: invalid auth_type '%s', must be 'api_key', 'auth_token', or 'oauth'", index, endpoint.GetAuthType())
 	}
 	
-	if endpoint.GetAuthValue() == "" {
-		return fmt.Errorf("endpoint %d: auth_value cannot be empty", index)
+	// OAuth 认证不需要 auth_value，其他认证类型需要
+	if endpoint.GetAuthType() != "oauth" && endpoint.GetAuthValue() == "" {
+		return fmt.Errorf("endpoint %d: auth_value cannot be empty for non-oauth authentication", index)
 	}
 	
 	return nil

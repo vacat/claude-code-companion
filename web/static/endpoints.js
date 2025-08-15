@@ -200,9 +200,14 @@ function rebuildTable(endpoints) {
         }
         
         // Build auth type badge
-        const authTypeBadge = endpoint.auth_type === 'api_key' 
-            ? '<span class="badge bg-primary">api_key</span>'
-            : '<span class="badge bg-secondary">auth_token</span>';
+        let authTypeBadge;
+        if (endpoint.auth_type === 'api_key') {
+            authTypeBadge = '<span class="badge bg-primary">api_key</span>';
+        } else if (endpoint.auth_type === 'oauth') {
+            authTypeBadge = '<span class="badge bg-success">oauth</span>';
+        } else {
+            authTypeBadge = '<span class="badge bg-secondary">auth_token</span>';
+        }
         
         // Build proxy status display
         let proxyDisplay = '';
@@ -340,11 +345,20 @@ function showEditEndpointModal(endpointName) {
     const tagsValue = endpoint.tags && endpoint.tags.length > 0 ? endpoint.tags.join(', ') : '';
     document.getElementById('endpoint-tags').value = tagsValue;
     
-    // Set auth value to asterisks
-    document.getElementById('endpoint-auth-value').value = '*'.repeat(Math.min(endpoint.auth_value.length, 50));
-    document.getElementById('endpoint-auth-value').type = 'password'; // Ensure it's password type
-    document.getElementById('endpoint-auth-value').placeholder = '输入您的 API Key 或 Token';
-    resetAuthVisibility();
+    // Set auth value or OAuth config based on auth type
+    if (endpoint.auth_type === 'oauth' && endpoint.oauth_config) {
+        // Load OAuth configuration
+        loadOAuthConfig(endpoint.oauth_config);
+    } else {
+        // Set auth value to asterisks
+        document.getElementById('endpoint-auth-value').value = '*'.repeat(Math.min(endpoint.auth_value.length, 50));
+        document.getElementById('endpoint-auth-value').type = 'password'; // Ensure it's password type
+        document.getElementById('endpoint-auth-value').placeholder = '输入您的 API Key 或 Token';
+        resetAuthVisibility();
+    }
+    
+    // Update auth type display
+    onAuthTypeChange();
     
     // Load proxy configuration
     loadProxyConfig(endpoint.proxy);
@@ -398,6 +412,48 @@ function toggleAuthVisibility() {
     }
 }
 
+function toggleOAuthVisibility(inputId, iconId) {
+    const inputField = document.getElementById(inputId);
+    const eyeIcon = document.getElementById(iconId);
+    
+    if (inputField.type === 'password') {
+        inputField.type = 'text';
+        eyeIcon.className = 'fas fa-eye-slash';
+    } else {
+        inputField.type = 'password';
+        eyeIcon.className = 'fas fa-eye';
+    }
+}
+
+function loadOAuthConfig(oauthConfig) {
+    if (!oauthConfig) {
+        // Clear OAuth fields
+        document.getElementById('oauth-access-token').value = '';
+        document.getElementById('oauth-refresh-token').value = '';
+        document.getElementById('oauth-expires-at').value = '';
+        document.getElementById('oauth-token-url').value = '';
+        document.getElementById('oauth-client-id').value = '';
+        document.getElementById('oauth-scopes').value = '';
+        document.getElementById('oauth-auto-refresh').checked = true;
+        return;
+    }
+    
+    // Load OAuth configuration
+    document.getElementById('oauth-access-token').value = oauthConfig.access_token || '';
+    document.getElementById('oauth-refresh-token').value = oauthConfig.refresh_token || '';
+    document.getElementById('oauth-expires-at').value = oauthConfig.expires_at || '';
+    document.getElementById('oauth-token-url').value = oauthConfig.token_url || '';
+    document.getElementById('oauth-client-id').value = oauthConfig.client_id || '';
+    document.getElementById('oauth-auto-refresh').checked = oauthConfig.auto_refresh !== false;
+    
+    // Load scopes
+    if (oauthConfig.scopes && Array.isArray(oauthConfig.scopes)) {
+        document.getElementById('oauth-scopes').value = oauthConfig.scopes.join(', ');
+    } else {
+        document.getElementById('oauth-scopes').value = '';
+    }
+}
+
 function resetAuthVisibility() {
     const eyeIcon = document.getElementById('auth-eye-icon');
     eyeIcon.className = 'fas fa-eye';
@@ -411,11 +467,37 @@ function saveEndpoint() {
         return;
     }
 
-    // Get real auth value
-    let authValue = document.getElementById('endpoint-auth-value').value;
-    if (!isAuthVisible && originalAuthValue && authValue.startsWith('*')) {
-        // If showing asterisks and has original value, use original value
-        authValue = originalAuthValue;
+    const authType = document.getElementById('endpoint-auth-type').value;
+    
+    // Get auth value or OAuth config based on auth type
+    let authValue = '';
+    let oauthConfig = null;
+    
+    if (authType === 'oauth') {
+        // Collect OAuth configuration
+        const scopesInput = document.getElementById('oauth-scopes').value.trim();
+        const scopes = scopesInput ? scopesInput.split(',').map(s => s.trim()).filter(s => s) : [];
+        
+        oauthConfig = {
+            access_token: document.getElementById('oauth-access-token').value,
+            refresh_token: document.getElementById('oauth-refresh-token').value,
+            expires_at: parseInt(document.getElementById('oauth-expires-at').value),
+            token_url: document.getElementById('oauth-token-url').value,
+            client_id: document.getElementById('oauth-client-id').value || '',
+            scopes: scopes,
+            auto_refresh: document.getElementById('oauth-auto-refresh').checked
+        };
+        
+        // Remove empty optional fields
+        if (!oauthConfig.client_id) delete oauthConfig.client_id;
+        if (oauthConfig.scopes.length === 0) delete oauthConfig.scopes;
+    } else {
+        // Get regular auth value
+        authValue = document.getElementById('endpoint-auth-value').value;
+        if (!isAuthVisible && originalAuthValue && authValue.startsWith('*')) {
+            // If showing asterisks and has original value, use original value
+            authValue = originalAuthValue;
+        }
     }
 
     // Parse tags field
@@ -427,12 +509,17 @@ function saveEndpoint() {
         url: document.getElementById('endpoint-url').value,
         endpoint_type: document.getElementById('endpoint-type').value,
         path_prefix: document.getElementById('endpoint-path-prefix').value || '', // PathPrefix can be empty
-        auth_type: document.getElementById('endpoint-auth-type').value,
+        auth_type: authType,
         auth_value: authValue,
         enabled: document.getElementById('endpoint-enabled').checked,
         tags: tags,
         proxy: collectProxyData() // New: collect proxy configuration
     };
+    
+    // Add OAuth config if present
+    if (oauthConfig) {
+        data.oauth_config = oauthConfig;
+    }
 
     const isEditing = editingEndpointName !== null;
     const url = isEditing 
@@ -685,22 +772,44 @@ function toggleAuthTypeForEndpointType() {
     const endpointType = document.getElementById('endpoint-type').value;
     const authTypeSelect = document.getElementById('endpoint-auth-type');
     
-    if (endpointType === 'openai') {
-        // OpenAI compatible endpoints use auth_token and cannot be changed
-        authTypeSelect.value = 'auth_token';
-        authTypeSelect.disabled = true;
-    } else {
-        // Anthropic endpoints can use either auth type, but default to auth_token
-        authTypeSelect.disabled = false;
-        if (!editingEndpointName) { // Only set default for new endpoints
-            authTypeSelect.value = 'auth_token';
-        }
+    // All endpoint types can now use all auth types, including OAuth
+    authTypeSelect.disabled = false;
+    
+    // Set default auth type for new endpoints
+    if (!editingEndpointName) {
+        authTypeSelect.value = 'auth_token'; // Default to auth_token for all types
     }
 }
 
 function onAuthTypeChange() {
-    // This function can be used for future auth type specific logic
-    // Currently no additional logic needed
+    const authType = document.getElementById('endpoint-auth-type').value;
+    const authValueGroup = document.getElementById('auth-value-group');
+    const oauthConfigGroup = document.getElementById('oauth-config-group');
+    const authValueInput = document.getElementById('endpoint-auth-value');
+    
+    if (authType === 'oauth') {
+        // 显示 OAuth 配置，隐藏认证值输入
+        authValueGroup.style.display = 'none';
+        oauthConfigGroup.style.display = 'block';
+        authValueInput.required = false;
+        
+        // OAuth 必填字段设置为必填
+        document.getElementById('oauth-access-token').required = true;
+        document.getElementById('oauth-refresh-token').required = true;
+        document.getElementById('oauth-expires-at').required = true;
+        document.getElementById('oauth-token-url').required = true;
+    } else {
+        // 显示认证值输入，隐藏 OAuth 配置
+        authValueGroup.style.display = 'block';
+        oauthConfigGroup.style.display = 'none';
+        authValueInput.required = true;
+        
+        // OAuth 字段不再必填
+        document.getElementById('oauth-access-token').required = false;
+        document.getElementById('oauth-refresh-token').required = false;
+        document.getElementById('oauth-expires-at').required = false;
+        document.getElementById('oauth-token-url').required = false;
+    }
 }
 
 // ===== Modal Functions =====

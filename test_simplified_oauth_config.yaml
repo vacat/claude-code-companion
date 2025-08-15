@@ -1,0 +1,64 @@
+server:
+  host: 127.0.0.1
+  port: 8080
+endpoints:
+  - name: test-anthropic-simplified-oauth
+    url: https://api.anthropic.com  # 用于API请求的URL
+    endpoint_type: anthropic
+    auth_type: oauth
+    enabled: true
+    priority: 1
+    tags: []
+    oauth_config:
+      access_token: sk-ant-oat01-test-access-token
+      refresh_token: sk-ant-ort01-test-refresh-token
+      expires_at: 1755272917673
+      token_url: https://console.anthropic.com/v1/oauth/token  # 必填：用于刷新token
+      client_id: 9d1c250a-e61b-44d9-88ed-5944d1962f5e
+      scopes:
+        - user:inference
+        - user:profile
+      auto_refresh: true
+  - name: test-openai-simplified-oauth
+    url: https://api.openai.com  # 用于API请求的URL
+    endpoint_type: openai
+    path_prefix: /v1/chat/completions
+    auth_type: oauth
+    enabled: true
+    priority: 2
+    tags: []
+    oauth_config:
+      access_token: test-openai-access-token
+      refresh_token: test-openai-refresh-token
+      expires_at: 1755272917673
+      token_url: https://api.openai.com/v1/oauth/token  # 必填：用于刷新token
+      client_id: test-openai-client-id
+      scopes:
+        - api.read
+        - api.write
+      auto_refresh: true
+logging:
+  level: info
+  log_request_types: all
+  log_request_body: full
+  log_response_body: full
+  log_directory: ./logs
+validation:
+  strict_anthropic_format: false
+  validate_streaming: false
+  disconnect_on_invalid: false
+tagging:
+  pipeline_timeout: 5s
+  taggers: []
+timeouts:
+  proxy:
+    tls_handshake: 10s
+    response_header: 60s
+    idle_connection: 90s
+    overall_request: ""
+  health_check:
+    tls_handshake: 5s
+    response_header: 30s
+    idle_connection: 60s
+    overall_request: 30s
+    check_interval: 30s

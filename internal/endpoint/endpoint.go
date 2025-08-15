@@ -8,6 +8,7 @@ import (
 
 	"claude-proxy/internal/config"
 	"claude-proxy/internal/interfaces"
+	"claude-proxy/internal/oauth"
 	"claude-proxy/internal/proxyclient"
 	"claude-proxy/internal/utils"
 )
@@ -35,6 +36,7 @@ type Endpoint struct {
 	Tags            []string                 `json:"tags"`           // 新增：支持的tag列表
 	ModelRewrite    *config.ModelRewriteConfig `json:"model_rewrite,omitempty"` // 新增：模型重写配置
 	Proxy           *config.ProxyConfig      `json:"proxy,omitempty"` // 新增：代理配置
+	OAuthConfig     *config.OAuthConfig      `json:"oauth_config,omitempty"` // 新增：OAuth配置
 	Status          Status                   `json:"status"`
 	LastCheck       time.Time                `json:"last_check"`
 	FailureCount    int                      `json:"failure_count"`
@@ -65,6 +67,7 @@ func NewEndpoint(config config.EndpointConfig) *Endpoint {
 		Tags:           config.Tags,       // 新增：从配置中复制tags
 		ModelRewrite:   config.ModelRewrite, // 新增：从配置中复制模型重写配置
 		Proxy:          config.Proxy,      // 新增：从配置中复制代理配置
+		OAuthConfig:    config.OAuthConfig, // 新增：从配置中复制OAuth配置
 		Status:         StatusActive,
 		LastCheck:      time.Now(),
 		RequestHistory: utils.NewCircularBuffer(100, 140*time.Second), // 100个记录，140秒窗口
@@ -84,17 +87,28 @@ func (e *Endpoint) IsEnabled() bool {
 	return e.Enabled
 }
 
-func (e *Endpoint) GetAuthHeader() string {
+func (e *Endpoint) GetAuthHeader() (string, error) {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
 
 	switch e.AuthType {
 	case "api_key":
-		return e.AuthValue // api_key 直接返回值，会用 x-api-key 头部
+		return e.AuthValue, nil // api_key 直接返回值，会用 x-api-key 头部
 	case "auth_token":
-		return "Bearer " + e.AuthValue // auth_token 使用 Bearer 前缀
+		return "Bearer " + e.AuthValue, nil // auth_token 使用 Bearer 前缀
+	case "oauth":
+		if e.OAuthConfig == nil {
+			return "", fmt.Errorf("oauth config is required for oauth auth_type")
+		}
+		
+		// 检查 token 是否需要刷新
+		if oauth.IsTokenExpired(e.OAuthConfig) {
+			return "", fmt.Errorf("oauth token expired, refresh required")
+		}
+		
+		return oauth.GetAuthorizationHeader(e.OAuthConfig), nil
 	default:
-		return e.AuthValue
+		return e.AuthValue, nil
 	}
 }
 
@@ -129,17 +143,20 @@ func (e *Endpoint) GetFullURL(path string) string {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
 	
+	// 直接使用端点的URL作为基础URL
+	baseURL := e.URL
+	
 	// 根据端点类型自动添加正确的路径前缀
 	switch e.EndpointType {
 	case "anthropic":
 		// Anthropic 端点需要添加 /v1 前缀，因为路由组已经消费了 /v1
-		return e.URL + "/v1" + path
+		return baseURL + "/v1" + path
 	case "openai":
 		// OpenAI 端点使用配置的路径前缀（不需要路径转换）
-		return e.URL + e.PathPrefix
+		return baseURL + e.PathPrefix
 	default:
 		// 向后兼容：默认使用 anthropic 格式，需要添加 /v1 前缀
-		return e.URL + "/v1" + path
+		return baseURL + "/v1" + path
 	}
 }
 
@@ -229,4 +246,72 @@ func (e *Endpoint) CreateHealthClient(timeoutConfig config.HealthCheckTimeoutCon
 	}
 	
 	return proxyclient.CreateHTTPClient(proxyConfig, proxyTimeoutConfig)
+}
+
+// RefreshOAuthToken 刷新 OAuth token
+func (e *Endpoint) RefreshOAuthToken(timeoutConfig config.ProxyTimeoutConfig) error {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+	
+	if e.AuthType != "oauth" {
+		return fmt.Errorf("endpoint is not configured for oauth authentication")
+	}
+	
+	if e.OAuthConfig == nil {
+		return fmt.Errorf("oauth config is nil")
+	}
+	
+	// 创建HTTP客户端用于刷新请求
+	client, err := proxyclient.CreateHTTPClient(e.Proxy, timeoutConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create http client for token refresh: %v", err)
+	}
+	
+	// 刷新token
+	newOAuthConfig, err := oauth.RefreshToken(e.OAuthConfig, client)
+	if err != nil {
+		return fmt.Errorf("failed to refresh oauth token: %v", err)
+	}
+	
+	// 更新配置
+	e.OAuthConfig = newOAuthConfig
+	
+	return nil
+}
+
+// GetAuthHeaderWithRefresh 获取认证头部，如果需要会自动刷新OAuth token
+func (e *Endpoint) GetAuthHeaderWithRefresh(timeoutConfig config.ProxyTimeoutConfig) (string, error) {
+	// 首先尝试获取认证头部
+	authHeader, err := e.GetAuthHeader()
+	
+	if e.AuthType == "oauth" {
+		if err != nil {
+			// 如果获取失败且token确实过期，尝试刷新
+			if oauth.IsTokenExpired(e.OAuthConfig) {
+				if refreshErr := e.RefreshOAuthToken(timeoutConfig); refreshErr != nil {
+					return "", fmt.Errorf("failed to refresh oauth token: %v", refreshErr)
+				}
+				// 重新获取认证头部
+				return e.GetAuthHeader()
+			}
+			// 如果不是因为过期导致的错误，直接返回错误
+			return "", err
+		}
+		
+		// 即使获取成功，也检查是否应该主动刷新
+		if oauth.ShouldRefreshToken(e.OAuthConfig) {
+			// 主动刷新，但如果失败不影响当前请求
+			if refreshErr := e.RefreshOAuthToken(timeoutConfig); refreshErr != nil {
+				// 刷新失败，记录日志但继续使用当前token
+				// 这里可以添加日志记录
+			} else {
+				// 刷新成功，获取新的认证头部
+				if newAuthHeader, newErr := e.GetAuthHeader(); newErr == nil {
+					return newAuthHeader, nil
+				}
+			}
+		}
+	}
+	
+	return authHeader, err
 }

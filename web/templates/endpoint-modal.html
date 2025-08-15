@@ -101,18 +101,103 @@
                                     <select class="form-select" id="endpoint-auth-type" required onchange="onAuthTypeChange()">
                                         <option value="api_key">API Key (x-api-key)</option>
                                         <option value="auth_token" selected>Auth Token (Authorization Bearer)</option>
+                                        <option value="oauth">OAuth 2.0</option>
                                     </select>
                                 </div>
                                 <div class="col-8">
-                                    <label for="endpoint-auth-value" class="form-label">
-                                        <i class="fas fa-shield-alt form-label-icon"></i><span data-t="authentication_value">认证值</span> <span class="text-danger">*</span>
-                                    </label>
-                                    <div class="input-group">
-                                        <input type="password" class="form-control" id="endpoint-auth-value" required
-                                               placeholder="输入您的 API Key 或 Token">
-                                        <button class="btn btn-outline-secondary" type="button" id="toggle-auth-visibility" onclick="toggleAuthVisibility()">
-                                            <i class="fas fa-eye" id="auth-eye-icon"></i>
-                                        </button>
+                                    <div id="auth-value-group">
+                                        <label for="endpoint-auth-value" class="form-label">
+                                            <i class="fas fa-shield-alt form-label-icon"></i><span data-t="authentication_value">认证值</span> <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" id="endpoint-auth-value" required
+                                                   placeholder="输入您的 API Key 或 Token">
+                                            <button class="btn btn-outline-secondary" type="button" id="toggle-auth-visibility" onclick="toggleAuthVisibility()">
+                                                <i class="fas fa-eye" id="auth-eye-icon"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- OAuth 配置区域 -->
+                                    <div id="oauth-config-group" style="display: none;">
+                                        <label class="form-label">
+                                            <i class="fas fa-shield-alt form-label-icon"></i><span data-t="oauth_configuration">OAuth 配置</span> <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="card">
+                                            <div class="card-body p-3">
+                                                <!-- Access Token -->
+                                                <div class="mb-3">
+                                                    <label for="oauth-access-token" class="form-label">Access Token <span class="text-danger">*</span></label>
+                                                    <div class="input-group">
+                                                        <input type="password" class="form-control" id="oauth-access-token" 
+                                                               placeholder="访问令牌（如：sk-ant-oat01-... 或其他格式）">
+                                                        <button class="btn btn-outline-secondary" type="button" onclick="toggleOAuthVisibility('oauth-access-token', 'oauth-access-eye')">
+                                                            <i class="fas fa-eye" id="oauth-access-eye"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Refresh Token -->
+                                                <div class="mb-3">
+                                                    <label for="oauth-refresh-token" class="form-label">Refresh Token <span class="text-danger">*</span></label>
+                                                    <div class="input-group">
+                                                        <input type="password" class="form-control" id="oauth-refresh-token" 
+                                                               placeholder="刷新令牌（如：sk-ant-ort01-... 或其他格式）">
+                                                        <button class="btn btn-outline-secondary" type="button" onclick="toggleOAuthVisibility('oauth-refresh-token', 'oauth-refresh-eye')">
+                                                            <i class="fas fa-eye" id="oauth-refresh-eye"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Expires At -->
+                                                <div class="row mb-3">
+                                                    <div class="col-6">
+                                                        <label for="oauth-expires-at" class="form-label">过期时间戳 (毫秒) <span class="text-danger">*</span></label>
+                                                        <input type="number" class="form-control" id="oauth-expires-at" 
+                                                               placeholder="1755272917673">
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label">自动刷新</label>
+                                                        <div class="form-check mt-2">
+                                                            <input class="form-check-input" type="checkbox" id="oauth-auto-refresh" checked>
+                                                            <label class="form-check-label" for="oauth-auto-refresh">启用自动刷新</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Required Token URL -->
+                                                <div class="mb-3">
+                                                    <label for="oauth-token-url" class="form-label">Token URL <span class="text-danger">*</span></label>
+                                                    <input type="url" class="form-control" id="oauth-token-url" 
+                                                           placeholder="https://console.anthropic.com/v1/oauth/token">
+                                                    <small class="form-text text-muted">用于刷新OAuth token的端点地址</small>
+                                                </div>
+                                                
+                                                <div class="row mb-3">
+                                                    <div class="col-6">
+                                                        <label for="oauth-client-id" class="form-label">Client ID (可选)</label>
+                                                        <input type="text" class="form-control" id="oauth-client-id" 
+                                                               placeholder="9d1c250a-e61b-44d9-88ed-5944d1962f5e">
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label for="oauth-scopes" class="form-label">Scopes (可选)</label>
+                                                        <input type="text" class="form-control" id="oauth-scopes" 
+                                                               placeholder="user:inference,user:profile">
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="alert alert-info p-2 mb-0">
+                                                    <small class="text-muted">
+                                                        <strong>说明：</strong><br>
+                                                        • 支持 Anthropic、OpenAI 及其他 OAuth 提供商<br>
+                                                        • API请求将发送到端点URL地址<br>
+                                                        • Token URL：指定OAuth token刷新的端点地址（必填）<br>
+                                                        • 过期时间戳为毫秒级Unix时间戳<br>
+                                                        • 启用自动刷新时，系统会在token过期前自动刷新
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

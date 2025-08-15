@@ -118,7 +118,11 @@ func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
 	if ep.AuthType == "api_key" {
 		req.Header.Set("x-api-key", ep.AuthValue)
 	} else {
-		req.Header.Set("Authorization", ep.GetAuthHeader())
+		authHeader, err := ep.GetAuthHeader()
+		if err != nil {
+			return fmt.Errorf("failed to get auth header: %v", err)
+		}
+		req.Header.Set("Authorization", authHeader)
 	}
 
 	// 执行请求 - 使用端点特定的HTTP客户端

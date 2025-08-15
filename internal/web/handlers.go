@@ -238,7 +238,7 @@ func (s *AdminServer) saveEndpointsToConfig(endpointConfigs []config.EndpointCon
 }
 
 // createEndpointConfigFromRequest 从请求创建端点配置，自动设置优先级
-func createEndpointConfigFromRequest(name, url, endpointType, pathPrefix, authType, authValue string, enabled bool, priority int, tags []string, proxy *config.ProxyConfig) config.EndpointConfig {
+func createEndpointConfigFromRequest(name, url, endpointType, pathPrefix, authType, authValue string, enabled bool, priority int, tags []string, proxy *config.ProxyConfig, oauthConfig *config.OAuthConfig) config.EndpointConfig {
 	// 如果没有指定endpoint_type，默认为anthropic（向后兼容）
 	if endpointType == "" {
 		endpointType = "anthropic"
@@ -255,6 +255,7 @@ func createEndpointConfigFromRequest(name, url, endpointType, pathPrefix, authTy
 		Priority:     priority,
 		Tags:         tags,
 		Proxy:        proxy, // 新增：支持代理配置
+		OAuthConfig:  oauthConfig, // 新增：支持OAuth配置
 	}
 }
 
@@ -266,10 +267,11 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 		EndpointType string               `json:"endpoint_type"` // "anthropic" | "openai"
 		PathPrefix   string               `json:"path_prefix"`   // OpenAI 端点的路径前缀
 		AuthType     string               `json:"auth_type" binding:"required"`
-		AuthValue    string               `json:"auth_value" binding:"required"`
+		AuthValue    string               `json:"auth_value"`    // OAuth时不需要
 		Enabled      bool                 `json:"enabled"`
 		Tags         []string             `json:"tags"`
 		Proxy        *config.ProxyConfig  `json:"proxy,omitempty"` // 新增：代理配置
+		OAuthConfig  *config.OAuthConfig  `json:"oauth_config,omitempty"` // 新增：OAuth配置
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -278,9 +280,28 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 	}
 
 	// 验证auth_type
-	if request.AuthType != "api_key" && request.AuthType != "auth_token" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "auth_type must be 'api_key' or 'auth_token'"})
+	if request.AuthType != "api_key" && request.AuthType != "auth_token" && request.AuthType != "oauth" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "auth_type must be 'api_key', 'auth_token', or 'oauth'"})
 		return
+	}
+	
+	// 验证 OAuth 或传统认证配置
+	if request.AuthType == "oauth" {
+		if request.OAuthConfig == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "oauth_config is required when auth_type is 'oauth'"})
+			return
+		}
+		// 验证OAuth配置
+		if err := config.ValidateOAuthConfig(request.OAuthConfig, fmt.Sprintf("endpoint '%s'", request.Name)); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid oauth config: " + err.Error()})
+			return
+		}
+	} else {
+		// 非 OAuth 认证需要 auth_value
+		if request.AuthValue == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "auth_value is required for non-oauth authentication"})
+			return
+		}
 	}
 
 	// 验证代理配置（如果提供）
@@ -308,7 +329,7 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 	newEndpoint := createEndpointConfigFromRequest(
 		request.Name, request.URL, request.EndpointType, request.PathPrefix,
 		request.AuthType, request.AuthValue, 
-		request.Enabled, maxPriority+1, request.Tags, request.Proxy)
+		request.Enabled, maxPriority+1, request.Tags, request.Proxy, request.OAuthConfig)
 	currentEndpoints = append(currentEndpoints, newEndpoint)
 
 	// 使用热更新机制
@@ -339,6 +360,7 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 		Enabled      bool                 `json:"enabled"`
 		Tags         []string             `json:"tags"`
 		Proxy        *config.ProxyConfig  `json:"proxy,omitempty"` // 新增：代理配置
+		OAuthConfig  *config.OAuthConfig  `json:"oauth_config,omitempty"` // 新增：OAuth配置
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -373,14 +395,33 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 			// 处理 PathPrefix 字段，允许设置空值（对于 Anthropic 端点）
 			currentEndpoints[i].PathPrefix = request.PathPrefix
 			if request.AuthType != "" {
-				if request.AuthType != "api_key" && request.AuthType != "auth_token" {
-					c.JSON(http.StatusBadRequest, gin.H{"error": "auth_type must be 'api_key' or 'auth_token'"})
+				if request.AuthType != "api_key" && request.AuthType != "auth_token" && request.AuthType != "oauth" {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "auth_type must be 'api_key', 'auth_token', or 'oauth'"})
 					return
 				}
+				
+				// 验证 OAuth 或传统认证配置
+				if request.AuthType == "oauth" {
+					if request.OAuthConfig == nil {
+						c.JSON(http.StatusBadRequest, gin.H{"error": "oauth_config is required when auth_type is 'oauth'"})
+						return
+					}
+					// 验证OAuth配置
+					if err := config.ValidateOAuthConfig(request.OAuthConfig, fmt.Sprintf("endpoint '%s'", endpointName)); err != nil {
+						c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid oauth config: " + err.Error()})
+						return
+					}
+					// 设置OAuth配置，清空auth_value
+					currentEndpoints[i].OAuthConfig = request.OAuthConfig
+					currentEndpoints[i].AuthValue = ""
+				} else {
+					// 非 OAuth 认证，清空OAuth配置
+					currentEndpoints[i].OAuthConfig = nil
+					if request.AuthValue != "" {
+						currentEndpoints[i].AuthValue = request.AuthValue
+					}
+				}
 				currentEndpoints[i].AuthType = request.AuthType
-			}
-			if request.AuthValue != "" {
-				currentEndpoints[i].AuthValue = request.AuthValue
 			}
 			currentEndpoints[i].Enabled = request.Enabled
 			

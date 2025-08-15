@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"claude-proxy/internal/utils"
@@ -46,6 +47,7 @@ type EndpointConfig struct {
 	Tags         []string            `yaml:"tags"`         // 新增：支持的tag列表
 	ModelRewrite *ModelRewriteConfig `yaml:"model_rewrite,omitempty"` // 新增：模型重写配置
 	Proxy        *ProxyConfig        `yaml:"proxy,omitempty"`         // 新增：代理配置
+	OAuthConfig  *OAuthConfig        `yaml:"oauth_config,omitempty"`  // 新增：OAuth配置
 }
 
 // 新增：代理配置结构
@@ -54,6 +56,17 @@ type ProxyConfig struct {
 	Address  string `yaml:"address" json:"address"`   // 代理服务器地址，如 "127.0.0.1:1080"
 	Username string `yaml:"username,omitempty" json:"username,omitempty"` // 代理认证用户名（可选）
 	Password string `yaml:"password,omitempty" json:"password,omitempty"` // 代理认证密码（可选）
+}
+
+// 新增：OAuth 配置结构
+type OAuthConfig struct {
+	AccessToken  string   `yaml:"access_token" json:"access_token"`     // 访问令牌
+	RefreshToken string   `yaml:"refresh_token" json:"refresh_token"`   // 刷新令牌  
+	ExpiresAt    int64    `yaml:"expires_at" json:"expires_at"`         // 过期时间戳（毫秒）
+	TokenURL     string   `yaml:"token_url" json:"token_url"`           // Token刷新URL（必填）
+	ClientID     string   `yaml:"client_id,omitempty" json:"client_id,omitempty"`       // 客户端ID
+	Scopes       []string `yaml:"scopes,omitempty" json:"scopes,omitempty"`             // 权限范围
+	AutoRefresh  bool     `yaml:"auto_refresh" json:"auto_refresh"`                     // 是否自动刷新
 }
 
 // 新增：模型重写配置结构
@@ -187,6 +200,24 @@ func generateDefaultConfig(filename string) error {
 				Enabled:      false, // 默认禁用，需要用户配置
 				Priority:     2,
 				Tags:         []string{},
+			},
+			{
+				Name:         "example-anthropic-oauth",
+				URL:          "https://api.anthropic.com",
+				EndpointType: "anthropic",
+				AuthType:     "oauth",
+				Enabled:      false, // 默认禁用，需要用户配置
+				Priority:     3,
+				Tags:         []string{},
+				OAuthConfig: &OAuthConfig{
+					AccessToken:  "sk-ant-oat01-YOUR_ACCESS_TOKEN_HERE",
+					RefreshToken: "sk-ant-ort01-YOUR_REFRESH_TOKEN_HERE",
+					ExpiresAt:    0, // 设置为实际过期时间戳（毫秒）
+					TokenURL:     "https://console.anthropic.com/v1/oauth/token",
+					ClientID:     "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
+					Scopes:       []string{"user:inference", "user:profile"},
+					AutoRefresh:  true,
+				},
 			},
 		},
 		Logging: LoggingConfig{
@@ -353,6 +384,11 @@ func validateConfig(config *Config) error {
 		return fmt.Errorf("proxy configuration error: %v", err)
 	}
 
+	// 验证OAuth配置
+	if err := validateOAuthConfigs(config.Endpoints); err != nil {
+		return fmt.Errorf("oauth configuration error: %v", err)
+	}
+
 	return nil
 }
 
@@ -480,6 +516,62 @@ func validateTimeoutConfig(config *TimeoutConfig) error {
 	return nil
 }
 
+// validateOAuthConfigs 验证端点的OAuth配置
+func validateOAuthConfigs(endpoints []EndpointConfig) error {
+	for i, endpoint := range endpoints {
+		if endpoint.AuthType == "oauth" {
+			if endpoint.OAuthConfig == nil {
+				return fmt.Errorf("endpoint[%d] '%s': oauth_config is required when auth_type is 'oauth'", i, endpoint.Name)
+			}
+			
+			if err := validateOAuthConfig(endpoint.OAuthConfig, fmt.Sprintf("endpoint[%d] '%s'", i, endpoint.Name)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateOAuthConfig 验证单个OAuth配置（导出函数）
+func ValidateOAuthConfig(config *OAuthConfig, context string) error {
+	return validateOAuthConfig(config, context)
+}
+
+// validateOAuthConfig 验证单个OAuth配置
+func validateOAuthConfig(config *OAuthConfig, context string) error {
+	if config.AccessToken == "" {
+		return fmt.Errorf("%s: oauth access_token is required", context)
+	}
+	
+	if config.RefreshToken == "" {
+		return fmt.Errorf("%s: oauth refresh_token is required", context)
+	}
+	
+	if config.ExpiresAt <= 0 {
+		return fmt.Errorf("%s: oauth expires_at must be a valid timestamp (milliseconds)", context)
+	}
+	
+	if config.TokenURL == "" {
+		return fmt.Errorf("%s: oauth token_url is required", context)
+	}
+	
+	if config.ClientID == "" {
+		config.ClientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+	}
+	
+	// 验证access token格式（如果是 Anthropic token）
+	if strings.HasPrefix(config.AccessToken, "sk-ant-") && !strings.HasPrefix(config.AccessToken, "sk-ant-oat01-") {
+		return fmt.Errorf("%s: Anthropic oauth access_token should start with 'sk-ant-oat01-'", context)
+	}
+	
+	// 验证refresh token格式（如果是 Anthropic token）
+	if strings.HasPrefix(config.RefreshToken, "sk-ant-") && !strings.HasPrefix(config.RefreshToken, "sk-ant-ort01-") {
+		return fmt.Errorf("%s: Anthropic oauth refresh_token should start with 'sk-ant-ort01-'", context)
+	}
+	
+	return nil
+}
+
 func SaveConfig(config *Config, filename string) error {
 	// 首先验证配置
 	if err := validateConfig(config); err != nil {
@@ -577,12 +669,17 @@ func validateOpenAIEndpoints(endpoints []EndpointConfig) error {
 				return fmt.Errorf("endpoint[%d] '%s': OpenAI endpoints require auth_type to be specified", i, endpoint.Name)
 			}
 			
-			if endpoint.AuthType != "auth_token" {
-				return fmt.Errorf("endpoint[%d] '%s': OpenAI endpoints should use auth_type 'auth_token'", i, endpoint.Name)
+			if endpoint.AuthType != "auth_token" && endpoint.AuthType != "oauth" {
+				return fmt.Errorf("endpoint[%d] '%s': OpenAI endpoints should use auth_type 'auth_token' or 'oauth'", i, endpoint.Name)
 			}
 			
-			if endpoint.AuthValue == "" {
-				return fmt.Errorf("endpoint[%d] '%s': OpenAI endpoints require auth_value to be specified", i, endpoint.Name)
+			// 验证认证配置
+			if endpoint.AuthType == "oauth" {
+				if endpoint.OAuthConfig == nil {
+					return fmt.Errorf("endpoint[%d] '%s': OpenAI endpoints with oauth auth_type require oauth_config", i, endpoint.Name)
+				}
+			} else if endpoint.AuthValue == "" {
+				return fmt.Errorf("endpoint[%d] '%s': OpenAI endpoints with auth_token require auth_value to be specified", i, endpoint.Name)
 			}
 			
 			// OpenAI 端点必须配置 path_prefix
