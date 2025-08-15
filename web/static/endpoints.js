@@ -335,11 +335,13 @@ function showEditEndpointModal(endpointName) {
     document.getElementById('endpoint-url').value = endpoint.url;
     document.getElementById('endpoint-type').value = endpoint.endpoint_type || 'anthropic';
     document.getElementById('endpoint-path-prefix').value = endpoint.path_prefix || '';
-    document.getElementById('endpoint-auth-type').value = endpoint.auth_type;
     document.getElementById('endpoint-enabled').checked = endpoint.enabled;
     
-    // Set endpoint type and switch path prefix display
+    // Set endpoint type and switch path prefix display first
     onEndpointTypeChange();
+    
+    // Then set the auth type after the options are populated
+    document.getElementById('endpoint-auth-type').value = endpoint.auth_type;
     
     // Set tags field
     const tagsValue = endpoint.tags && endpoint.tags.length > 0 ? endpoint.tags.join(', ') : '';
@@ -771,14 +773,44 @@ function togglePathPrefixField() {
 function toggleAuthTypeForEndpointType() {
     const endpointType = document.getElementById('endpoint-type').value;
     const authTypeSelect = document.getElementById('endpoint-auth-type');
+    const currentValue = authTypeSelect.value;
     
-    // All endpoint types can now use all auth types, including OAuth
+    // Clear existing options
+    authTypeSelect.innerHTML = '';
+    
+    if (endpointType === 'openai') {
+        // OpenAI compatible endpoints only support authtoken and oauth
+        authTypeSelect.innerHTML = `
+            <option value="auth_token">Auth Token (Authorization Bearer)</option>
+            <option value="oauth">OAuth 2.0</option>
+        `;
+        
+        // Set default or preserve current value if valid
+        if (currentValue === 'auth_token' || currentValue === 'oauth') {
+            authTypeSelect.value = currentValue;
+        } else {
+            authTypeSelect.value = 'auth_token'; // Default to auth_token
+        }
+    } else {
+        // Anthropic endpoints support all auth types
+        authTypeSelect.innerHTML = `
+            <option value="api_key">API Key (x-api-key)</option>
+            <option value="auth_token">Auth Token (Authorization Bearer)</option>
+            <option value="oauth">OAuth 2.0</option>
+        `;
+        
+        // Set default or preserve current value
+        if (currentValue && (currentValue === 'api_key' || currentValue === 'auth_token' || currentValue === 'oauth')) {
+            authTypeSelect.value = currentValue;
+        } else {
+            authTypeSelect.value = 'auth_token'; // Default to auth_token
+        }
+    }
+    
     authTypeSelect.disabled = false;
     
-    // Set default auth type for new endpoints
-    if (!editingEndpointName) {
-        authTypeSelect.value = 'auth_token'; // Default to auth_token for all types
-    }
+    // Trigger auth type change to update the display
+    onAuthTypeChange();
 }
 
 function onAuthTypeChange() {
