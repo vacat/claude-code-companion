@@ -2,6 +2,7 @@ package web
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"claude-proxy/internal/config"
@@ -9,6 +10,7 @@ import (
 	"claude-proxy/internal/i18n"
 	"claude-proxy/internal/logger"
 	"claude-proxy/internal/tagging"
+	"claude-proxy/internal/webres"
 
 	"github.com/gin-gonic/gin"
 )
@@ -184,9 +186,19 @@ func (s *AdminServer) updateConfigWithRollback(updateFunc func() error, rollback
 
 // RegisterRoutes 注册管理界面路由到指定的 router
 func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
-	// 加载模板和静态文件
-	router.LoadHTMLGlob("web/templates/*")
-	router.Static("/static", "web/static")
+	// 加载嵌入的模板
+	templates, err := webres.LoadTemplates()
+	if err != nil {
+		panic("Failed to load embedded templates: " + err.Error())
+	}
+	router.SetHTMLTemplate(templates)
+	
+	// 设置静态文件服务器（使用嵌入的文件系统）
+	staticFS, err := webres.GetStaticFS()
+	if err != nil {
+		panic("Failed to get embedded static filesystem: " + err.Error())
+	}
+	router.StaticFS("/static", http.FS(staticFS))
 
 	// 注册根目录帮助页面
 	router.GET("/", s.handleHelpPage)

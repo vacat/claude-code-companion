@@ -32,32 +32,32 @@ LDFLAGS=-ldflags "-X main.Version=$(VERSION)"
 # Build for current platform
 build:
 	@echo "Building with version: $(VERSION)"
-	go build $(LDFLAGS) -o $(BINARY_NAME) ./cmd/
+	go build $(LDFLAGS) -o $(BINARY_NAME) .
 
 # Cross-compile for Windows x64
 windows-amd64:
 	@echo "Building Windows AMD64 with version: $(VERSION)"
-	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o $(BINARY_NAME)-windows-amd64.exe ./cmd/
+	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o $(BINARY_NAME)-windows-amd64.exe .
 
 # Cross-compile for Linux x64
 linux-amd64:
 	@echo "Building Linux AMD64 with version: $(VERSION)"
-	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(BINARY_NAME)-linux-amd64 ./cmd/
+	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(BINARY_NAME)-linux-amd64 .
 
 # Cross-compile for Linux ARM64
 linux-arm64:
 	@echo "Building Linux ARM64 with version: $(VERSION)"
-	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o $(BINARY_NAME)-linux-arm64 ./cmd/
+	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o $(BINARY_NAME)-linux-arm64 .
 
 # Cross-compile for macOS Intel
 darwin-amd64:
 	@echo "Building macOS Intel with version: $(VERSION)"
-	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o $(BINARY_NAME)-darwin-amd64 ./cmd/
+	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o $(BINARY_NAME)-darwin-amd64 .
 
 # Cross-compile for macOS Apple Silicon
 darwin-arm64:
 	@echo "Building macOS Apple Silicon with version: $(VERSION)"
-	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o $(BINARY_NAME)-darwin-arm64 ./cmd/
+	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o $(BINARY_NAME)-darwin-arm64 .
 
 # Cross-compile for all platforms
 all: windows-amd64 linux-amd64 linux-arm64 darwin-amd64 darwin-arm64

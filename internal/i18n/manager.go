@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"sync"
+
+	"claude-proxy/internal/webres"
 )
 
 // Manager manages internationalization functionality
@@ -63,9 +65,17 @@ func (m *Manager) loadTranslations() error {
 
 // loadTranslationFile loads a single translation file
 func (m *Manager) loadTranslationFile(filename string) (map[string]string, error) {
-	data, err := ioutil.ReadFile(filename)
+	// Extract just the filename from full path
+	baseFilename := filepath.Base(filename)
+	
+	// Try to read from embedded assets first
+	data, err := webres.ReadLocaleFile(baseFilename)
 	if err != nil {
-		return nil, err
+		// Fallback to file system (for backwards compatibility)
+		data, err = ioutil.ReadFile(filename)
+		if err != nil {
+			return nil, err
+		}
 	}
 	
 	var translations map[string]string
