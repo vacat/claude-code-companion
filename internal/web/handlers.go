@@ -479,6 +479,55 @@ func (s *AdminServer) generateUniqueEndpointName(baseName string) string {
 	}
 }
 
+// handleToggleEndpoint 切换端点启用/禁用状态
+func (s *AdminServer) handleToggleEndpoint(c *gin.Context) {
+	endpointName := c.Param("id") // 端点名称
+
+	var request struct {
+		Enabled bool `json:"enabled"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format: " + err.Error()})
+		return
+	}
+
+	// 获取当前所有端点
+	currentEndpoints := s.config.Endpoints
+	found := false
+
+	for i, ep := range currentEndpoints {
+		if ep.Name == endpointName {
+			// 更新enabled状态
+			currentEndpoints[i].Enabled = request.Enabled
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Endpoint not found"})
+		return
+	}
+
+	// 使用热更新机制
+	if err := s.hotUpdateEndpoints(currentEndpoints); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to toggle endpoint: " + err.Error(),
+		})
+		return
+	}
+
+	actionText := "enabled"
+	if !request.Enabled {
+		actionText = "disabled"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Endpoint '%s' has been %s successfully", endpointName, actionText),
+	})
+}
+
 // handleCopyEndpoint 复制端点
 func (s *AdminServer) handleCopyEndpoint(c *gin.Context) {
 	endpointName := c.Param("id") // 要复制的端点名称

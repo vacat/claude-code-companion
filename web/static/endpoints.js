@@ -240,6 +240,11 @@ function rebuildTable(endpoints) {
             <td>${enabledBadge}</td>
             <td class="action-buttons">
                 <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn ${endpoint.enabled ? 'btn-success' : 'btn-secondary'} btn-sm" 
+                            onclick="event.stopPropagation(); toggleEndpointEnabled('${endpoint.name}', ${endpoint.enabled})"
+                            title="${endpoint.enabled ? '点击禁用' : '点击启用'}">
+                        <i class="fas ${endpoint.enabled ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+                    </button>
                     <button class="btn btn-outline-primary btn-sm" 
                             onclick="event.stopPropagation(); showEditEndpointModal('${endpoint.name}')"
                             title="编辑">
@@ -519,6 +524,81 @@ function copyEndpoint(endpointName) {
         console.error('Failed to copy endpoint:', error);
         showAlert('Failed to copy endpoint', 'danger');
     });
+}
+
+function toggleEndpointEnabled(endpointName, currentEnabled) {
+    const newEnabled = !currentEnabled;
+    const actionText = newEnabled ? '启用' : '禁用';
+    
+    fetch(`/admin/api/endpoints/${encodeURIComponent(endpointName)}/toggle`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            enabled: newEnabled
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showAlert(data.error, 'danger');
+        } else {
+            showAlert(`端点 "${endpointName}" 已${actionText}`, 'success');
+            // 更新按钮状态而不重新加载整个表格
+            updateEndpointToggleButton(endpointName, newEnabled);
+            // 更新启用状态显示
+            updateEndpointEnabledBadge(endpointName, newEnabled);
+        }
+    })
+    .catch(error => {
+        console.error('Failed to toggle endpoint:', error);
+        showAlert(`${actionText}端点失败`, 'danger');
+    });
+}
+
+function updateEndpointToggleButton(endpointName, enabled) {
+    // Try to find in special endpoint list first
+    let row = document.querySelector(`#special-endpoint-list tr[data-endpoint-name="${endpointName}"]`);
+    if (!row) {
+        // If not found, search in general endpoint list
+        row = document.querySelector(`#general-endpoint-list tr[data-endpoint-name="${endpointName}"]`);
+    }
+    
+    if (row) {
+        const toggleButton = row.querySelector('.btn-group button:first-child');
+        if (toggleButton) {
+            // Update button class
+            toggleButton.className = `btn ${enabled ? 'btn-success' : 'btn-secondary'} btn-sm`;
+            // Update button icon
+            const icon = toggleButton.querySelector('i');
+            icon.className = `fas ${enabled ? 'fa-toggle-on' : 'fa-toggle-off'}`;
+            // Update button title
+            toggleButton.title = enabled ? '点击禁用' : '点击启用';
+            // Update button onclick
+            toggleButton.onclick = function(event) {
+                event.stopPropagation();
+                toggleEndpointEnabled(endpointName, enabled);
+            };
+        }
+    }
+}
+
+function updateEndpointEnabledBadge(endpointName, enabled) {
+    // Try to find in special endpoint list first
+    let row = document.querySelector(`#special-endpoint-list tr[data-endpoint-name="${endpointName}"]`);
+    if (!row) {
+        // If not found, search in general endpoint list
+        row = document.querySelector(`#general-endpoint-list tr[data-endpoint-name="${endpointName}"]`);
+    }
+    
+    if (row) {
+        const enabledCell = row.children[10]; // The "启用" column is at index 10
+        const enabledBadge = enabled 
+            ? '<span class="badge bg-success"><i class="fas fa-toggle-on"></i> 已启用</span>'
+            : '<span class="badge bg-secondary"><i class="fas fa-toggle-off"></i> 已禁用</span>';
+        enabledCell.innerHTML = enabledBadge;
+    }
 }
 
 function reorderEndpoints() {
