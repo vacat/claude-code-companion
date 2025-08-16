@@ -507,6 +507,21 @@ function createContentBoxWithActions(content, filename, encodedContent, maxHeigh
     if (!content) content = '无内容';
     if (!encodedContent) encodedContent = '';
     
+    // 检查是否为 Anthropic 请求（只在请求体中显示检查器按钮）
+    const isRequestBody = filename.includes('请求体') || filename.includes('request_body');
+    let shouldShowInspector = false;
+    let requestBodyContent = '';
+    
+    if (isRequestBody && encodedContent) {
+        try {
+            requestBodyContent = safeBase64Decode(encodedContent);
+            shouldShowInspector = isAnthropicRequest(requestBodyContent);
+        } catch (e) {
+            // Base64 解码失败，跳过检查器
+            shouldShowInspector = false;
+        }
+    }
+    
     return `
         <div class="json-pretty-container">
             <div class="json-pretty" style="max-height: ${maxHeight};">${content}</div>
@@ -525,6 +540,14 @@ function createContentBoxWithActions(content, filename, encodedContent, maxHeigh
                         title="保存到文件">
                     <i class="fas fa-download"></i>
                 </button>
+                ${shouldShowInspector ? `
+                <button class="floating-action-btn inspector-btn" 
+                        data-request-body="${encodedContent}"
+                        onclick="openRequestInspectorFromFloating(this)"
+                        title="检查 Anthropic 请求">
+                    🔍
+                </button>
+                ` : ''}
             </div>
         </div>`;
 }
@@ -597,4 +620,34 @@ function confirmCleanup() {
         confirmBtn.disabled = false;
         confirmBtn.innerHTML = originalText;
     });
+}
+
+// 从浮动按钮打开请求检查器
+function openRequestInspectorFromFloating(button) {
+    const encodedContent = button.getAttribute('data-request-body');
+    if (!encodedContent) {
+        alert('未找到请求数据');
+        return;
+    }
+    
+    try {
+        // 使用 safeBase64Decode 而不是 atob 来正确处理UTF-8编码
+        const requestBody = safeBase64Decode(encodedContent);
+        
+        // 临时设置到隐藏的按钮元素上，供 openRequestInspector 使用
+        let tempBtn = document.getElementById('tempInspectRequestBtn');
+        if (!tempBtn) {
+            tempBtn = document.createElement('button');
+            tempBtn.id = 'tempInspectRequestBtn';
+            tempBtn.style.display = 'none';
+            document.body.appendChild(tempBtn);
+        }
+        tempBtn.setAttribute('data-request-body', requestBody);
+        
+        // 调用检查器
+        openRequestInspector();
+    } catch (e) {
+        console.error('Failed to decode request body:', e);
+        alert('请求数据解码失败');
+    }
 }

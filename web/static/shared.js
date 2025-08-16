@@ -71,14 +71,10 @@ function formatUrlDisplay(url) {
 
 function escapeHtml(text) {
     if (!text) return text;
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    // 保持中文字符不变，只转义必要的HTML字符
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // UTF-8 safe base64 encoding/decoding

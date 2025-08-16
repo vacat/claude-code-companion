@@ -210,8 +210,9 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 	router.GET("/admin/logs", s.handleLogsPage)
 	router.GET("/admin/settings", s.handleSettingsPage)
 
-	// 注册 API 路由
+	// 注册 API 路由，添加UTF-8字符集中间件
 	api := router.Group("/admin/api")
+	api.Use(s.utf8JsonMiddleware()) // 添加UTF-8中间件
 	{
 		api.GET("/endpoints", s.handleGetEndpoints)
 		api.PUT("/endpoints", s.handleUpdateEndpoints)
@@ -237,6 +238,20 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 		api.GET("/config", s.handleGetConfig)
 		api.PUT("/settings", s.handleUpdateSettings)
 	}
+}
+
+// utf8JsonMiddleware 确保所有JSON响应都包含UTF-8字符集声明
+func (s *AdminServer) utf8JsonMiddleware() gin.HandlerFunc {
+	return gin.HandlerFunc(func(c *gin.Context) {
+		// 处理请求
+		c.Next()
+		
+		// 如果响应是JSON，确保Content-Type包含UTF-8字符集
+		contentType := c.Writer.Header().Get("Content-Type")
+		if contentType == "application/json" {
+			c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+		}
+	})
 }
 
 // i18nMiddleware provides internationalization support

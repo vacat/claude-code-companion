@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="/static/shared.css" rel="stylesheet">
+    <link href="/static/inspector.css" rel="stylesheet">
 </head>
 <body>
     {{template "header.html" .}}
@@ -225,6 +226,32 @@
 
     {{template "log-modal.html" .}}
 
+    <!-- Anthropic 请求检查器模态框 -->
+    <div class="modal fade" id="requestInspectorModal" tabindex="-1" 
+         aria-labelledby="requestInspectorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="requestInspectorModalLabel">
+                        🔍 Anthropic 请求检查器
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="inspectorContent">
+                    <!-- 动态内容 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" onclick="exportAnalysis()">
+                        📄 导出分析
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        关闭
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 清理日志对话框 -->
     <div class="modal fade" id="cleanupModal" tabindex="-1" aria-labelledby="cleanupModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -270,6 +297,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/shared.js"></script>
     <script src="/static/logs.js"></script>
+    <script src="/static/inspector-parser.js"></script>
+    <script src="/static/inspector-ui.js"></script>
+    <script src="/static/inspector.js"></script>
 
     {{template "footer.html" .}}
 </body>

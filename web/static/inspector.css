@@ -1,0 +1,288 @@
+/* Anthropic 请求检查器样式 */
+
+/* 检查器按钮样式 */
+.inspector-btn {
+    background: linear-gradient(135deg, #007bff, #0056b3) !important;
+    border: none !important;
+    color: white !important;
+    transition: all 0.2s ease !important;
+}
+
+.inspector-btn:hover {
+    background: linear-gradient(135deg, #0056b3, #004085) !important;
+    transform: scale(1.05) !important;
+}
+
+.inspector-section {
+    margin-bottom: 2rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.inspector-title {
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 0.5rem;
+}
+
+.inspector-stat {
+    text-align: center;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.inspector-stat-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+
+.inspector-stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.inspector-subsection {
+    margin-bottom: 1rem;
+}
+
+.inspector-collapse-header {
+    cursor: pointer;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    transition: background-color 0.2s;
+    font-weight: 500;
+}
+
+.inspector-collapse-header:hover {
+    background: #e9ecef;
+}
+
+.inspector-collapse-icon {
+    display: inline-block;
+    width: 1rem;
+    text-align: center;
+    margin-right: 0.5rem;
+    transition: transform 0.2s;
+}
+
+.inspector-collapse-content {
+    margin-left: 1rem;
+    padding: 0.5rem;
+    border-left: 3px solid #dee2e6;
+}
+
+.inspector-content-box {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+}
+
+.inspector-code, .inspector-json, .inspector-text {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.inspector-tool-item {
+    margin-bottom: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.inspector-tool-header {
+    background: #fff;
+    border: none;
+    margin: 0;
+}
+
+.inspector-tool-details {
+    padding: 1rem;
+    background: #fafafa;
+}
+
+.inspector-tool-subsection {
+    margin-bottom: 1rem;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.inspector-tool-subsection:last-child {
+    margin-bottom: 0;
+}
+
+.inspector-tool-subsection .inspector-collapse-header {
+    background: #f8f9fa;
+    border: none;
+    margin: 0;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.inspector-tool-subsection .inspector-collapse-content {
+    margin: 0;
+    padding: 1rem;
+    border: none;
+    background: #fff;
+}
+
+.inspector-param-list {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0;
+}
+
+.inspector-param-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.inspector-param-item:last-child {
+    border-bottom: none;
+}
+
+.inspector-param-type {
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+.inspector-param-desc {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+.inspector-message {
+    margin-bottom: 1.5rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.inspector-message-user {
+    border-left: 4px solid #007bff;
+}
+
+.inspector-message-assistant {
+    border-left: 4px solid #28a745;
+}
+
+.inspector-message-header {
+    background: #f8f9fa;
+    padding: 0.75rem;
+    font-weight: 600;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.inspector-message-content {
+    padding: 1rem;
+}
+
+.inspector-content-item {
+    margin-bottom: 1rem;
+}
+
+.inspector-preview {
+    color: #6c757d;
+    font-style: italic;
+    font-size: 0.875rem;
+    margin: 0.25rem 0;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.inspector-reminder-item {
+    margin-bottom: 0.5rem;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    background: #fff3cd;
+}
+
+.inspector-tool-call {
+    margin-bottom: 0.75rem;
+    border: 1px solid #17a2b8;
+    border-radius: 6px;
+    background: #d1ecf1;
+}
+
+.inspector-tool-call-header {
+    padding: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 500;
+}
+
+.inspector-tool-status {
+    font-size: 1.1rem;
+    margin-right: 0.5rem;
+}
+
+.inspector-tool-call-details {
+    padding: 1rem;
+    background: #fff;
+    border-top: 1px solid #bee5eb;
+}
+
+.inspector-call-section {
+    margin-bottom: 1rem;
+}
+
+.inspector-result-status {
+    margin: 0.5rem 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.inspector-errors {
+    border-color: #dc3545;
+    background: #f8d7da;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .inspector-stat {
+        margin-bottom: 0.5rem;
+    }
+    
+    .inspector-tool-call-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .inspector-collapse-content {
+        margin-left: 0.5rem;
+    }
+}
+
+/* 模态框大小调整 */
+.modal-xl {
+    max-width: 90%;
+}
+
+@media (min-width: 1200px) {
+    .modal-xl {
+        max-width: 1400px;
+    }
+}
