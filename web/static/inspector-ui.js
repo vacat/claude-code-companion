@@ -10,6 +10,9 @@ class InspectorUI {
             return;
         }
 
+        // 保存 parser 引用以便全局查找
+        this.currentParser = parser;
+
         this.container.innerHTML = '';
         
         // 渲染概览
@@ -271,34 +274,41 @@ class InspectorUI {
             `;
         }
 
-        // 渲染工具调用 - assistant 使用配对的工具调用，user 显示原始工具调用
-        if (message.role === 'assistant' && message.pairedToolCalls && message.pairedToolCalls.length > 0) {
-            const toolCallsId = `message-${message.index}-tools`;
-            messageHtml += `
-                <div class="inspector-content-item">
-                    <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${toolCallsId}')">
-                        <span class="inspector-collapse-icon" id="${toolCallsId}-icon">▼</span>
-                        🔧 工具调用 (${message.pairedToolCalls.length}次)
+        // 渲染工具调用 - assistant 显示 tool_use，user 显示 tool_result
+        if (message.role === 'assistant' && message.toolUses && message.toolUses.length > 0) {
+            // 只显示 tool_use，不显示结果
+            const toolUses = message.toolUses.filter(tool => tool.type === 'use');
+            if (toolUses.length > 0) {
+                const toolCallsId = `message-${message.index}-tools`;
+                messageHtml += `
+                    <div class="inspector-content-item">
+                        <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${toolCallsId}')">
+                            <span class="inspector-collapse-icon" id="${toolCallsId}-icon">▼</span>
+                            🔧 工具调用 (${toolUses.length}次)
+                        </div>
+                        <div class="inspector-collapse-content" id="${toolCallsId}" style="display: block;">
+                            ${this.renderAssistantToolUses(toolUses, message.index)}
+                        </div>
                     </div>
-                    <div class="inspector-collapse-content" id="${toolCallsId}" style="display: block;">
-                        ${this.renderToolCalls(message.pairedToolCalls, message.index)}
-                    </div>
-                </div>
-            `;
+                `;
+            }
         } else if (message.role === 'user' && message.toolUses && message.toolUses.length > 0) {
-            // 为用户消息显示工具调用，只显示参数
-            const userToolsId = `message-${message.index}-user-tools`;
-            messageHtml += `
-                <div class="inspector-content-item">
-                    <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${userToolsId}')">
-                        <span class="inspector-collapse-icon" id="${userToolsId}-icon">▼</span>
-                        🔧 工具调用 (${message.toolUses.length}个)
+            // 用户消息显示工具结果
+            const toolResults = message.toolUses.filter(tool => tool.type === 'result');
+            if (toolResults.length > 0) {
+                const userToolsId = `message-${message.index}-user-tools`;
+                messageHtml += `
+                    <div class="inspector-content-item">
+                        <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${userToolsId}')">
+                            <span class="inspector-collapse-icon" id="${userToolsId}-icon">▼</span>
+                            🔧 工具结果 (${toolResults.length}个)
+                        </div>
+                        <div class="inspector-collapse-content" id="${userToolsId}" style="display: block;">
+                            ${this.renderUserToolResults(toolResults, message.index)}
+                        </div>
                     </div>
-                    <div class="inspector-collapse-content" id="${userToolsId}" style="display: block;">
-                        ${this.renderUserToolCalls(message.toolUses, message.index)}
-                    </div>
-                </div>
-            `;
+                `;
+            }
         }
 
         messageHtml += '</div></div>';
@@ -324,6 +334,88 @@ class InspectorUI {
                 </div>
             `;
         }).join('');
+    }
+
+    renderAssistantToolUses(toolUses, messageIndex) {
+        return toolUses.map((tool, idx) => {
+            const callId = `assistant-tool-${messageIndex}-${idx}`;
+            
+            return `
+                <div class="inspector-tool-call">
+                    <div class="inspector-tool-call-header" onclick="window.inspectorToggleCollapse('${callId}')" style="cursor: pointer;">
+                        <div>
+                            <span class="inspector-collapse-icon" id="${callId}-icon">▶</span>
+                            <span class="inspector-tool-status">🔧</span>
+                            ${this.escapeHtml(tool.name)}
+                        </div>
+                    </div>
+                    <div class="inspector-collapse-content" id="${callId}" style="display: none;">
+                        <div class="inspector-tool-call-details">
+                            <div class="inspector-call-section">
+                                <strong>📤 调用参数:</strong>
+                                <div class="inspector-content-box">
+                                    <pre class="inspector-json">${this.formatJSON(tool.input)}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    renderUserToolResults(toolResults, messageIndex) {
+        return toolResults.map((toolResult, idx) => {
+            const callId = `user-result-${messageIndex}-${idx}`;
+            // 查找对应的 tool_use 来获取工具名称和参数
+            const correspondingUse = this.findCorrespondingToolUseGlobally(toolResult.id);
+            const toolName = correspondingUse ? correspondingUse.name : 'Unknown Tool';
+            
+            return `
+                <div class="inspector-tool-call">
+                    <div class="inspector-tool-call-header" onclick="window.inspectorToggleCollapse('${callId}')" style="cursor: pointer;">
+                        <div>
+                            <span class="inspector-collapse-icon" id="${callId}-icon">▶</span>
+                            <span class="inspector-tool-status">📥</span>
+                            ${this.escapeHtml(toolName)}
+                        </div>
+                    </div>
+                    <div class="inspector-collapse-content" id="${callId}" style="display: none;">
+                        <div class="inspector-tool-call-details">
+                            ${correspondingUse ? `
+                                <div class="inspector-call-section">
+                                    <strong>📤 调用参数:</strong>
+                                    <div class="inspector-content-box">
+                                        <pre class="inspector-json">${this.formatJSON(correspondingUse.input)}</pre>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            <div class="inspector-call-section">
+                                <strong>📥 返回结果:</strong>
+                                <div class="inspector-content-box">
+                                    <pre class="inspector-text">${this.escapeHtml(typeof toolResult.result === 'string' ? toolResult.result : JSON.stringify(toolResult.result, null, 2))}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    findCorrespondingToolUseGlobally(toolId) {
+        // 在所有消息中查找对应的 tool_use
+        if (this.currentParser && this.currentParser.parsed && this.currentParser.parsed.messages) {
+            for (const message of this.currentParser.parsed.messages) {
+                if (message.toolUses) {
+                    const foundTool = message.toolUses.find(tool => tool.type === 'use' && tool.id === toolId);
+                    if (foundTool) {
+                        return foundTool;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     renderUserToolCalls(toolUses, messageIndex) {
