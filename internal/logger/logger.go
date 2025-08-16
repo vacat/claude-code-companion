@@ -34,6 +34,9 @@ type RequestLog struct {
 	ModelRewriteApplied  bool              `json:"model_rewrite_applied"`          // 新增：是否发生了模型重写
 	Tags                 []string          `json:"tags,omitempty"`
 	ContentTypeOverride  string            `json:"content_type_override,omitempty"`
+	// Thinking mode fields
+	ThinkingEnabled      bool              `json:"thinking_enabled"`               // 是否启用了 thinking 模式
+	ThinkingBudgetTokens int               `json:"thinking_budget_tokens"`         // thinking 模式的 budget tokens
 	// 修改前的原始数据
 	OriginalRequestURL      string            `json:"original_request_url,omitempty"`
 	OriginalRequestHeaders  map[string]string `json:"original_request_headers,omitempty"`

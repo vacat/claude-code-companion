@@ -41,6 +41,7 @@
                                         <th data-t="endpoint">端点</th>
                                         <th data-t="model">模型</th>
                                         <th data-t="tags">标签</th>
+                                        <th data-t="thinking">思考</th>
                                         <th data-t="status">状态</th>
                                         <th data-t="retry">重试</th>
                                         <th data-t="duration">耗时</th>
@@ -78,6 +79,33 @@
                                             {{if .Tags}}
                                                 {{range $i, $tag := .Tags}}
                                                     <span class="badge bg-primary me-1">{{$tag}}</span>
+                                                {{end}}
+                                            {{else}}
+                                                <small class="text-muted">-</small>
+                                            {{end}}
+                                        </td>
+                                        <td>
+                                            {{if .ThinkingEnabled}}
+                                                {{if le .ThinkingBudgetTokens 4096}}
+                                                    <span class="badge bg-success thinking-badge" 
+                                                          data-bs-toggle="tooltip" 
+                                                          data-bs-placement="top" 
+                                                          title="Low Thinking: {{.ThinkingBudgetTokens}} tokens">T</span>
+                                                {{else if le .ThinkingBudgetTokens 16384}}
+                                                    <span class="badge bg-warning thinking-badge" 
+                                                          data-bs-toggle="tooltip" 
+                                                          data-bs-placement="top" 
+                                                          title="Medium Thinking: {{.ThinkingBudgetTokens}} tokens">T</span>
+                                                {{else if le .ThinkingBudgetTokens 32768}}
+                                                    <span class="badge bg-warning text-dark thinking-badge" 
+                                                          data-bs-toggle="tooltip" 
+                                                          data-bs-placement="top" 
+                                                          title="High Thinking: {{.ThinkingBudgetTokens}} tokens">T</span>
+                                                {{else}}
+                                                    <span class="badge bg-danger thinking-badge" 
+                                                          data-bs-toggle="tooltip" 
+                                                          data-bs-placement="top" 
+                                                          title="Ultra Thinking: {{.ThinkingBudgetTokens}} tokens">T</span>
                                                 {{end}}
                                             {{else}}
                                                 <small class="text-muted">-</small>

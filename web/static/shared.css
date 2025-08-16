@@ -353,3 +353,35 @@ input, textarea, select {
 .dropdown-item[onclick*="'ja'"] .flag-text {
     background-color: #28a745; /* Green for JP */
 }
+
+/* Thinking badge styles */
+.thinking-badge {
+    font-weight: bold;
+    font-size: 0.8rem;
+    min-width: 20px;
+    text-align: center;
+    cursor: help;
+    transition: all 0.2s ease;
+}
+
+.thinking-badge:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Specific thinking level colors */
+.thinking-badge.bg-success {
+    background-color: #28a745 !important; /* Low thinking - Green */
+}
+
+.thinking-badge.bg-warning {
+    background-color: #ffc107 !important; /* Medium thinking - Yellow */
+}
+
+.thinking-badge.bg-warning.text-dark {
+    background-color: #fd7e14 !important; /* High thinking - Orange */
+}
+
+.thinking-badge.bg-danger {
+    background-color: #dc3545 !important; /* Ultra thinking - Red */
+}

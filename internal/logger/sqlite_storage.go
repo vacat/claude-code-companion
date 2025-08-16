@@ -130,6 +130,20 @@ func (s *SQLiteStorage) initDatabase() error {
 		fmt.Printf("Note: %v (this is expected if upgrading from older version)\n", err3)
 	}
 
+	// Add thinking mode fields
+	thinkingColumns := []string{
+		`ALTER TABLE request_logs ADD COLUMN thinking_enabled BOOLEAN DEFAULT FALSE;`,
+		`ALTER TABLE request_logs ADD COLUMN thinking_budget_tokens INTEGER DEFAULT 0;`,
+	}
+	
+	for _, alterSQL := range thinkingColumns {
+		_, err := s.db.Exec(alterSQL)
+		// Ignore error if column already exists
+		if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			fmt.Printf("Note: %v (this is expected if upgrading from older version)\n", err)
+		}
+	}
+
 	// Add original/final request/response fields for before/after comparison
 	beforeAfterColumns := []string{
 		`ALTER TABLE request_logs ADD COLUMN original_request_url TEXT DEFAULT '';`,
@@ -194,11 +208,12 @@ func (s *SQLiteStorage) SaveLog(log *RequestLog) {
 		response_headers, response_body, response_body_size,
 		is_streaming, model, error, tags, content_type_override,
 		original_model, rewritten_model, model_rewrite_applied,
+		thinking_enabled, thinking_budget_tokens,
 		original_request_url, original_request_headers, original_request_body,
 		original_response_headers, original_response_body,
 		final_request_url, final_request_headers, final_request_body,
 		final_response_headers, final_response_body
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.Exec(insertSQL,
 		log.Timestamp, log.RequestID, log.Endpoint, log.Method, log.Path,
@@ -207,6 +222,7 @@ func (s *SQLiteStorage) SaveLog(log *RequestLog) {
 		string(responseHeaders), log.ResponseBody, log.ResponseBodySize,
 		log.IsStreaming, log.Model, log.Error, string(tags), log.ContentTypeOverride,
 		log.OriginalModel, log.RewrittenModel, log.ModelRewriteApplied,
+		log.ThinkingEnabled, log.ThinkingBudgetTokens,
 		log.OriginalRequestURL, string(originalRequestHeaders), log.OriginalRequestBody,
 		string(originalResponseHeaders), log.OriginalResponseBody,
 		log.FinalRequestURL, string(finalRequestHeaders), log.FinalRequestBody,
@@ -247,6 +263,7 @@ func (s *SQLiteStorage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestL
 			   response_headers, response_body, response_body_size,
 			   is_streaming, model, error, tags, content_type_override,
 			   original_model, rewritten_model, model_rewrite_applied,
+			   thinking_enabled, thinking_budget_tokens,
 			   original_request_url, original_request_headers, original_request_body,
 			   original_response_headers, original_response_body,
 			   final_request_url, final_request_headers, final_request_body,
@@ -276,6 +293,7 @@ func (s *SQLiteStorage) GetLogs(limit, offset int, failedOnly bool) ([]*RequestL
 			&responseHeaders, &log.ResponseBody, &log.ResponseBodySize,
 			&log.IsStreaming, &log.Model, &log.Error, &tagsJSON, &log.ContentTypeOverride,
 			&log.OriginalModel, &log.RewrittenModel, &log.ModelRewriteApplied,
+			&log.ThinkingEnabled, &log.ThinkingBudgetTokens,
 			&log.OriginalRequestURL, &originalRequestHeaders, &log.OriginalRequestBody,
 			&originalResponseHeaders, &log.OriginalResponseBody,
 			&log.FinalRequestURL, &finalRequestHeaders, &log.FinalRequestBody,
@@ -315,6 +333,7 @@ func (s *SQLiteStorage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, 
 			   response_headers, response_body, response_body_size,
 			   is_streaming, model, error, tags, content_type_override,
 			   original_model, rewritten_model, model_rewrite_applied,
+			   thinking_enabled, thinking_budget_tokens,
 			   original_request_url, original_request_headers, original_request_body,
 			   original_response_headers, original_response_body,
 			   final_request_url, final_request_headers, final_request_body,
@@ -343,6 +362,7 @@ func (s *SQLiteStorage) GetAllLogsByRequestID(requestID string) ([]*RequestLog, 
 			&responseHeaders, &log.ResponseBody, &log.ResponseBodySize,
 			&log.IsStreaming, &log.Model, &log.Error, &tagsJSON, &log.ContentTypeOverride,
 			&log.OriginalModel, &log.RewrittenModel, &log.ModelRewriteApplied,
+			&log.ThinkingEnabled, &log.ThinkingBudgetTokens,
 			&log.OriginalRequestURL, &originalRequestHeaders, &log.OriginalRequestBody,
 			&originalResponseHeaders, &log.OriginalResponseBody,
 			&log.FinalRequestURL, &finalRequestHeaders, &log.FinalRequestBody,

@@ -33,6 +33,14 @@ func (s *Server) handleProxy(c *gin.Context) {
 	// 存储到context中，供后续使用
 	c.Set("original_model", originalModel)
 
+	// 提取 thinking 信息
+	thinkingInfo, err := utils.ExtractThinkingInfo(string(requestBody))
+	if err != nil {
+		s.logger.Debug("Failed to extract thinking info", map[string]interface{}{"error": err.Error()})
+	}
+	// 存储到context中，供后续使用
+	c.Set("thinking_info", thinkingInfo)
+
 	// 处理请求标签
 	taggedRequest := s.processRequestTags(c.Request)
 
@@ -647,6 +655,14 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	requestLog.ContentTypeOverride = overrideInfo
 	requestLog.AttemptNumber = attemptNumber
 	
+	// 设置 thinking 信息
+	if thinkingInfo, exists := c.Get("thinking_info"); exists {
+		if info, ok := thinkingInfo.(*utils.ThinkingInfo); ok && info != nil {
+			requestLog.ThinkingEnabled = info.Enabled
+			requestLog.ThinkingBudgetTokens = info.BudgetTokens
+		}
+	}
+	
 	// 记录原始客户端请求数据
 	requestLog.OriginalRequestURL = c.Request.URL.String()
 	requestLog.OriginalRequestHeaders = utils.HeadersToMap(c.Request.Header)
@@ -763,6 +779,16 @@ func (s *Server) logSimpleRequest(requestID, endpoint, method, path string, orig
 	requestLog.Tags = tags
 	requestLog.ContentTypeOverride = contentTypeOverride
 	requestLog.AttemptNumber = attemptNumber
+	
+	// 设置 thinking 信息
+	if c != nil {
+		if thinkingInfo, exists := c.Get("thinking_info"); exists {
+			if info, ok := thinkingInfo.(*utils.ThinkingInfo); ok && info != nil {
+				requestLog.ThinkingEnabled = info.Enabled
+				requestLog.ThinkingBudgetTokens = info.BudgetTokens
+			}
+		}
+	}
 	
 	// 记录原始客户端请求数据
 	if c != nil {

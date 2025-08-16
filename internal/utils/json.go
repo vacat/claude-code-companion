@@ -69,3 +69,47 @@ func TruncateBody(body string, maxLen int) string {
 	}
 	return body[:maxLen] + "... [truncated]"
 }
+
+// ThinkingInfo contains extracted thinking mode information
+type ThinkingInfo struct {
+	Enabled     bool `json:"enabled"`
+	BudgetTokens int  `json:"budget_tokens"`
+}
+
+// ExtractThinkingInfo extracts thinking mode information from request body
+func ExtractThinkingInfo(body string) (*ThinkingInfo, error) {
+	if body == "" {
+		return nil, nil
+	}
+	
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(body), &parsed); err != nil {
+		return nil, err
+	}
+	
+	thinkingField, exists := parsed["thinking"]
+	if !exists {
+		return nil, nil
+	}
+	
+	thinkingMap, ok := thinkingField.(map[string]interface{})
+	if !ok {
+		return nil, nil
+	}
+	
+	info := &ThinkingInfo{}
+	
+	// Check if thinking is enabled
+	if typeValue, ok := thinkingMap["type"].(string); ok && typeValue == "enabled" {
+		info.Enabled = true
+	}
+	
+	// Extract budget tokens
+	if budgetValue, ok := thinkingMap["budget_tokens"]; ok {
+		if budgetFloat, ok := budgetValue.(float64); ok {
+			info.BudgetTokens = int(budgetFloat)
+		}
+	}
+	
+	return info, nil
+}
