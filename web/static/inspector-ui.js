@@ -332,8 +332,17 @@ class InspectorUI {
         return relevantTools.map((tool, idx) => {
             const callId = `user-tool-${messageIndex}-${idx}`;
             const isResult = tool.type === 'result';
-            const toolName = isResult ? `Tool Result (${tool.id})` : tool.name;
-            const statusIcon = isResult ? '📥' : '🔧';
+            
+            let toolName, statusIcon;
+            if (isResult) {
+                // 尝试找到对应的工具调用来获取工具名称
+                const correspondingUse = this.findCorrespondingToolUse(tool.id, toolUses);
+                toolName = correspondingUse ? correspondingUse.name : `Tool Result`;
+                statusIcon = '📥';
+            } else {
+                toolName = tool.name;
+                statusIcon = '🔧';
+            }
             
             return `
                 <div class="inspector-tool-call">
@@ -347,12 +356,7 @@ class InspectorUI {
                     <div class="inspector-collapse-content" id="${callId}" style="display: none;">
                         <div class="inspector-tool-call-details">
                             ${isResult ? `
-                                <div class="inspector-call-section">
-                                    <strong>📥 工具结果:</strong>
-                                    <div class="inspector-content-box">
-                                        <pre class="inspector-text">${this.escapeHtml(typeof tool.result === 'string' ? tool.result : JSON.stringify(tool.result, null, 2))}</pre>
-                                    </div>
-                                </div>
+                                ${this.renderToolResultWithParameters(tool, toolUses)}
                             ` : `
                                 <div class="inspector-call-section">
                                     <strong>📤 调用参数:</strong>
@@ -366,6 +370,40 @@ class InspectorUI {
                 </div>
             `;
         }).join('');
+    }
+
+    findCorrespondingToolUse(toolId, toolUses) {
+        return toolUses.find(tool => tool.type === 'use' && tool.id === toolId);
+    }
+
+    renderToolResultWithParameters(toolResult, toolUses) {
+        const correspondingUse = this.findCorrespondingToolUse(toolResult.id, toolUses);
+        
+        let html = '';
+        
+        // 显示对应的调用参数
+        if (correspondingUse) {
+            html += `
+                <div class="inspector-call-section">
+                    <strong>📤 调用参数:</strong>
+                    <div class="inspector-content-box">
+                        <pre class="inspector-json">${this.formatJSON(correspondingUse.input)}</pre>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 显示工具结果
+        html += `
+            <div class="inspector-call-section">
+                <strong>📥 工具结果:</strong>
+                <div class="inspector-content-box">
+                    <pre class="inspector-text">${this.escapeHtml(typeof toolResult.result === 'string' ? toolResult.result : JSON.stringify(toolResult.result, null, 2))}</pre>
+                </div>
+            </div>
+        `;
+        
+        return html;
     }
 
     renderToolCalls(toolCalls, messageIndex) {
@@ -417,15 +455,32 @@ class InspectorUI {
                         ${resultStr ? `(${resultStr.length} 字符)` : ''}
                     </div>
                     <div class="inspector-content-box">
-                        <pre class="inspector-text">${this.escapeHtml(resultPreview)}</pre>
                         ${resultStr.length > 200 ? `
-                        <div class="mt-2">
-                            <button class="btn btn-sm btn-outline-info w-100 mb-3" onclick="const target = this.parentElement.querySelector('.full-result-container'); const isHidden = target.style.display === 'none' || !target.style.display; target.style.display = isHidden ? 'block' : 'none'; this.textContent = isHidden ? '隐藏完整结果' : '显示完整结果'">显示完整结果</button>
-                            <div class="full-result-container" style="display: none; clear: both;">
+                            <div class="result-preview">
+                                <pre class="inspector-text">${this.escapeHtml(resultPreview)}</pre>
+                            </div>
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-outline-info w-100 mb-2" onclick="
+                                    const preview = this.parentElement.parentElement.querySelector('.result-preview');
+                                    const fullResult = this.parentElement.parentElement.querySelector('.full-result-container');
+                                    const isShowingFull = fullResult.style.display === 'block';
+                                    if (isShowingFull) {
+                                        preview.style.display = 'block';
+                                        fullResult.style.display = 'none';
+                                        this.textContent = '显示完整结果';
+                                    } else {
+                                        preview.style.display = 'none';
+                                        fullResult.style.display = 'block';
+                                        this.textContent = '隐藏完整结果';
+                                    }
+                                ">显示完整结果</button>
+                            </div>
+                            <div class="full-result-container" style="display: none;">
                                 <pre class="inspector-text">${this.escapeHtml(resultStr)}</pre>
                             </div>
-                        </div>
-                        ` : ''}
+                        ` : `
+                            <pre class="inspector-text">${this.escapeHtml(resultStr)}</pre>
+                        `}
                     </div>
                 </div>
             `;
