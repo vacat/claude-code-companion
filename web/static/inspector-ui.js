@@ -271,17 +271,31 @@ class InspectorUI {
             `;
         }
 
-        // 渲染工具调用
-        if (message.pairedToolCalls && message.pairedToolCalls.length > 0) {
+        // 渲染工具调用 - assistant 使用配对的工具调用，user 显示原始工具调用
+        if (message.role === 'assistant' && message.pairedToolCalls && message.pairedToolCalls.length > 0) {
             const toolCallsId = `message-${message.index}-tools`;
             messageHtml += `
                 <div class="inspector-content-item">
                     <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${toolCallsId}')">
-                        <span class="inspector-collapse-icon" id="${toolCallsId}-icon">▶</span>
+                        <span class="inspector-collapse-icon" id="${toolCallsId}-icon">▼</span>
                         🔧 工具调用 (${message.pairedToolCalls.length}次)
                     </div>
-                    <div class="inspector-collapse-content" id="${toolCallsId}" style="display: none;">
+                    <div class="inspector-collapse-content" id="${toolCallsId}" style="display: block;">
                         ${this.renderToolCalls(message.pairedToolCalls, message.index)}
+                    </div>
+                </div>
+            `;
+        } else if (message.role === 'user' && message.toolUses && message.toolUses.length > 0) {
+            // 为用户消息显示工具调用，只显示参数
+            const userToolsId = `message-${message.index}-user-tools`;
+            messageHtml += `
+                <div class="inspector-content-item">
+                    <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${userToolsId}')">
+                        <span class="inspector-collapse-icon" id="${userToolsId}-icon">▶</span>
+                        🔧 工具调用 (${message.toolUses.length}个)
+                    </div>
+                    <div class="inspector-collapse-content" id="${userToolsId}" style="display: none;">
+                        ${this.renderUserToolCalls(message.toolUses, message.index)}
                     </div>
                 </div>
             `;
@@ -312,6 +326,34 @@ class InspectorUI {
         }).join('');
     }
 
+    renderUserToolCalls(toolUses, messageIndex) {
+        return toolUses.filter(tool => tool.type === 'use').map((tool, idx) => {
+            const callId = `user-tool-${messageIndex}-${idx}`;
+            
+            return `
+                <div class="inspector-tool-call">
+                    <div class="inspector-tool-call-header" onclick="window.inspectorToggleCollapse('${callId}')" style="cursor: pointer;">
+                        <div>
+                            <span class="inspector-collapse-icon" id="${callId}-icon">▶</span>
+                            <span class="inspector-tool-status">🔧</span>
+                            ${this.escapeHtml(tool.name)}
+                        </div>
+                    </div>
+                    <div class="inspector-collapse-content" id="${callId}" style="display: none;">
+                        <div class="inspector-tool-call-details">
+                            <div class="inspector-call-section">
+                                <strong>📤 调用参数:</strong>
+                                <div class="inspector-content-box">
+                                    <pre class="inspector-json">${this.formatJSON(tool.input)}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
     renderToolCalls(toolCalls, messageIndex) {
         return toolCalls.map((call, idx) => {
             const callId = `toolcall-${messageIndex}-${idx}`;
@@ -320,16 +362,14 @@ class InspectorUI {
             
             return `
                 <div class="inspector-tool-call">
-                    <div class="inspector-tool-call-header">
+                    <div class="inspector-tool-call-header" onclick="window.inspectorToggleCollapse('${callId}')" style="cursor: pointer;">
                         <div>
+                            <span class="inspector-collapse-icon" id="${callId}-icon">▼</span>
                             <span class="inspector-tool-status">${statusIcon}</span>
                             🔧 ${this.escapeHtml(call.name)}${thinkingLabel}
                         </div>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="window.inspectorToggleCollapse('${callId}')">
-                            详情
-                        </button>
                     </div>
-                    <div class="inspector-collapse-content" id="${callId}" style="display: none;">
+                    <div class="inspector-collapse-content" id="${callId}" style="display: block;">
                         ${this.renderToolCallDetails(call)}
                     </div>
                 </div>
@@ -366,8 +406,8 @@ class InspectorUI {
                         <pre class="inspector-text">${this.escapeHtml(resultPreview)}</pre>
                         ${resultStr.length > 200 ? `
                         <div class="mt-2">
-                            <button class="btn btn-sm btn-outline-info" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '显示完整结果' ? '隐藏完整结果' : '显示完整结果'">显示完整结果</button>
-                            <div style="display: none;">
+                            <button class="btn btn-sm btn-outline-info mb-2" onclick="const target = this.parentElement.querySelector('.full-result'); const isHidden = target.style.display === 'none' || !target.style.display; target.style.display = isHidden ? 'block' : 'none'; this.textContent = isHidden ? '隐藏完整结果' : '显示完整结果'">显示完整结果</button>
+                            <div class="full-result" style="display: none;">
                                 <pre class="inspector-text">${this.escapeHtml(resultStr)}</pre>
                             </div>
                         </div>
