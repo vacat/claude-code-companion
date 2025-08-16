@@ -231,6 +231,7 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 		api.GET("/tags", s.handleGetTags)
 		
 		api.GET("/logs", s.handleGetLogs)
+		api.POST("/logs/cleanup", s.handleCleanupLogs)
 		api.GET("/logs/stats", s.handleGetLogStats)
 		api.PUT("/config", s.handleHotUpdateConfig)
 		api.GET("/config", s.handleGetConfig)

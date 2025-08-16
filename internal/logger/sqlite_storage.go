@@ -436,6 +436,42 @@ func (s *SQLiteStorage) cleanupOldLogs() {
 	}
 }
 
+// CleanupLogsByDays removes log entries older than the specified number of days
+func (s *SQLiteStorage) CleanupLogsByDays(days int) (int64, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	var deleteSQL string
+	var result sql.Result
+	var err error
+
+	if days == 0 {
+		// Delete all logs
+		deleteSQL = "DELETE FROM request_logs"
+		result, err = s.db.Exec(deleteSQL)
+	} else {
+		// Delete logs older than specified days
+		cutoffTime := time.Now().AddDate(0, 0, -days)
+		deleteSQL = "DELETE FROM request_logs WHERE timestamp < ?"
+		result, err = s.db.Exec(deleteSQL, cutoffTime)
+	}
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to cleanup logs: %v", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	
+	// Run VACUUM to reclaim space after deletion
+	if rowsAffected > 0 {
+		if _, err := s.db.Exec("VACUUM"); err != nil {
+			fmt.Printf("Failed to vacuum database: %v\n", err)
+		}
+	}
+
+	return rowsAffected, nil
+}
+
 // GetStats returns database statistics
 func (s *SQLiteStorage) GetStats() (map[string]interface{}, error) {
 	s.mutex.RLock()

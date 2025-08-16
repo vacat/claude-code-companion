@@ -16,7 +16,12 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0" data-t="request_logs_with_count">请求日志 (共 {{.Total}} 条){{if .FailedOnly}} - <span data-t="failed_requests_only">仅失败请求</span>{{end}}</h5>
+                        <div class="d-flex align-items-center">
+                            <h5 class="mb-0 me-3" data-t="request_logs_with_count">请求日志 (共 {{.Total}} 条){{if .FailedOnly}} - <span data-t="failed_requests_only">仅失败请求</span>{{end}}</h5>
+                            <button class="btn btn-sm btn-outline-danger" onclick="showCleanupModal()">
+                                <i class="fas fa-trash"></i> <span data-t="cleanup_logs">清理日志</span>
+                            </button>
+                        </div>
                         <div>
                             <button class="btn btn-sm {{if .FailedOnly}}btn-warning{{else}}btn-outline-primary{{end}}" onclick="toggleFailedOnly({{if .FailedOnly}}true{{else}}false{{end}}, {{.Page}})">
                                 <i class="fas fa-filter"></i> <span data-t="{{if .FailedOnly}}show_all{{else}}show_failed_only{{end}}">{{if .FailedOnly}}显示全部{{else}}仅显示失败{{end}}</span>
@@ -219,6 +224,48 @@
     </div>
 
     {{template "log-modal.html" .}}
+
+    <!-- 清理日志对话框 -->
+    <div class="modal fade" id="cleanupModal" tabindex="-1" aria-labelledby="cleanupModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cleanupModalLabel" data-t="cleanup_logs_title">清理日志</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <p data-t="cleanup_logs_warning">请选择要清理的日志范围。此操作不可撤销！</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-t="cleanup_range">清理范围</label>
+                        <div class="list-group">
+                            <label class="list-group-item">
+                                <input class="form-check-input me-1" type="radio" name="cleanupRange" value="1" checked>
+                                <span data-t="cleanup_1_day">清除 1 天前的日志</span>
+                            </label>
+                            <label class="list-group-item">
+                                <input class="form-check-input me-1" type="radio" name="cleanupRange" value="7">
+                                <span data-t="cleanup_7_days">清除 7 天前的日志</span>
+                            </label>
+                            <label class="list-group-item">
+                                <input class="form-check-input me-1" type="radio" name="cleanupRange" value="30">
+                                <span data-t="cleanup_30_days">清除 30 天前的日志</span>
+                            </label>
+                            <label class="list-group-item">
+                                <input class="form-check-input me-1" type="radio" name="cleanupRange" value="0">
+                                <span data-t="cleanup_all" class="text-danger">清除所有日志</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="cancel">取消</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmCleanup()" data-t="confirm_cleanup">确认清理</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/shared.js"></script>

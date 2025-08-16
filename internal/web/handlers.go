@@ -228,6 +228,45 @@ func (s *AdminServer) handleGetLogs(c *gin.Context) {
 	})
 }
 
+// handleCleanupLogs 清理日志
+func (s *AdminServer) handleCleanupLogs(c *gin.Context) {
+	var request struct {
+		Days *int `json:"days" binding:"required,gte=0"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format: " + err.Error()})
+		return
+	}
+
+	days := *request.Days
+
+	// 验证days参数 - 支持0表示清除全部，1, 7, 30表示清除指定天数之前的
+	if days < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "days must be >= 0 (0 means delete all logs)"})
+		return
+	}
+
+	// 执行清理
+	deletedCount, err := s.logger.CleanupLogsByDays(days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cleanup logs: " + err.Error()})
+		return
+	}
+
+	message := fmt.Sprintf("Successfully cleaned up %d log entries", deletedCount)
+	if days == 0 {
+		message = fmt.Sprintf("Successfully deleted all %d log entries", deletedCount)
+	} else {
+		message = fmt.Sprintf("Successfully deleted %d log entries older than %d days", deletedCount, days)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       message,
+		"deleted_count": deletedCount,
+	})
+}
+
 // saveEndpointsToConfig 将端点配置保存到配置文件
 func (s *AdminServer) saveEndpointsToConfig(endpointConfigs []config.EndpointConfig) error {
 	// 更新配置

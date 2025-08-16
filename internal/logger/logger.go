@@ -56,6 +56,7 @@ type StorageInterface interface {
 	SaveLog(log *RequestLog)
 	GetLogs(limit, offset int, failedOnly bool) ([]*RequestLog, int, error)
 	GetAllLogsByRequestID(requestID string) ([]*RequestLog, error)
+	CleanupLogsByDays(days int) (int64, error)
 	Close() error
 }
 
@@ -197,6 +198,13 @@ func (l *Logger) GetAllLogsByRequestID(requestID string) ([]*RequestLog, error) 
 		return []*RequestLog{}, nil
 	}
 	return l.storage.GetAllLogsByRequestID(requestID)
+}
+
+func (l *Logger) CleanupLogsByDays(days int) (int64, error) {
+	if l.storage == nil {
+		return 0, fmt.Errorf("storage not available")
+	}
+	return l.storage.CleanupLogsByDays(days)
 }
 
 
