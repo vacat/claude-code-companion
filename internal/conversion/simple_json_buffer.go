@@ -9,14 +9,17 @@ import (
 // 专门处理OpenAI function.arguments的逐字符流式输出
 type SimpleJSONBuffer struct {
 	buffer           strings.Builder
-	fixedBuffer      strings.Builder // 修复后的缓冲区
 	lastOutputLength int
+	
+	// 新增：用于最终输出时的格式转换
+	finalConversionEnabled bool
 }
 
 // NewSimpleJSONBuffer 创建新的JSON缓冲器
 func NewSimpleJSONBuffer() *SimpleJSONBuffer {
 	return &SimpleJSONBuffer{
-		lastOutputLength: 0,
+		lastOutputLength:       0,
+		finalConversionEnabled: false,
 	}
 }
 
@@ -24,24 +27,21 @@ func NewSimpleJSONBuffer() *SimpleJSONBuffer {
 func (b *SimpleJSONBuffer) AppendFragment(fragment string) {
 	if fragment != "" {
 		b.buffer.WriteString(fragment)
-		// 重建修复后的缓冲区
-		b.fixedBuffer.Reset()
-		fixedContent := b.fixJSONFormat(b.buffer.String())
-		b.fixedBuffer.WriteString(fixedContent)
+		// 不再每次都修复，而是原样保存
 	}
 }
 
 // GetIncrementalOutput 获取增量输出
 // 返回 (incrementalContent, hasNewContent)
 func (b *SimpleJSONBuffer) GetIncrementalOutput() (string, bool) {
-	current := b.fixedBuffer.String() // 使用修复后的缓冲区
+	current := b.buffer.String()
 	currentLength := len(current)
 	
 	if currentLength <= b.lastOutputLength {
 		return "", false
 	}
 	
-	// 返回自上次输出以来的新增内容
+	// 返回自上次输出以来的新增内容（原样，不修复）
 	newContent := current[b.lastOutputLength:]
 	b.lastOutputLength = currentLength
 	
@@ -51,6 +51,95 @@ func (b *SimpleJSONBuffer) GetIncrementalOutput() (string, bool) {
 // GetBufferedContent 获取当前缓冲的全部内容
 func (b *SimpleJSONBuffer) GetBufferedContent() string {
 	return b.buffer.String()
+}
+
+// GetFinalJSON 获取最终的JSON格式内容
+// 智能检测并转换Python格式为JSON格式
+func (b *SimpleJSONBuffer) GetFinalJSON() string {
+	content := b.buffer.String()
+	if content == "" {
+		return content
+	}
+	
+	// 智能检测是否需要转换
+	if b.isPythonDictFormat(content) {
+		return b.convertPythonDictToJSON(content)
+	}
+	
+	// 已经是JSON格式，直接返回
+	return content
+}
+
+// isPythonDictFormat 检测是否为Python字典格式
+// 通过检查是否包含单引号字符串来判断
+func (b *SimpleJSONBuffer) isPythonDictFormat(content string) bool {
+	if content == "" {
+		return false
+	}
+	
+	// 简单的启发式检测：
+	// 1. 检查是否包含 'key': 模式
+	// 2. 检查是否包含 : 'value' 模式
+	// 3. 确保不是JSON中的单引号（JSON中单引号应该被转义）
+	
+	// 查找单引号字符串模式
+	inString := false
+	escaped := false
+	
+	runes := []rune(content)
+	for i := 0; i < len(runes); i++ {
+		ch := runes[i]
+		
+		if escaped {
+			escaped = false
+			continue
+		}
+		
+		if ch == '\\' {
+			escaped = true
+			continue
+		}
+		
+		if ch == '"' {
+			inString = !inString
+			continue
+		}
+		
+		// 如果不在双引号字符串内，检查是否有单引号字符串模式
+		if !inString && ch == '\'' {
+			// 检查前后文，判断是否为字符串边界
+			if b.isStringBoundaryAtPos(runes, i) {
+				return true
+			}
+		}
+	}
+	
+	return false
+}
+
+// isStringBoundaryAtPos 检查指定位置的单引号是否为字符串边界
+func (b *SimpleJSONBuffer) isStringBoundaryAtPos(runes []rune, pos int) bool {
+	if pos == 0 || pos >= len(runes)-1 {
+		return true
+	}
+	
+	// 检查前面的字符
+	for i := pos - 1; i >= 0; i-- {
+		ch := runes[i]
+		if ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' {
+			continue
+		}
+		
+		switch ch {
+		case ':', ',', '{', '[', '(':
+			return true
+		default:
+			break
+		}
+		break
+	}
+	
+	return false
 }
 
 // IsValidJSON 检查当前缓冲内容是否为有效JSON
@@ -67,65 +156,20 @@ func (b *SimpleJSONBuffer) IsValidJSON() bool {
 // Reset 重置缓冲器
 func (b *SimpleJSONBuffer) Reset() {
 	b.buffer.Reset()
-	b.fixedBuffer.Reset()
 	b.lastOutputLength = 0
 }
 
-// GetSmartIncrementalOutput 智能增量输出
-// 尝试在JSON边界处分割，避免输出破碎的JSON片段
-func (b *SimpleJSONBuffer) GetSmartIncrementalOutput() (string, bool) {
-	current := b.fixedBuffer.String() // 使用修复后的缓冲区
-	currentLength := len(current)
-	
-	if currentLength <= b.lastOutputLength {
-		return "", false
-	}
-	
-	newContent := current[b.lastOutputLength:]
-	
-	// 如果新内容很短（少于20个字符），先缓冲一下
-	if len(newContent) < 20 {
-		// 检查是否到达了一个相对完整的状态
-		if strings.HasSuffix(current, `"`) || 
-		   strings.HasSuffix(current, `,`) || 
-		   strings.HasSuffix(current, `}`) ||
-		   strings.HasSuffix(current, `]`) {
-			// 在这些位置可以安全输出
-			b.lastOutputLength = currentLength
-			return newContent, true
-		}
-		
-		// 如果缓冲区已经很大了，强制输出
-		if len(newContent) > 100 {
-			b.lastOutputLength = currentLength
-			return newContent, true
-		}
-		
-		// 否则继续缓冲
-		return "", false
-	}
-	
-	// 内容足够长，直接输出
-	b.lastOutputLength = currentLength
-	return newContent, true
-}
-
-// FixJSONFormat 修复JSON格式问题
-// 将Python dict格式的单引号转换为JSON格式的双引号
+// FixJSONFormat 修复JSON格式问题（保留用于向后兼容）
 func (b *SimpleJSONBuffer) FixJSONFormat(content string) string {
-	return b.fixJSONFormat(content)
+	if b.isPythonDictFormat(content) {
+		return b.convertPythonDictToJSON(content)
+	}
+	return content
 }
 
-// fixJSONFormat 修复JSON格式问题
-// 将Python dict格式的单引号转换为JSON格式的双引号
-// 正确处理字符串内部的转义字符
-func (b *SimpleJSONBuffer) fixJSONFormat(content string) string {
-	if content == "" {
-		return content
-	}
-	
-	// 更健壮的方法：逐字符解析，正确处理转义
-	return b.convertPythonDictToJSON(content)
+// IsPythonDictFormat 检测是否为Python字典格式（公开方法）
+func (b *SimpleJSONBuffer) IsPythonDictFormat(content string) bool {
+	return b.isPythonDictFormat(content)
 }
 
 // convertPythonDictToJSON 将Python字典格式转换为JSON格式

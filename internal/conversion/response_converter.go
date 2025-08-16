@@ -215,6 +215,47 @@ func (c *ResponseConverter) convertStreamingResponse(openaiResp []byte, ctx *Con
 		for _, state := range ctx.StreamState.ToolCallStates {
 			// 只有已经开始且未完成的工具调用才需要发送 content_block_stop
 			if state.Started && !state.Completed {
+				// 在结束前，检查是否有未输出的JSON内容
+				if state.JSONBuffer != nil {
+					currentContent := state.JSONBuffer.GetBufferedContent()
+					
+					// 如果是Python格式，需要转换并输出完整的JSON
+					if state.JSONBuffer.IsPythonDictFormat(currentContent) {
+						finalJSON := state.JSONBuffer.GetFinalJSON()
+						if finalJSON != "" {
+							// 一次性输出完整的正确JSON
+							deltaEvent := map[string]interface{}{
+								"type":  "content_block_delta",
+								"index": state.BlockIndex,
+								"delta": map[string]interface{}{
+									"type": "input_json_delta",
+									"partial_json": finalJSON,
+								},
+							}
+							deltaData, _ := json.Marshal(deltaEvent)
+							allEvents = append(allEvents, "event: content_block_delta")
+							allEvents = append(allEvents, "data: "+string(deltaData))
+							allEvents = append(allEvents, "")
+						}
+					} else {
+						// 正常JSON格式，检查是否有剩余未输出的内容
+						if incrementalContent, hasNewContent := state.JSONBuffer.GetIncrementalOutput(); hasNewContent && incrementalContent != "" {
+							deltaEvent := map[string]interface{}{
+								"type":  "content_block_delta",
+								"index": state.BlockIndex,
+								"delta": map[string]interface{}{
+									"type": "input_json_delta",
+									"partial_json": incrementalContent,
+								},
+							}
+							deltaData, _ := json.Marshal(deltaEvent)
+							allEvents = append(allEvents, "event: content_block_delta")
+							allEvents = append(allEvents, "data: "+string(deltaData))
+							allEvents = append(allEvents, "")
+						}
+					}
+				}
+				
 				stopEvent := map[string]interface{}{
 					"type":  "content_block_stop",
 					"index": state.BlockIndex,
@@ -487,7 +528,17 @@ func (c *ResponseConverter) convertSingleChunkToEvents(chunk OpenAIStreamChunk, 
 				
 				// 只有在工具已经开始（有name）时才发送增量
 				if state.Started && state.NameReceived {
-					// 获取增量输出
+					// 对于Python格式的arguments，我们延迟输出，等到工具调用结束时一次性输出正确的JSON
+					// 这里暂时不输出，避免输出错误格式
+					
+					// 检查是否为Python格式
+					currentContent := state.JSONBuffer.GetBufferedContent()
+					if state.JSONBuffer.IsPythonDictFormat(currentContent) {
+						// Python格式，延迟输出
+						continue
+					}
+					
+					// 正常JSON格式，可以正常输出增量
 					if incrementalContent, hasNewContent := state.JSONBuffer.GetIncrementalOutput(); hasNewContent && incrementalContent != "" {
 						deltaEvent := map[string]interface{}{
 							"type":  "content_block_delta",
