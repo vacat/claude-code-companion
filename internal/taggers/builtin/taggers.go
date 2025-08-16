@@ -278,7 +278,7 @@ func (bt *BodyJSONTagger) extractJSONValue(data map[string]interface{}, path str
 }
 
 // UserMessageTagger 用户最新消息内容匹配tagger
-// 匹配 messages 中第一条 role 为 user 的消息的最后一个 text 类型内容
+// 匹配 messages 中最后一条 role 为 user 的消息的最后一个 text 类型内容
 type UserMessageTagger struct {
 	BaseTagger
 	expectedValue string
@@ -330,7 +330,7 @@ func (ut *UserMessageTagger) ShouldTag(request *http.Request) (bool, error) {
 }
 
 // extractLatestUserMessage 提取用户最新消息的文本内容
-// 从 messages 中找到第一条 role 为 "user" 的消息，取其 content 中最后一个 text 类型的 text 字段
+// 从 messages 中找到最后一条 role 为 "user" 的消息，取其 content 中最后一个 text 类型的 text 字段
 func (ut *UserMessageTagger) extractLatestUserMessage(data map[string]interface{}) (string, error) {
 	// 获取 messages 数组
 	messagesInterface, ok := data["messages"]
@@ -343,8 +343,9 @@ func (ut *UserMessageTagger) extractLatestUserMessage(data map[string]interface{
 		return "", fmt.Errorf("messages field is not an array")
 	}
 
-	// 找到第一条 role 为 "user" 的消息
-	for _, msgInterface := range messages {
+	// 从后往前遍历，找到最后一条 role 为 "user" 的消息
+	for i := len(messages) - 1; i >= 0; i-- {
+		msgInterface := messages[i]
 		msg, ok := msgInterface.(map[string]interface{})
 		if !ok {
 			continue
@@ -355,7 +356,7 @@ func (ut *UserMessageTagger) extractLatestUserMessage(data map[string]interface{
 			continue
 		}
 
-		// 找到了用户消息，提取 content
+		// 找到了最后一条用户消息，提取 content
 		contentInterface, ok := msg["content"]
 		if !ok {
 			continue
@@ -391,6 +392,10 @@ func (ut *UserMessageTagger) extractLatestUserMessage(data map[string]interface{
 				return lastText, nil
 			}
 		}
+
+		// 如果找到了用户消息但没有有效的text内容，继续找前一条用户消息
+		// 但这里我们只找最后一条，所以break
+		break
 	}
 
 	return "", fmt.Errorf("no user message found")
