@@ -41,6 +41,34 @@ function formatJson(jsonString) {
     }
 }
 
+// Extract domain from URL
+function extractDomain(url) {
+    try {
+        const urlObj = new URL(url);
+        return urlObj.hostname;
+    } catch (e) {
+        return url; // If not a valid URL, return original content
+    }
+}
+
+// Truncate domain if exceeds maxLength characters and add ellipsis
+function truncateDomain(domain, maxLength = 25) {
+    if (!domain || domain.length <= maxLength) {
+        return domain;
+    }
+    return domain.substring(0, maxLength) + '...';
+}
+
+// Format URL display: show domain only with full URL in title, truncate if over 25 chars
+function formatUrlDisplay(url) {
+    const domainOnly = extractDomain(url);
+    const truncatedDomain = truncateDomain(domainOnly, 25);
+    return {
+        display: truncatedDomain,
+        title: url
+    };
+}
+
 function escapeHtml(text) {
     if (!text) return text;
     const map = {

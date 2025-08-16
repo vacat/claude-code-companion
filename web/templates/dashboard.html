@@ -71,7 +71,7 @@
                                     {{range .Endpoints}}
                                     <tr>
                                         <td>{{.Name}}</td>
-                                        <td>{{.URL}}</td>
+                                        <td class="url-cell" data-url="{{.URL}}">{{.URL}}</td>
                                         <td>
                                             {{if eq .Status "active"}}
                                                 <span class="badge bg-success" data-t="active">活跃</span>

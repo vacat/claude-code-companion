@@ -121,16 +121,6 @@ function refreshTable() {
     loadEndpoints();
 }
 
-// Extract domain, only show domain part, path is omitted with ...
-function extractDomain(url) {
-    try {
-        const urlObj = new URL(url);
-        return urlObj.hostname;
-    } catch (e) {
-        return url; // If not a valid URL, return original content
-    }
-}
-
 // Truncate path, show ... if exceeds specified length
 function truncatePath(path, maxLength = 10) {
     if (!path || path.length <= maxLength) {
@@ -185,9 +175,9 @@ function rebuildTable(endpoints) {
             ? '<span class="badge bg-warning">openai</span>'
             : '<span class="badge bg-primary">anthropic</span>';
         
-        // Build URL display: only show domain, full URL in title
-        const domainOnly = extractDomain(endpoint.url);
-        const urlDisplay = `<code class="url-display" title="${endpoint.url}">${domainOnly}</code>`;
+        // Build URL display: only show domain, full URL in title, truncate domain if over 25 chars
+        const urlFormatted = formatUrlDisplay(endpoint.url);
+        const urlDisplay = `<code class="url-display" title="${urlFormatted.title}">${urlFormatted.display}</code>`;
         
         // Build path display: truncate if over 10 characters
         let pathDisplay;
