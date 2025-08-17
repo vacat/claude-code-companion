@@ -3,20 +3,11 @@ package conversion
 import (
 	"strings"
 	"testing"
-
-	"claude-proxy/internal/logger"
 )
 
 func TestSSEStreamConversion(t *testing.T) {
-	// 创建转换器
-	testLogger, err := logger.NewLogger(logger.LogConfig{
-		Level:        "debug",
-		LogDirectory: "",
-	})
-	if err != nil {
-		t.Fatalf("Failed to create logger: %v", err)
-	}
-	converter := NewResponseConverter(testLogger)
+	// 使用nil logger来避免配置问题
+	converter := NewResponseConverter(nil)
 
 	// 模拟 OpenAI 流式响应
 	openaiSSE := `data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"gpt-3.5-turbo","choices":[{"delta":{"content":"Hello"},"index":0,"finish_reason":null}]}
@@ -70,14 +61,8 @@ data: [DONE]
 }
 
 func TestSSEParser(t *testing.T) {
-	testLogger, err := logger.NewLogger(logger.LogConfig{
-		Level:        "debug",
-		LogDirectory: "",
-	})
-	if err != nil {
-		t.Fatalf("Failed to create logger: %v", err)
-	}
-	parser := NewSSEParser(testLogger)
+	// 使用nil logger来避免配置问题
+	parser := NewSSEParser(nil)
 
 	// 测试SSE格式验证
 	validSSE := `data: {"test": "value"}
