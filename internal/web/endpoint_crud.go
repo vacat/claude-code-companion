@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// handleGetEndpoints 获取所有端点
 func (s *AdminServer) handleGetEndpoints(c *gin.Context) {
 	endpoints := s.endpointManager.GetAllEndpoints()
 	c.JSON(http.StatusOK, gin.H{
@@ -16,6 +17,7 @@ func (s *AdminServer) handleGetEndpoints(c *gin.Context) {
 	})
 }
 
+// handleUpdateEndpoints 批量更新端点
 func (s *AdminServer) handleUpdateEndpoints(c *gin.Context) {
 	var request struct {
 		Endpoints []config.EndpointConfig `json:"endpoints"`
@@ -44,37 +46,6 @@ func (s *AdminServer) handleUpdateEndpoints(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Endpoints updated successfully"})
-}
-
-// saveEndpointsToConfig 将端点配置保存到配置文件
-func (s *AdminServer) saveEndpointsToConfig(endpointConfigs []config.EndpointConfig) error {
-	// 更新配置
-	s.config.Endpoints = endpointConfigs
-	
-	// 保存到文件
-	return config.SaveConfig(s.config, s.configFilePath)
-}
-
-// createEndpointConfigFromRequest 从请求创建端点配置，自动设置优先级
-func createEndpointConfigFromRequest(name, url, endpointType, pathPrefix, authType, authValue string, enabled bool, priority int, tags []string, proxy *config.ProxyConfig, oauthConfig *config.OAuthConfig) config.EndpointConfig {
-	// 如果没有指定endpoint_type，默认为anthropic（向后兼容）
-	if endpointType == "" {
-		endpointType = "anthropic"
-	}
-	
-	return config.EndpointConfig{
-		Name:         name,
-		URL:          url,
-		EndpointType: endpointType,
-		PathPrefix:   pathPrefix, // 新增：支持路径前缀
-		AuthType:     authType,
-		AuthValue:    authValue,
-		Enabled:      enabled,
-		Priority:     priority,
-		Tags:         tags,
-		Proxy:        proxy, // 新增：支持代理配置
-		OAuthConfig:  oauthConfig, // 新增：支持OAuth配置
-	}
 }
 
 // handleCreateEndpoint 创建新端点
@@ -323,213 +294,4 @@ func (s *AdminServer) handleDeleteEndpoint(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Endpoint deleted successfully"})
-}
-
-// generateUniqueEndpointName 生成唯一的端点名称，如果存在重名则添加数字后缀
-func (s *AdminServer) generateUniqueEndpointName(baseName string) string {
-	currentEndpoints := s.config.Endpoints
-	
-	// 检查基础名称是否已存在
-	nameExists := func(name string) bool {
-		for _, ep := range currentEndpoints {
-			if ep.Name == name {
-				return true
-			}
-		}
-		return false
-	}
-	
-	// 如果基础名称不存在，直接返回
-	if !nameExists(baseName) {
-		return baseName
-	}
-	
-	// 如果存在，添加数字后缀
-	counter := 1
-	for {
-		newName := fmt.Sprintf("%s (%d)", baseName, counter)
-		if !nameExists(newName) {
-			return newName
-		}
-		counter++
-	}
-}
-
-// handleToggleEndpoint 切换端点启用/禁用状态
-func (s *AdminServer) handleToggleEndpoint(c *gin.Context) {
-	endpointName := c.Param("id") // 端点名称
-
-	var request struct {
-		Enabled bool `json:"enabled"`
-	}
-
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format: " + err.Error()})
-		return
-	}
-
-	// 获取当前所有端点
-	currentEndpoints := s.config.Endpoints
-	found := false
-
-	for i, ep := range currentEndpoints {
-		if ep.Name == endpointName {
-			// 更新enabled状态
-			currentEndpoints[i].Enabled = request.Enabled
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Endpoint not found"})
-		return
-	}
-
-	// 使用热更新机制
-	if err := s.hotUpdateEndpoints(currentEndpoints); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to toggle endpoint: " + err.Error(),
-		})
-		return
-	}
-
-	actionText := "enabled"
-	if !request.Enabled {
-		actionText = "disabled"
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": fmt.Sprintf("Endpoint '%s' has been %s successfully", endpointName, actionText),
-	})
-}
-
-// handleCopyEndpoint 复制端点
-func (s *AdminServer) handleCopyEndpoint(c *gin.Context) {
-	endpointName := c.Param("id") // 要复制的端点名称
-
-	// 查找源端点
-	var sourceEndpoint *config.EndpointConfig
-	for _, ep := range s.config.Endpoints {
-		if ep.Name == endpointName {
-			sourceEndpoint = &ep
-			break
-		}
-	}
-
-	if sourceEndpoint == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Endpoint not found"})
-		return
-	}
-
-	// 生成唯一的新名称
-	newName := s.generateUniqueEndpointName(sourceEndpoint.Name)
-
-	// 获取当前所有端点
-	currentEndpoints := s.config.Endpoints
-
-	// 计算新端点的优先级
-	maxPriority := 0
-	for _, ep := range currentEndpoints {
-		if ep.Priority > maxPriority {
-			maxPriority = ep.Priority
-		}
-	}
-
-	// 创建新端点（复制所有属性，除了名称和优先级）
-	newEndpoint := config.EndpointConfig{
-		Name:         newName,
-		URL:          sourceEndpoint.URL,
-		EndpointType: sourceEndpoint.EndpointType,
-		PathPrefix:   sourceEndpoint.PathPrefix,
-		AuthType:     sourceEndpoint.AuthType,
-		AuthValue:    sourceEndpoint.AuthValue,
-		Enabled:      sourceEndpoint.Enabled,
-		Priority:     maxPriority + 1,
-		Tags:         make([]string, len(sourceEndpoint.Tags)), // 复制tags
-	}
-
-	// 深度复制Tags切片
-	copy(newEndpoint.Tags, sourceEndpoint.Tags)
-
-	// 深度复制ModelRewrite配置
-	if sourceEndpoint.ModelRewrite != nil {
-		newEndpoint.ModelRewrite = &config.ModelRewriteConfig{
-			Enabled: sourceEndpoint.ModelRewrite.Enabled,
-			Rules:   make([]config.ModelRewriteRule, len(sourceEndpoint.ModelRewrite.Rules)),
-		}
-		copy(newEndpoint.ModelRewrite.Rules, sourceEndpoint.ModelRewrite.Rules)
-	}
-
-	// 深度复制Proxy配置
-	if sourceEndpoint.Proxy != nil {
-		newEndpoint.Proxy = &config.ProxyConfig{
-			Type:     sourceEndpoint.Proxy.Type,
-			Address:  sourceEndpoint.Proxy.Address,
-			Username: sourceEndpoint.Proxy.Username,
-			Password: sourceEndpoint.Proxy.Password,
-		}
-	}
-
-	// 添加到端点列表
-	currentEndpoints = append(currentEndpoints, newEndpoint)
-
-	// 使用热更新机制
-	if err := s.hotUpdateEndpoints(currentEndpoints); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to copy endpoint: " + err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"message":  "Endpoint copied successfully",
-		"endpoint": newEndpoint,
-	})
-}
-
-// handleReorderEndpoints 重新排序端点
-func (s *AdminServer) handleReorderEndpoints(c *gin.Context) {
-	var request struct {
-		OrderedNames []string `json:"ordered_names" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format: " + err.Error()})
-		return
-	}
-
-	// 获取当前所有端点
-	currentEndpoints := s.config.Endpoints
-	
-	// 创建按名称索引的map
-	endpointMap := make(map[string]config.EndpointConfig)
-	for _, ep := range currentEndpoints {
-		endpointMap[ep.Name] = ep
-	}
-
-	// 按新顺序重新排列
-	newEndpoints := make([]config.EndpointConfig, 0, len(request.OrderedNames))
-	for i, name := range request.OrderedNames {
-		if ep, exists := endpointMap[name]; exists {
-			ep.Priority = i + 1 // 优先级从1开始
-			newEndpoints = append(newEndpoints, ep)
-		}
-	}
-
-	// 检查是否所有端点都被包含
-	if len(newEndpoints) != len(currentEndpoints) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Ordered names must include all existing endpoints"})
-		return
-	}
-
-	// 使用热更新机制
-	if err := s.hotUpdateEndpoints(newEndpoints); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to reorder endpoints: " + err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Endpoints reordered successfully"})
 }
