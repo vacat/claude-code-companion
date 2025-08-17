@@ -136,6 +136,292 @@ data: {"type":"content_block_start","index":0}
 	}
 }
 
+func TestValidateCompleteSSEStream(t *testing.T) {
+	validator := NewResponseValidator(true, true)
+	
+	// 测试用例1: 完整的Anthropic SSE流
+	completeAnthropicSSE := []byte(`event: message_start
+data: {"type":"message_start","message":{"id":"msg_123"}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"text":"Hello"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: message_stop
+data: {"type":"message_stop"}
+
+`)
+	
+	err := validator.ValidateCompleteSSEStream(completeAnthropicSSE, "anthropic")
+	if err != nil {
+		t.Errorf("Expected complete Anthropic SSE stream to pass validation, got error: %v", err)
+	}
+	
+	// 测试用例2: 不完整的Anthropic SSE流（缺少message_stop）
+	incompleteAnthropicSSE := []byte(`event: message_start
+data: {"type":"message_start","message":{"id":"msg_123"}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"text":"Hello"}}
+
+`)
+	
+	err = validator.ValidateCompleteSSEStream(incompleteAnthropicSSE, "anthropic")
+	if err == nil {
+		t.Error("Expected incomplete Anthropic SSE stream (missing message_stop) to fail validation")
+	}
+	if !contains(err.Error(), "incomplete SSE stream") {
+		t.Errorf("Expected error message to contain 'incomplete SSE stream', got: %v", err)
+	}
+	
+	// 测试用例3: 完整的OpenAI SSE流
+	completeOpenAISSE := []byte(`data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: [DONE]
+
+`)
+	
+	err = validator.ValidateCompleteSSEStream(completeOpenAISSE, "openai")
+	if err != nil {
+		t.Errorf("Expected complete OpenAI SSE stream to pass validation, got error: %v", err)
+	}
+	
+	// 测试用例4: 不完整的OpenAI SSE流（缺少[DONE]）
+	incompleteOpenAISSE := []byte(`data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+`)
+	
+	err = validator.ValidateCompleteSSEStream(incompleteOpenAISSE, "openai")
+	if err == nil {
+		t.Error("Expected incomplete OpenAI SSE stream (missing [DONE]) to fail validation")
+	}
+	if !contains(err.Error(), "missing [DONE]") {
+		t.Errorf("Expected error message to contain 'missing [DONE]', got: %v", err)
+	}
+	
+	// 测试用例5: OpenAI SSE流缺少finish_reason
+	noFinishReasonSSE := []byte(`data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
+
+data: [DONE]
+
+`)
+	
+	err = validator.ValidateCompleteSSEStream(noFinishReasonSSE, "openai")
+	if err == nil {
+		t.Error("Expected OpenAI SSE stream without finish_reason to fail validation")
+	}
+	if !contains(err.Error(), "missing finish_reason") {
+		t.Errorf("Expected error message to contain 'missing finish_reason', got: %v", err)
+	}
+}
+
+func TestValidateAnthropicSSECompleteness(t *testing.T) {
+	validator := NewResponseValidator(true, true)
+	
+	// 测试用例1: 完整的Anthropic流（有message_start和message_stop）
+	completeSSE := []byte(`event: message_start
+data: {"type":"message_start"}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0}
+
+event: message_stop
+data: {"type":"message_stop"}
+
+`)
+	
+	err := validator.validateAnthropicSSECompleteness(completeSSE)
+	if err != nil {
+		t.Errorf("Expected complete Anthropic SSE to pass validation, got error: %v", err)
+	}
+	
+	// 测试用例2: 不完整的流（有message_start但缺少message_stop）
+	incompleteSSE := []byte(`event: message_start
+data: {"type":"message_start"}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0}
+
+`)
+	
+	err = validator.validateAnthropicSSECompleteness(incompleteSSE)
+	if err == nil {
+		t.Error("Expected incomplete Anthropic SSE (missing message_stop) to fail validation")
+	}
+	if !contains(err.Error(), "missing message_stop") {
+		t.Errorf("Expected error message to contain 'missing message_stop', got: %v", err)
+	}
+	
+	// 测试用例3: 没有message_start的流（不应该报错）
+	noMessageStartSSE := []byte(`event: content_block_start
+data: {"type":"content_block_start","index":0}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0}
+
+`)
+	
+	err = validator.validateAnthropicSSECompleteness(noMessageStartSSE)
+	if err != nil {
+		t.Errorf("Expected SSE without message_start to pass validation, got error: %v", err)
+	}
+	
+	// 测试用例4: 只有message_stop没有message_start（不应该报错）
+	onlyMessageStopSSE := []byte(`event: content_block_delta
+data: {"type":"content_block_delta","index":0}
+
+event: message_stop
+data: {"type":"message_stop"}
+
+`)
+	
+	err = validator.validateAnthropicSSECompleteness(onlyMessageStopSSE)
+	if err != nil {
+		t.Errorf("Expected SSE with only message_stop to pass validation, got error: %v", err)
+	}
+}
+
+func TestValidateOpenAISSECompleteness(t *testing.T) {
+	validator := NewResponseValidator(true, true)
+	
+	// 测试用例1: 完整的OpenAI流（有[DONE]和finish_reason）
+	completeSSE := []byte(`data: {"id":"chatcmpl-123","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: [DONE]
+
+`)
+	
+	err := validator.validateOpenAISSECompleteness(completeSSE)
+	if err != nil {
+		t.Errorf("Expected complete OpenAI SSE to pass validation, got error: %v", err)
+	}
+	
+	// 测试用例2: 缺少[DONE]标记
+	noDoneSSE := []byte(`data: {"id":"chatcmpl-123","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":"stop"}]}
+
+`)
+	
+	err = validator.validateOpenAISSECompleteness(noDoneSSE)
+	if err == nil {
+		t.Error("Expected OpenAI SSE without [DONE] to fail validation")
+	}
+	if !contains(err.Error(), "missing [DONE]") {
+		t.Errorf("Expected error message to contain 'missing [DONE]', got: %v", err)
+	}
+	
+	// 测试用例3: 缺少finish_reason
+	noFinishReasonSSE := []byte(`data: {"id":"chatcmpl-123","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
+
+data: [DONE]
+
+`)
+	
+	err = validator.validateOpenAISSECompleteness(noFinishReasonSSE)
+	if err == nil {
+		t.Error("Expected OpenAI SSE without finish_reason to fail validation")
+	}
+	if !contains(err.Error(), "missing finish_reason") {
+		t.Errorf("Expected error message to contain 'missing finish_reason', got: %v", err)
+	}
+	
+	// 测试用例4: finish_reason为null但有其他chunk包含有效finish_reason
+	mixedFinishReasonSSE := []byte(`data: {"id":"chatcmpl-123","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","choices":[{"index":0,"delta":{"content":" World"},"finish_reason":"length"}]}
+
+data: [DONE]
+
+`)
+	
+	err = validator.validateOpenAISSECompleteness(mixedFinishReasonSSE)
+	if err != nil {
+		t.Errorf("Expected OpenAI SSE with mixed finish_reason to pass validation, got error: %v", err)
+	}
+}
+
+func TestValidateResponseWithPathStreamingIntegration(t *testing.T) {
+	validator := NewResponseValidator(true, true)
+	
+	// 测试用例1: 完整的Anthropic SSE流应该通过集成验证
+	completeAnthropicSSE := []byte(`event: message_start
+data: {"type":"message_start","message":{"id":"msg_123","usage":{"input_tokens":100,"output_tokens":0}}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"text":"Hello"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: message_stop
+data: {"type":"message_stop"}
+
+`)
+	
+	err := validator.ValidateResponseWithPath(completeAnthropicSSE, true, "anthropic", "/v1/messages")
+	if err != nil {
+		t.Errorf("Expected complete Anthropic SSE to pass integrated validation, got error: %v", err)
+	}
+	
+	// 测试用例2: 不完整的Anthropic SSE流应该在集成验证中失败
+	incompleteAnthropicSSE := []byte(`event: message_start
+data: {"type":"message_start","message":{"id":"msg_123","usage":{"input_tokens":100,"output_tokens":0}}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0}
+
+`)
+	
+	err = validator.ValidateResponseWithPath(incompleteAnthropicSSE, true, "anthropic", "/v1/messages")
+	if err == nil {
+		t.Error("Expected incomplete Anthropic SSE to fail integrated validation")
+	}
+	if !contains(err.Error(), "incomplete SSE stream") {
+		t.Errorf("Expected error message to contain 'incomplete SSE stream', got: %v", err)
+	}
+	
+	// 测试用例3: 完整的OpenAI SSE流应该通过集成验证
+	completeOpenAISSE := []byte(`data: {"id":"chatcmpl-123","model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":"stop"}]}
+
+data: [DONE]
+
+`)
+	
+	err = validator.ValidateResponseWithPath(completeOpenAISSE, true, "openai", "/v1/chat/completions")
+	if err != nil {
+		t.Errorf("Expected complete OpenAI SSE to pass integrated validation, got error: %v", err)
+	}
+	
+	// 测试用例4: 不完整的OpenAI SSE流应该在集成验证中失败
+	incompleteOpenAISSE := []byte(`data: {"id":"chatcmpl-123","model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
+
+`)
+	
+	err = validator.ValidateResponseWithPath(incompleteOpenAISSE, true, "openai", "/v1/chat/completions")
+	if err == nil {
+		t.Error("Expected incomplete OpenAI SSE to fail integrated validation")
+	}
+	if !contains(err.Error(), "incomplete") {
+		t.Errorf("Expected error message to contain 'incomplete', got: %v", err)
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || (len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || containsAt(s, substr))))
 }
