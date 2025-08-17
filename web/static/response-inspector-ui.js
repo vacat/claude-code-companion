@@ -45,7 +45,7 @@ class ResponseInspectorUI {
                     <span><strong>Cache创建:</strong> ${usage.cache_creation_input_tokens}</span>
                     <span><strong>Cache读取:</strong> ${usage.cache_read_input_tokens}</span>
                     <span><strong>总输入:</strong> ${usage.total_input_tokens}</span>
-                    <span><strong>输出Token:</strong> ${usage.output_tokens}</span>
+                    <span><strong>总输出:</strong> ${usage.output_tokens}</span>
                     <span><strong>总计:</strong> ${usage.total_tokens}</span>
                     <span><strong>Cache效率:</strong> ${usage.cache_efficiency}%</span>
                     <span><strong>Cache状态:</strong> ${cacheStatus}</span>
