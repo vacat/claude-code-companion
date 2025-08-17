@@ -87,10 +87,10 @@ func NewLogger(config LogConfig) (*Logger, error) {
 		TimestampFormat: time.RFC3339,
 	})
 
-	// Use SQLite storage instead of file-based storage
-	storage, err := NewSQLiteStorage(config.LogDirectory)
+	// Use GORM storage instead of SQLite storage
+	storage, err := NewGORMStorage(config.LogDirectory)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize SQLite log storage: %v", err)
+		return nil, fmt.Errorf("failed to initialize GORM log storage: %v", err)
 	}
 
 	return &Logger{
