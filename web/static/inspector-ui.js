@@ -339,6 +339,7 @@ class InspectorUI {
     renderAssistantToolUses(toolUses, messageIndex) {
         return toolUses.map((tool, idx) => {
             const callId = `assistant-tool-${messageIndex}-${idx}`;
+            const paramsPreview = this.formatParametersPreview(tool.input);
             
             return `
                 <div class="inspector-tool-call">
@@ -346,7 +347,7 @@ class InspectorUI {
                         <div>
                             <span class="inspector-collapse-icon" id="${callId}-icon">▶</span>
                             <span class="inspector-tool-status">🔧</span>
-                            ${this.escapeHtml(tool.name)}
+                            ${this.escapeHtml(tool.name)}${paramsPreview}
                         </div>
                     </div>
                     <div class="inspector-collapse-content" id="${callId}" style="display: none;">
@@ -370,6 +371,7 @@ class InspectorUI {
             // 查找对应的 tool_use 来获取工具名称和参数
             const correspondingUse = this.findCorrespondingToolUseGlobally(toolResult.id);
             const toolName = correspondingUse ? correspondingUse.name : 'Unknown Tool';
+            const paramsPreview = correspondingUse ? this.formatParametersPreview(correspondingUse.input) : '';
             
             return `
                 <div class="inspector-tool-call">
@@ -377,7 +379,7 @@ class InspectorUI {
                         <div>
                             <span class="inspector-collapse-icon" id="${callId}-icon">▶</span>
                             <span class="inspector-tool-status">📥</span>
-                            ${this.escapeHtml(toolName)}
+                            ${this.escapeHtml(toolName)}${paramsPreview}
                         </div>
                     </div>
                     <div class="inspector-collapse-content" id="${callId}" style="display: none;">
@@ -425,15 +427,21 @@ class InspectorUI {
             const callId = `user-tool-${messageIndex}-${idx}`;
             const isResult = tool.type === 'result';
             
-            let toolName, statusIcon;
+            let toolName, statusIcon, paramsPreview = '';
             if (isResult) {
                 // 尝试找到对应的工具调用来获取工具名称
                 const correspondingUse = this.findCorrespondingToolUse(tool.id, toolUses);
                 toolName = correspondingUse ? correspondingUse.name : `Tool Result`;
                 statusIcon = '📥';
+                if (correspondingUse && correspondingUse.input) {
+                    paramsPreview = this.formatParametersPreview(correspondingUse.input);
+                }
             } else {
                 toolName = tool.name;
                 statusIcon = '🔧';
+                if (tool.input) {
+                    paramsPreview = this.formatParametersPreview(tool.input);
+                }
             }
             
             return `
@@ -442,7 +450,7 @@ class InspectorUI {
                         <div>
                             <span class="inspector-collapse-icon" id="${callId}-icon">▶</span>
                             <span class="inspector-tool-status">${statusIcon}</span>
-                            ${this.escapeHtml(toolName)}
+                            ${this.escapeHtml(toolName)}${paramsPreview}
                         </div>
                     </div>
                     <div class="inspector-collapse-content" id="${callId}" style="display: none;">
@@ -503,6 +511,7 @@ class InspectorUI {
             const callId = `toolcall-${messageIndex}-${idx}`;
             const statusIcon = this.getToolStatusIcon(call.status, call.isThinking);
             const thinkingLabel = call.isThinking ? ' (Thinking)' : '';
+            const paramsPreview = call.input ? this.formatParametersPreview(call.input) : '';
             
             return `
                 <div class="inspector-tool-call">
@@ -510,7 +519,7 @@ class InspectorUI {
                         <div>
                             <span class="inspector-collapse-icon" id="${callId}-icon">▶</span>
                             <span class="inspector-tool-status">${statusIcon}</span>
-                            🔧 ${this.escapeHtml(call.name)}${thinkingLabel}
+                            🔧 ${this.escapeHtml(call.name)}${thinkingLabel}${paramsPreview}
                         </div>
                     </div>
                     <div class="inspector-collapse-content" id="${callId}" style="display: none;">
@@ -624,6 +633,47 @@ class InspectorUI {
         const div = document.createElement('div');
         div.innerHTML = htmlString.trim();
         return div.firstChild;
+    }
+
+    formatParametersPreview(input) {
+        if (!input || typeof input !== 'object') return '';
+        
+        const params = [];
+        const maxValueLength = 30; // 最大参数值长度
+        const maxTotalLength = 80; // 最大总长度
+        
+        for (const [key, value] of Object.entries(input)) {
+            let valueStr = '';
+            if (typeof value === 'string') {
+                valueStr = value.length > maxValueLength ? value.substring(0, maxValueLength) + '...' : value;
+            } else if (typeof value === 'number' || typeof value === 'boolean') {
+                valueStr = String(value);
+            } else if (Array.isArray(value)) {
+                valueStr = `[${value.length} items]`;
+            } else if (typeof value === 'object') {
+                const keys = Object.keys(value);
+                valueStr = `{${keys.length} keys}`;
+            } else {
+                valueStr = String(value);
+            }
+            
+            // 转义HTML特殊字符
+            valueStr = this.escapeHtml(valueStr);
+            
+            params.push(`${key}: ${valueStr}`);
+        }
+        
+        if (params.length === 0) return '';
+        
+        let result = ' (' + params.join(', ') + ')';
+        
+        // 如果总长度超过限制，截短
+        if (result.length > maxTotalLength) {
+            result = result.substring(0, maxTotalLength - 3) + '...)';
+        }
+        
+        // 返回带样式的HTML
+        return `<span class="inspector-tool-params-preview">${result}</span>`;
     }
 
     escapeHtml(text) {

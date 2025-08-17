@@ -286,3 +286,12 @@
         max-width: 1400px;
     }
 }
+
+/* 工具参数预览样式 */
+.inspector-tool-params-preview {
+    color: #6c757d;
+    font-size: 0.8rem;
+    font-weight: 400;
+    margin-left: 0.5rem;
+    opacity: 0.8;
+}
