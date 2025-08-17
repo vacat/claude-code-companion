@@ -17,33 +17,12 @@ class ResponseInspectorUI {
 
     renderOverview(metadata) {
         const overviewHtml = `
-            <div class="response-inspector-section">
+            <div class="response-inspector-section compact">
                 <h6 class="response-inspector-title">📊 响应概览</h6>
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <div class="response-inspector-stat">
-                            <div class="response-inspector-stat-label">消息ID</div>
-                            <div class="response-inspector-stat-value">${metadata.id || 'Unknown'}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="response-inspector-stat">
-                            <div class="response-inspector-stat-label">模型</div>
-                            <div class="response-inspector-stat-value">${metadata.model || 'Unknown'}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="response-inspector-stat">
-                            <div class="response-inspector-stat-label">停止原因</div>
-                            <div class="response-inspector-stat-value">${metadata.stop_reason || 'Unknown'}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="response-inspector-stat">
-                            <div class="response-inspector-stat-label">流式响应</div>
-                            <div class="response-inspector-stat-value">${metadata.isStreaming ? '✅' : '❌'}</div>
-                        </div>
-                    </div>
+                <div class="response-inspector-compact-grid">
+                    <span><strong>模型:</strong> ${metadata.model || 'Unknown'}</span>
+                    <span><strong>停止原因:</strong> ${metadata.stop_reason || 'Unknown'}</span>
+                    <span><strong>流式:</strong> ${metadata.isStreaming ? '✅' : '❌'}</span>
                 </div>
             </div>
         `;
@@ -54,78 +33,27 @@ class ResponseInspectorUI {
     renderUsage(usage) {
         if (!usage.total_tokens) return;
         
+        // 准备Cache效率状态
+        const cacheStatus = usage.cache_efficiency > 30 ? '高效 ✅' : 
+                           usage.cache_efficiency > 10 ? '中等 ⚠️' : '低效 ⚠️';
+        
         const usageHtml = `
-            <div class="response-inspector-section">
-                <h6 class="response-inspector-title">💰 Token 使用详情</h6>
-                <div class="row g-3">
-                    <div class="col-md-2">
-                        <div class="response-inspector-stat">
-                            <div class="response-inspector-stat-label">基础输入</div>
-                            <div class="response-inspector-stat-value">${usage.input_tokens}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="response-inspector-stat">
-                            <div class="response-inspector-stat-label">输出 Token</div>
-                            <div class="response-inspector-stat-value">${usage.output_tokens}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="response-inspector-stat">
-                            <div class="response-inspector-stat-label">Cache 创建</div>
-                            <div class="response-inspector-stat-value">${usage.cache_creation_input_tokens}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="response-inspector-stat">
-                            <div class="response-inspector-stat-label">Cache 读取</div>
-                            <div class="response-inspector-stat-value">${usage.cache_read_input_tokens}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="response-inspector-stat">
-                            <div class="response-inspector-stat-label">总输入</div>
-                            <div class="response-inspector-stat-value">${usage.total_input_tokens}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="response-inspector-stat">
-                            <div class="response-inspector-stat-label">总计</div>
-                            <div class="response-inspector-stat-value">${usage.total_tokens}</div>
-                        </div>
-                    </div>
+            <div class="response-inspector-section compact">
+                <h6 class="response-inspector-title">💰 Token和Cache使用情况</h6>
+                <div class="response-inspector-compact-grid">
+                    <span><strong>原始输入:</strong> ${usage.input_tokens}</span>
+                    <span><strong>Cache创建:</strong> ${usage.cache_creation_input_tokens}</span>
+                    <span><strong>Cache读取:</strong> ${usage.cache_read_input_tokens}</span>
+                    <span><strong>总输入:</strong> ${usage.total_input_tokens}</span>
+                    <span><strong>输出Token:</strong> ${usage.output_tokens}</span>
+                    <span><strong>总计:</strong> ${usage.total_tokens}</span>
+                    <span><strong>Cache效率:</strong> ${usage.cache_efficiency}%</span>
+                    <span><strong>Cache状态:</strong> ${cacheStatus}</span>
                 </div>
-                ${this.renderCacheAnalysis(usage)}
             </div>
         `;
         
         this.container.appendChild(this.createElementFromHTML(usageHtml));
-    }
-
-    renderCacheAnalysis(usage) {
-        if (usage.cache_read_input_tokens === 0 && usage.cache_creation_input_tokens === 0) {
-            return '';
-        }
-
-        const cacheStatus = usage.cache_efficiency > 30 ? '高效使用 ✅' : 
-                           usage.cache_efficiency > 10 ? '中等使用 ⚠️' : '低效使用 ⚠️';
-        
-        return `
-            <div class="mt-3 p-3 bg-light border rounded">
-                <h6>🎯 Cache 性能分析</h6>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <strong>Cache 效率:</strong> ${usage.cache_efficiency}%
-                    </div>
-                    <div class="col-md-4">
-                        <strong>输出比例:</strong> ${usage.output_ratio}%
-                    </div>
-                    <div class="col-md-4">
-                        <strong>Cache 状态:</strong> ${cacheStatus}
-                    </div>
-                </div>
-            </div>
-        `;
     }
 
     renderContent(content) {
