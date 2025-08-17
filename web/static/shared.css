@@ -385,3 +385,47 @@ input, textarea, select {
 .thinking-badge.bg-danger {
     background-color: #dc3545 !important; /* Ultra thinking - Red */
 }
+
+/* Request ID cell with hover copy button */
+.request-id-cell {
+    position: relative;
+}
+
+.copy-request-id-btn {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-size: 0.7rem;
+    color: #6c757d;
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 10;
+    width: 20px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.request-id-cell:hover .copy-request-id-btn {
+    opacity: 1;
+    visibility: visible;
+}
+
+.copy-request-id-btn:hover {
+    background: #f8f9fa;
+    border-color: #adb5bd;
+    color: #0d6efd;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.copy-request-id-btn:active {
+    transform: translateY(-50%) scale(1.0);
+}

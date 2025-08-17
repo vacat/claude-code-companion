@@ -27,8 +27,8 @@ function formatDuration(ms) {
 function formatFileSize(bytes) {
     if (bytes === 0) return '0B';
     if (bytes < 1024) return bytes + 'B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'K';
+    return (bytes / (1024 * 1024)).toFixed(1) + 'M';
 }
 
 function formatJson(jsonString) {
@@ -173,6 +173,11 @@ function copyToClipboard(content) {
         // Fallback for older browsers or non-secure contexts
         fallbackCopyToClipboard(content);
     }
+}
+
+// Copy request ID to clipboard
+function copyRequestId(requestId) {
+    copyToClipboard(requestId);
 }
 
 function fallbackCopyToClipboard(content) {

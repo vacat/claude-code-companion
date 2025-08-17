@@ -62,7 +62,12 @@
                                     {{range .Logs}}
                                     <tr>
                                         <td>{{.Timestamp.Format "15:04:05"}}</td>
-                                        <td><small>{{.RequestID}}</small></td>
+                                        <td class="request-id-cell" data-request-id="{{.RequestID}}">
+                                            <small>{{.RequestID}}</small>
+                                            <button class="copy-request-id-btn" onclick="copyRequestId('{{.RequestID}}')" title="复制请求ID到剪贴板">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </td>
                                         <td class="endpoint-cell" data-endpoint="{{.Endpoint}}">{{.Endpoint}}</td>
                                         <td>
                                             <small>
