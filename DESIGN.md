@@ -2,374 +2,378 @@
 
 本文档包含 Claude API Proxy 项目的详细实现规范和技术细节。基础架构信息请参考 [CLAUDE.md](./CLAUDE.md)。
 
-## 错误处理和端点切换机制
+## 系统架构概览
 
-### 故障检测逻辑
+Claude API Proxy 是一个多协议 API 代理服务，支持：
 
-1. **实时故障检测**
+- **多端点类型**：Anthropic API、OpenAI API 等
+- **格式转换**：OpenAI 格式请求自动转换为 Anthropic 格式  
+- **OAuth 认证**：支持自动 token 刷新机制
+- **模型重写**：动态重写请求中的模型名称
+- **标签路由**：基于请求特征的智能路由
+- **多语言界面**：Web 管理界面支持国际化
+- **健康检查**：端点状态监控和故障转移
 
-   - 监控每个请求的响应状态
-   - 在 10 秒滑动窗口内统计失败次数
-   - 超过阈值（>1 次失败且全部失败）标记端点为不可用
+## 核心组件架构
 
-2. **响应格式验证**
+### 1. 端点管理器 (endpoint.Manager)
+
+负责管理所有上游端点，支持多种端点类型：
+
+- **Anthropic 端点**：直接代理 Anthropic API
+- **OpenAI 端点**：自动格式转换，支持 OpenAI 兼容 API
+- **优先级路由**：按配置优先级选择可用端点
+- **健康检查**：定期检查端点状态，自动故障转移
+
+### 2. 格式转换器 (conversion.Converter)
+
+实现不同 API 格式之间的转换：
 
 ```go
-type ResponseValidator struct{}
-
-func (v *ResponseValidator) ValidateAnthropicResponse(body []byte) error {
-    // 检查是否为有效的JSON
-    var response map[string]interface{}
-    if err := json.Unmarshal(body, &response); err != nil {
-        return fmt.Errorf("invalid JSON response")
-    }
-
-    // 检查必要的字段结构
-    if _, hasContent := response["content"]; hasContent {
-        return nil // 正常响应
-    }
-    if _, hasError := response["error"]; hasError {
-        return nil // 错误响应但格式正确
-    }
-
-    return fmt.Errorf("response format not compatible with Anthropic API")
+type Converter interface {
+    ConvertRequest(body []byte, headers map[string]string) ([]byte, map[string]string, error)
+    ConvertResponse(body []byte, headers map[string]string, isStreaming bool) ([]byte, map[string]string, error)
+    SupportsStreaming() bool
 }
 ```
 
-3. **端点切换策略**
+**转换流程**：
+1. 检测请求格式（OpenAI vs Anthropic）
+2. 转换请求体和头部
+3. 发送到上游端点
+4. 转换响应格式返回客户端
 
-   - 按优先级顺序选择端点（priority 数值越小优先级越高）
-   - 跳过标记为不可用的端点
-   - 如果所有端点都不可用，返回 **502 Bad Gateway** 错误
+### 3. OAuth 认证管理 (oauth.OAuth)
 
-4. **健康检查和恢复**
+支持自动 token 刷新机制：
 
 ```go
-func (h *HealthChecker) CheckEndpoint(endpoint *Endpoint) error {
-    // 使用 /v1/models 端点进行健康检查
-    req, _ := http.NewRequest("GET", endpoint.URL+endpoint.PathPrefix+"/models", nil)
-    req.Header.Set("Authorization", endpoint.GetAuthHeader())
-    req.Header.Set("anthropic-version", "2023-06-01")
-
-    client := &http.Client{Timeout: time.Duration(endpoint.Timeout) * time.Second}
-    resp, err := client.Do(req)
-    if err != nil {
-        return err
-    }
-    defer resp.Body.Close()
-
-    // 检查响应状态码
-    if resp.StatusCode >= 400 {
-        return fmt.Errorf("health check failed with status: %d", resp.StatusCode)
-    }
-
-    // 验证响应格式（简单检查是否包含models数组）
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        return fmt.Errorf("failed to read health check response: %v", err)
-    }
-
-    var modelsResp map[string]interface{}
-    if err := json.Unmarshal(body, &modelsResp); err != nil {
-        return fmt.Errorf("invalid JSON in health check response: %v", err)
-    }
-
-    if _, hasData := modelsResp["data"]; !hasData {
-        return fmt.Errorf("invalid models response format")
-    }
-
-    return nil
+type OAuthConfig struct {
+    AccessToken  string `yaml:"access_token"`
+    RefreshToken string `yaml:"refresh_token"`
+    ExpiresAt    int64  `yaml:"expires_at"`
+    TokenURL     string `yaml:"token_url"`
+    ClientID     string `yaml:"client_id"`
+    AutoRefresh  bool   `yaml:"auto_refresh"`
 }
 ```
 
-5. **响应格式验证器**
+**刷新逻辑**：
+- 检查 token 过期时间
+- 自动刷新即将过期的 token
+- 更新配置文件中的新 token
+
+### 4. 模型重写器 (modelrewrite.Rewriter)
+
+动态重写请求中的模型名称：
 
 ```go
-type ResponseValidator struct{}
-
-// 验证标准JSON响应
-func (v *ResponseValidator) ValidateStandardResponse(body []byte) error {
-    var response map[string]interface{}
-    if err := json.Unmarshal(body, &response); err != nil {
-        return fmt.Errorf("invalid JSON response")
-    }
-
-    // 检查Anthropic响应必要字段
-    requiredFields := []string{"id", "type", "role", "content", "model"}
-    for _, field := range requiredFields {
-        if _, exists := response[field]; !exists {
-            return fmt.Errorf("missing required field: %s", field)
-        }
-    }
-
-    // 验证type字段值
-    if msgType, ok := response["type"].(string); !ok || msgType != "message" {
-        return fmt.Errorf("invalid message type: expected 'message'")
-    }
-
-    // 验证role字段值
-    if role, ok := response["role"].(string); !ok || role != "assistant" {
-        return fmt.Errorf("invalid role: expected 'assistant'")
-    }
-
-    return nil
+type ModelRewriteConfig struct {
+    Enabled bool                `yaml:"enabled"`
+    Rules   []ModelRewriteRule  `yaml:"rules"`
 }
 
-// 验证流式响应（SSE）
-func (v *ResponseValidator) ValidateSSEChunk(chunk []byte) error {
-    lines := bytes.Split(chunk, []byte("\n"))
-
-    for _, line := range lines {
-        line = bytes.TrimSpace(line)
-        if len(line) == 0 {
-            continue
-        }
-
-        if bytes.HasPrefix(line, []byte("event: ")) {
-            eventType := string(line[7:])
-            validEvents := []string{
-                "message_start", "content_block_start", "ping",
-                "content_block_delta", "content_block_stop", "message_stop",
-            }
-
-            valid := false
-            for _, validEvent := range validEvents {
-                if eventType == validEvent {
-                    valid = true
-                    break
-                }
-            }
-
-            if !valid {
-                return fmt.Errorf("invalid SSE event type: %s", eventType)
-            }
-        }
-
-        if bytes.HasPrefix(line, []byte("data: ")) {
-            dataContent := line[6:] // 跳过 "data: "
-            if len(dataContent) == 0 {
-                continue
-            }
-
-            var data map[string]interface{}
-            if err := json.Unmarshal(dataContent, &data); err != nil {
-                return fmt.Errorf("invalid JSON in SSE data: %v", err)
-            }
-
-            // 验证数据包含type字段
-            if _, hasType := data["type"]; !hasType {
-                return fmt.Errorf("missing 'type' field in SSE data")
-            }
-        }
-    }
-
-    return nil
+type ModelRewriteRule struct {
+    SourcePattern string `yaml:"source_pattern"`
+    TargetModel   string `yaml:"target_model"`
 }
 ```
 
-6. **端点选择策略**
+**重写规则**：
+- 支持通配符模式匹配
+- 按规则顺序执行重写
+- 支持动态模型映射
+
+### 5. 标签系统 (tagging.Manager)
+
+基于请求特征的智能路由和分类：
 
 ```go
-type EndpointSelector struct {
-    endpoints []*Endpoint
-    mutex     sync.RWMutex
+type TaggingManager struct {
+    registry *TagRegistry
+    pipeline *TaggerPipeline
 }
 
-func (es *EndpointSelector) SelectEndpoint() (*Endpoint, error) {
-    es.mutex.RLock()
-    defer es.mutex.RUnlock()
-
-    // 按优先级排序，选择第一个可用的端点
-    availableEndpoints := make([]*Endpoint, 0)
-    for _, ep := range es.endpoints {
-        if ep.Enabled && ep.Status == "active" {
-            availableEndpoints = append(availableEndpoints, ep)
-        }
-    }
-
-    if len(availableEndpoints) == 0 {
-        return nil, fmt.Errorf("no active endpoints available")
-    }
-
-    // 按优先级排序
-    sort.Slice(availableEndpoints, func(i, j int) bool {
-        return availableEndpoints[i].Priority < availableEndpoints[j].Priority
-    })
-
-    return availableEndpoints[0], nil
+type Tagger interface {
+    Name() string
+    Tag() string
+    ShouldTag(req *TaggedRequest) (bool, error)
 }
 ```
 
-## Web 管理界面设计
+**支持的标记器类型**：
+- **内置标记器**：路径匹配、头部检查、查询参数等
+- **Starlark 脚本**：自定义标记逻辑
+- **优先级执行**：按配置优先级并发执行
+
+### 6. 健康检查器 (health.Checker)
+
+定期监控端点健康状态：
+
+```go
+type Checker struct {
+    endpoints       []*endpoint.Endpoint
+    checkInterval   time.Duration
+    client          *http.Client
+}
+
+func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
+    // 根据端点类型使用不同的检查策略
+    switch ep.EndpointType {
+    case "anthropic":
+        return c.checkAnthropicEndpoint(ep)
+    case "openai":
+        return c.checkOpenAIEndpoint(ep)
+    default:
+        return c.checkGenericEndpoint(ep)
+    }
+}
+```
+
+### 7. 响应验证器 (validator.ResponseValidator)
+
+验证上游 API 响应格式：
+
+```go
+type ResponseValidator struct {
+    strictMode      bool
+    validateStreaming bool
+}
+
+func (v *ResponseValidator) ValidateResponse(body []byte, isStreaming bool) error {
+    if isStreaming {
+        return v.validateSSEResponse(body)
+    }
+    return v.validateJSONResponse(body)
+}
+```
+
+**验证策略**：
+- JSON 格式检查
+- Anthropic API 字段验证
+- SSE 流式响应验证
+- 可配置严格模式
+
+## 配置文件详细结构
+
+### 完整配置示例
+
+```yaml
+server:
+  host: 0.0.0.0
+  port: 8080
+
+endpoints:
+  - name: "anthropic-primary"
+    url: "https://api.anthropic.com"
+    endpoint_type: "anthropic"
+    auth_type: "api_key"
+    auth_value: "sk-ant-..."
+    enabled: true
+    priority: 1
+    tags: ["primary", "anthropic"]
+    
+  - name: "openai-compatible"
+    url: "https://api.openai.com"
+    endpoint_type: "openai"
+    path_prefix: "/v1/chat/completions"
+    auth_type: "auth_token"
+    auth_value: "sk-..."
+    enabled: true
+    priority: 2
+    model_rewrite:
+      enabled: true
+      rules:
+        - source_pattern: "claude-*"
+          target_model: "gpt-4"
+          
+  - name: "oauth-endpoint"
+    url: "https://portal.qwen.ai"
+    endpoint_type: "openai"
+    path_prefix: "/v1/chat/completions"
+    auth_type: "oauth"
+    enabled: true
+    priority: 3
+    oauth_config:
+      access_token: "token..."
+      refresh_token: "refresh..."
+      expires_at: 1755291655969
+      token_url: "https://api.example.com/oauth/token"
+      client_id: "client_id"
+      auto_refresh: true
+      
+  - name: "proxy-endpoint"
+    url: "https://api.example.com"
+    endpoint_type: "anthropic"
+    auth_type: "api_key"
+    auth_value: "sk-ant-..."
+    enabled: true
+    priority: 4
+    proxy:
+      type: "http"
+      address: "192.168.1.100:8080"
+
+logging:
+  level: "debug"
+  log_request_types: "all"  # all, errors, none
+  log_request_body: "full"  # full, truncated, none
+  log_response_body: "full" # full, truncated, none
+  log_directory: "./logs"
+
+validation:
+  strict_anthropic_format: false
+  validate_streaming: false
+  disconnect_on_invalid: false
+
+tagging:
+  pipeline_timeout: 10s
+  taggers:
+    - name: "api-detector"
+      type: "builtin"
+      builtin_type: "path"
+      tag: "api-v1"
+      enabled: true
+      priority: 1
+      config:
+        path_pattern: "/v1/*"
+        
+    - name: "custom-tagger"
+      type: "starlark"
+      tag: "custom"
+      enabled: true
+      priority: 2
+      config:
+        script: |
+          def should_tag():
+              if "custom-header" in request.headers:
+                  return True
+              return False
+
+timeouts:
+  proxy:
+    tls_handshake: "10s"
+    response_header: "60s"
+    idle_connection: "90s"
+    overall_request: ""  # 空表示无限制，支持流式
+  health_check:
+    tls_handshake: "5s"
+    response_header: "30s"
+    idle_connection: "60s"
+    overall_request: "30s"
+    check_interval: "30s"
+
+i18n:
+  enabled: true
+  default_language: "en"
+  locales_path: "./web/locales"
+```
+
+## 故障转移和端点管理
+
+### 端点选择策略
+
+系统按以下优先级选择端点：
+
+1. **优先级排序**：按配置中的 `priority` 值升序排列
+2. **可用性检查**：只选择 `enabled: true` 且健康检查通过的端点
+3. **标签匹配**：如果请求包含标签，优先选择支持该标签的端点
+4. **故障转移**：当前端点失败时自动切换到下一个可用端点
+
+### 健康检查机制
+
+```go
+type HealthCheckConfig struct {
+    CheckInterval   time.Duration
+    TLSHandshake   time.Duration
+    ResponseHeader time.Duration
+    IdleConnection time.Duration
+    OverallRequest time.Duration
+}
+
+// 不同端点类型的健康检查策略
+func (c *Checker) checkAnthropicEndpoint(ep *Endpoint) error {
+    // 使用 /v1/messages 端点进行轻量检查
+    req := &http.Request{
+        Method: "POST",
+        URL:    ep.URL + "/v1/messages",
+        Header: map[string][]string{
+            "Authorization":     {ep.GetAuthHeader()},
+            "Content-Type":      {"application/json"},
+            "anthropic-version": {"2023-06-01"},
+        },
+        Body: strings.NewReader(`{"model":"claude-3-haiku-20240307","max_tokens":1,"messages":[]}`),
+    }
+    
+    // 执行请求并检查响应
+    return c.executeHealthCheck(req, ep)
+}
+
+func (c *Checker) checkOpenAIEndpoint(ep *Endpoint) error {
+    // 使用 /v1/models 端点检查
+    req := &http.Request{
+        Method: "GET",
+        URL:    ep.URL + ep.PathPrefix + "/../models",
+        Header: map[string][]string{
+            "Authorization": {ep.GetAuthHeader()},
+        },
+    }
+    
+    return c.executeHealthCheck(req, ep)
+}
+```
+
+### 错误处理策略
+
+1. **网络错误**：立即标记端点为不可用，触发故障转移
+2. **HTTP 4xx 错误**：记录错误但不影响端点可用性（可能是请求问题）
+3. **HTTP 5xx 错误**：累计错误次数，超过阈值后标记端点不可用
+4. **响应格式错误**：根据 `validation.disconnect_on_invalid` 配置决定是否断开
+5. **超时错误**：按网络错误处理，立即故障转移
+
+## Web 管理界面
 
 ### 页面结构
 
-1. **主 Dashboard** (`/admin/`)
+#### 1. 主仪表板 (`/admin/`)
+- **端点状态概览**：实时显示所有端点的健康状态
+- **请求统计**：成功/失败请求数量、响应时间等
+- **活跃连接**：当前正在处理的请求数量
+- **错误日志**：最近的错误和警告信息
 
-   - 端点状态概览
-   - 请求统计图表
-   - 最近错误日志
+#### 2. 端点管理 (`/admin/endpoints`)
+- **端点列表**：显示所有配置的端点及其状态
+- **端点配置**：添加、编辑、删除端点
+- **健康检查**：手动触发健康检查
+- **优先级调整**：拖拽调整端点优先级
+- **模型重写规则**：配置模型名称重写
 
-2. **端点配置页** (`/admin/endpoints`)
+#### 3. 请求日志 (`/admin/logs`)
+- **日志查看**：分页显示请求/响应日志
+- **过滤功能**：按端点、状态码、时间范围过滤
+- **详情查看**：展开查看完整的请求/响应内容
+- **JSON 美化**：自动格式化 JSON 内容
+- **SSE 流显示**：流式响应的实时显示
 
-   - 端点列表和状态
-   - 添加/编辑/删除端点
-   - 手动启用/禁用端点
-   - 测试端点连通性
+#### 4. 标签管理 (`/admin/taggers`)
+- **标签器列表**：显示所有已注册的标签器
+- **规则测试**：实时测试标签匹配规则
+- **统计信息**：标签使用频率和分布
+- **Starlark 编辑器**：在线编辑自定义标签脚本
 
-3. **日志查看页** (`/admin/logs`)
+#### 5. 系统设置 (`/admin/settings`)
+- **服务器配置**：端口、超时等基础配置
+- **日志配置**：日志级别、存储设置
+- **验证设置**：响应格式验证规则
+- **国际化设置**：语言和本地化配置
 
-   - 请求日志列表（分页）
-   - 过滤器（失败请求、特定端点、时间范围）
-   - 请求/响应详情查看，包括 header 和 body，注意 body 如果是 json 格式需要 pretty 化，流式响应可以不用把每条结果都 pretty，只要每行流式能正确换行即可
+### 界面特性
 
-4. **系统设置页** (`/admin/settings`)
-
-   - 服务器配置（端口、认证 token）
-   - 日志配置
-   - 健康检查配置
-   - 配置文件导入/导出
-
-### 界面功能特性
-
-- 实时状态刷新（WebSocket 或 Server-Sent Events）
-- 响应式设计，支持移动端查看
-- 深色模式支持
-- 请求日志搜索和过滤
-- 配置变更确认机制
-
-## Anthropic API 调研结论
-
-### 1. 健康检查机制
-
-- **调研结果**：Anthropic API 没有专门的健康检查端点
-- **解决方案**：不进行健康检查，每次都认为此 endpoint 可用，只有尝试失败的时候才会将请求发送到下一个
-- **重试策略**：失败后 60s 重试，配置可调
-
-### 2. Anthropic API 响应格式
-
-**标准响应格式**：
-
-```json
-{
-  "id": "msg_01ABC...", // 消息唯一标识符
-  "type": "message", // 固定值 "message"
-  "role": "assistant", // 固定值 "assistant"
-  "content": [
-    // 内容数组，支持多种类型
-    {
-      "type": "text",
-      "text": "实际回复内容"
-    }
-  ],
-  "model": "claude-3-5-sonnet-20241022", // 使用的具体模型
-  "stop_reason": "end_turn", // 停止原因: end_turn | max_tokens | stop_sequence
-  "stop_sequence": null, // 触发停止的序列(如果有)
-  "usage": {
-    // token使用统计
-    "input_tokens": 123,
-    "output_tokens": 456
-  }
-}
-```
-
-**流式响应格式（SSE）**：
-
-```
-event: message_start
-data: {"type":"message_start","message":{"id":"msg_01...","content":[],...}}
-
-event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello"}}
-
-event: content_block_stop
-data: {"type":"content_block_stop","index":0}
-
-event: message_stop
-data: {"type":"message_stop"}
-```
-
-## 最终技术方案
-
-基于调研结果，确定以下简化技术方案：
-
-### 1. 健康检查
-
-不做健康检查
-
-### 2. 响应验证
-
-- **标准响应**：验证 `id`, `type`, `content`, `model`, `usage` 必要字段
-- **流式响应**：验证 SSE 格式和事件类型（`message_start`, `content_block_*`, `message_stop`）
-- **异常处理**：格式不符合直接断开连接让客户端重连
-- **内容解压**：自动解压 gzip 响应内容，移除压缩相关 HTTP 头部
-
-### 3. 日志系统
-
-- 持久化到 `./logs/` 目录
-- 可通过配置开关关闭持久化
-- 不实现轮转
-- 不需要导出功能
-
-### 4. Web 管理界面
-
-- 无用户认证（本地访问）
-- HTTP 协议（不需要 HTTPS）
-- 配置修改后需要重启服务（不实现热更新）
-- 监听 127.0.0.1（仅本地访问）
-
-### 5. 性能设计
-
-- 不设置并发限制
-- 不实现请求限流
-- 不设置内存日志上限
-
-### 6. 错误处理
-
-- 所有端点不可用返回 **502 Bad Gateway**
-- 当端点返回非 200 错误时候，按照错误处理，将请求发给下一个端点。
-- 支持端点优先级配置（按配置顺序）
-- 端点恢复后直接使用，无需预热
-
-### 7. 认证机制
-
-- 本地 token 写死在配置文件中
-- 不支持动态更新
-- 仅监听 127.0.0.1，无需 IP 白名单
-- 上游 API 认证信息明文存储
-
-## 内容处理机制
-
-### gzip 压缩内容处理
-
-**问题背景**：上游 API 可能返回 gzip 压缩的响应内容，如果直接转发给客户端，会导致以下问题：
-
-1. 客户端收到压缩内容但 HTTP 头部不一致，导致解析错误
-2. 代理无法对压缩内容进行格式验证
-
-**解决方案**：
-
-```go
-// 处理流程
-1. 接收上游响应（可能是 gzip 压缩的）
-2. 检测 Content-Encoding: gzip 头部
-3. 如果是压缩内容：
-   - 解压内容用于验证
-   - 发送解压后的内容给客户端
-   - 移除 Content-Encoding 头部
-   - 更新 Content-Length 头部
-4. 日志记录解压后的可读内容
-```
-
-**关键实现**：
-
-- `decompressGzip()`: 解压 gzip 内容
-- `getDecompressedBody()`: 智能检测并解压
-- 双重处理：压缩内容用于验证，解压内容返回客户端
-- 头部清理：移除 `Content-Encoding` 和 `Content-Length`
+- **多语言支持**：基于 `i18n` 配置的动态语言切换
+- **实时更新**：WebSocket 连接实现状态实时刷新
+- **响应式设计**：支持桌面和移动设备访问
+- **主题切换**：支持明暗主题模式
+- **键盘快捷键**：常用操作的快捷键支持
+- **搜索功能**：全局搜索端点、日志等内容
 
 ## 标签系统设计
 
@@ -522,4 +526,119 @@ tagging:
    - 实时预览标记结果
    - 调试tagger执行过程
 
-这种设计既保持了tagger的独立性，又允许灵活的标签复用，满足复杂场景下的分类需求。
+## API 格式转换机制
+
+### OpenAI 到 Anthropic 转换
+
+系统支持将 OpenAI 格式的请求自动转换为 Anthropic 格式：
+
+```go
+type RequestConverter struct {
+    modelRewriter *modelrewrite.Rewriter
+}
+
+// OpenAI 请求格式
+type OpenAIRequest struct {
+    Model       string                   `json:"model"`
+    Messages    []OpenAIMessage         `json:"messages"`
+    MaxTokens   int                     `json:"max_tokens,omitempty"`
+    Temperature float64                 `json:"temperature,omitempty"`
+    Stream      bool                    `json:"stream,omitempty"`
+}
+
+// Anthropic 请求格式
+type AnthropicRequest struct {
+    Model       string               `json:"model"`
+    Messages    []AnthropicMessage  `json:"messages"`
+    MaxTokens   int                 `json:"max_tokens"`
+    Temperature float64             `json:"temperature,omitempty"`
+    Stream      bool                `json:"stream,omitempty"`
+}
+```
+
+**转换规则**：
+1. **模型映射**：根据 `model_rewrite` 配置重写模型名
+2. **消息转换**：将 OpenAI 消息格式转换为 Anthropic 格式
+3. **参数映射**：将兼容的参数进行对应转换
+4. **响应转换**：将 Anthropic 响应转换回 OpenAI 格式
+
+### 流式响应转换
+
+支持 SSE 流式响应的实时转换：
+
+```go
+type SSEParser struct {
+    buffer *SimpleJSONBuffer
+}
+
+func (p *SSEParser) ParseAndConvert(chunk []byte, targetFormat string) ([]byte, error) {
+    // 解析 SSE 数据块
+    events := p.parseSSEChunk(chunk)
+    
+    // 转换为目标格式
+    for _, event := range events {
+        converted := p.convertEvent(event, targetFormat)
+        // 返回转换后的数据
+    }
+    
+    return convertedChunk, nil
+}
+```
+
+## 安全和认证
+
+### 认证机制
+
+系统支持多种认证方式：
+
+1. **API Key 认证** (`auth_type: "api_key"`)
+   - 适用于 Anthropic API
+   - 格式：`Authorization: Bearer sk-ant-...`
+
+2. **Auth Token 认证** (`auth_type: "auth_token"`)
+   - 适用于通用 API
+   - 格式：`Authorization: Bearer <token>`
+
+3. **OAuth2 认证** (`auth_type: "oauth"`)
+   - 支持自动 token 刷新
+   - 配置包含 access_token、refresh_token 等
+
+### 代理支持
+
+支持通过 HTTP 代理访问上游端点：
+
+```yaml
+proxy:
+  type: "http"  # 或 "socks5"
+  address: "192.168.1.100:8080"
+  username: "user"     # 可选
+  password: "pass"     # 可选
+```
+
+### 超时配置
+
+细粒度的超时控制：
+
+- **TLS 握手超时**：控制 SSL/TLS 连接建立时间
+- **响应头超时**：等待服务器响应头的时间
+- **空闲连接超时**：连接池中空闲连接的保持时间
+- **整体请求超时**：单个请求的总超时时间
+
+### 日志系统
+
+**SQLite 存储**：
+- 使用 SQLite 数据库存储请求日志
+- 支持索引和查询优化
+- 自动清理过期日志
+
+**日志级别**：
+- `debug`：详细的调试信息
+- `info`：一般信息
+- `warn`：警告信息
+- `error`：错误信息
+
+**日志内容**：
+- 完整的请求/响应头部
+- 可配置的请求/响应体记录
+- 响应时间、状态码等元数据
+- 错误堆栈跟踪
