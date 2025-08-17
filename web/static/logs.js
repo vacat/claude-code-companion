@@ -218,9 +218,9 @@ function generateRequestComparisonHtml(log, attemptNum) {
                     <span class="collapsible-toggle">▼</span>
                     <h6 class="mb-0">请求体对比 (${log.request_body_size} 字节) ${hasBodyChanges ? '<span class="badge bg-warning">有修改</span>' : ''}</h6>
                 </div>
-                ${isRequestBodyAnthropicRequest(log.final_request_body || log.request_body) ? `
+                ${isRequestBodyAnthropicRequest(log.original_request_body || log.request_body) ? `
                 <button class="btn btn-outline-primary btn-sm ms-2 inspector-main-btn" 
-                        data-request-body="${safeBase64Encode(log.final_request_body || log.request_body)}"
+                        data-request-body="${safeBase64Encode(log.original_request_body || log.request_body)}"
                         onclick="openRequestInspectorFromMain(this)"
                         title="打开 Anthropic 请求检查器">
                     🔍 分析请求
