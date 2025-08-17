@@ -5,6 +5,7 @@ import (
 	"time"
 	"path/filepath"
 	"os"
+	"strings"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -29,10 +30,10 @@ func NewGORMStorage(logDir string) (*GORMStorage, error) {
 	dbPath := filepath.Join(logDir, "logs.db")
 	config := DefaultGORMConfig(dbPath)
 	
-	// 使用modernc.org/sqlite驱动
+	// 使用modernc.org/sqlite驱动，添加WAL模式和超时设置
 	db, err := gorm.Open(sqlite.Dialector{
 		DriverName: "sqlite",
-		DSN:        dbPath,
+		DSN:        dbPath + "?_journal_mode=WAL&_timeout=5000&_busy_timeout=5000",
 	}, &gorm.Config{
 		Logger: logger.Default.LogMode(config.LogLevel),
 		// 禁用外键约束检查（保持与现有数据库一致）
@@ -55,6 +56,21 @@ func NewGORMStorage(logDir string) (*GORMStorage, error) {
 	sqlDB.SetMaxOpenConns(config.MaxOpenConns)
 	sqlDB.SetMaxIdleConns(config.MaxIdleConns)
 	sqlDB.SetConnMaxLifetime(config.ConnMaxLifetime)
+	
+	// 设置SQLite优化参数以减少锁定
+	optimizationPragmas := []string{
+		"PRAGMA synchronous = NORMAL",     // 平衡性能与安全
+		"PRAGMA cache_size = 10000",       // 增加缓存大小
+		"PRAGMA temp_store = memory",      // 临时数据使用内存
+		"PRAGMA mmap_size = 268435456",    // 启用内存映射（256MB）
+		"PRAGMA busy_timeout = 5000",      // 设置忙等待超时
+	}
+	
+	for _, pragma := range optimizationPragmas {
+		if err := db.Exec(pragma).Error; err != nil {
+			fmt.Printf("Warning: Failed to set pragma %s: %v\n", pragma, err)
+		}
+	}
 	
 	storage := &GORMStorage{
 		db:          db,
@@ -86,9 +102,27 @@ func NewGORMStorage(logDir string) (*GORMStorage, error) {
 func (g *GORMStorage) SaveLog(log *RequestLog) {
 	gormLog := ConvertToGormRequestLog(log)
 	
-	if err := g.db.Create(gormLog).Error; err != nil {
+	// 添加重试机制处理SQLite BUSY错误
+	maxRetries := 3
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		err := g.db.Create(gormLog).Error
+		if err == nil {
+			return // 成功保存
+		}
+		
+		// 检查是否是SQLite忙碌错误
+		if strings.Contains(err.Error(), "database is locked") || 
+		   strings.Contains(err.Error(), "SQLITE_BUSY") {
+			if attempt < maxRetries-1 {
+				// 等待一小段时间后重试
+				time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond)
+				continue
+			}
+		}
+		
 		// 与现有实现保持一致：只打印错误，不返回
 		fmt.Printf("Failed to save log to database: %v\n", err)
+		return
 	}
 }
 
