@@ -215,6 +215,15 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 				return false, true // 验证失败，尝试下一个endpoint
 			}
 			
+			// 如果是SSE流不完整的验证失败，尝试下一个endpoint
+			if strings.Contains(err.Error(), "incomplete SSE stream") || strings.Contains(err.Error(), "missing message_stop") || strings.Contains(err.Error(), "missing [DONE]") || strings.Contains(err.Error(), "missing finish_reason") {
+				s.logger.Info(fmt.Sprintf("Incomplete SSE stream detected for endpoint %s: %v", ep.Name, err))
+				duration := time.Since(endpointStartTime)
+				errorLog := fmt.Sprintf("Incomplete SSE stream: %v", err)
+				s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
+				return false, true // SSE流不完整，尝试下一个endpoint
+			}
+			
 			if s.config.Validation.DisconnectOnInvalid {
 				s.logger.Error("Invalid response format, disconnecting", err)
 				// 记录验证失败的请求日志

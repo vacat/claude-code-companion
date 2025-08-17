@@ -50,7 +50,12 @@ func (v *ResponseValidator) ValidateResponseWithPath(body []byte, isStreaming bo
 	}
 	
 	if isStreaming {
-		return v.ValidateSSEChunk(body, endpointType)
+		// 首先进行基本的SSE chunk验证
+		if err := v.ValidateSSEChunk(body, endpointType); err != nil {
+			return err
+		}
+		// 然后验证完整SSE流的完整性
+		return v.ValidateCompleteSSEStream(body, endpointType)
 	}
 	return v.ValidateStandardResponse(body, endpointType)
 }
@@ -190,6 +195,85 @@ func (v *ResponseValidator) ValidateSSEChunk(chunk []byte, endpointType string) 
 		}
 	}
 
+	return nil
+}
+
+// ValidateCompleteSSEStream 验证完整的SSE流是否包含所有必需的事件
+func (v *ResponseValidator) ValidateCompleteSSEStream(body []byte, endpointType string) error {
+	if endpointType == "anthropic" {
+		return v.validateAnthropicSSECompleteness(body)
+	} else if endpointType == "openai" {
+		return v.validateOpenAISSECompleteness(body)
+	}
+	return nil
+}
+
+// validateAnthropicSSECompleteness 验证Anthropic SSE流的完整性
+func (v *ResponseValidator) validateAnthropicSSECompleteness(body []byte) error {
+	lines := bytes.Split(body, []byte("\n"))
+	hasMessageStart := false
+	hasMessageStop := false
+	
+	for _, line := range lines {
+		line = bytes.TrimSpace(line)
+		if bytes.HasPrefix(line, []byte("event: ")) {
+			eventType := string(line[7:])
+			switch eventType {
+			case "message_start":
+				hasMessageStart = true
+			case "message_stop":
+				hasMessageStop = true
+			}
+		}
+	}
+	
+	if hasMessageStart && !hasMessageStop {
+		return fmt.Errorf("incomplete SSE stream: has message_start but missing message_stop event")
+	}
+	
+	return nil
+}
+
+// validateOpenAISSECompleteness 验证OpenAI SSE流的完整性
+func (v *ResponseValidator) validateOpenAISSECompleteness(body []byte) error {
+	bodyStr := string(body)
+	
+	// OpenAI流式响应应该以[DONE]结束
+	if !strings.Contains(bodyStr, "[DONE]") {
+		return fmt.Errorf("incomplete OpenAI SSE stream: missing [DONE] marker")
+	}
+	
+	// 检查是否有finish_reason
+	lines := bytes.Split(body, []byte("\n"))
+	hasFinishReason := false
+	
+	for _, line := range lines {
+		if bytes.HasPrefix(line, []byte("data: ")) {
+			dataContent := line[6:]
+			if len(dataContent) == 0 || string(dataContent) == "[DONE]" {
+				continue
+			}
+			
+			var data map[string]interface{}
+			if err := json.Unmarshal(dataContent, &data); err != nil {
+				continue
+			}
+			
+			if choices, ok := data["choices"].([]interface{}); ok && len(choices) > 0 {
+				if choice, ok := choices[0].(map[string]interface{}); ok {
+					if finishReason, exists := choice["finish_reason"]; exists && finishReason != nil {
+						hasFinishReason = true
+						break
+					}
+				}
+			}
+		}
+	}
+	
+	if !hasFinishReason {
+		return fmt.Errorf("incomplete OpenAI SSE stream: missing finish_reason in response")
+	}
+	
 	return nil
 }
 
