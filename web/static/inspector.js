@@ -223,6 +223,53 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+// 消息排序切换功能
+window.inspectorToggleMessageOrder = function() {
+    if (!currentParser) {
+        console.warn('No parser available for message ordering');
+        return;
+    }
+    
+    const container = document.getElementById('messages-container');
+    const toggleBtn = document.getElementById('message-order-toggle');
+    const icon = document.getElementById('message-order-icon');
+    const text = document.getElementById('message-order-text');
+    
+    if (!container || !toggleBtn || !icon || !text) {
+        console.warn('Message order toggle elements not found');
+        return;
+    }
+    
+    // 获取当前的排序状态
+    const isReversed = toggleBtn.getAttribute('data-reversed') === 'true';
+    
+    // 获取消息数据并重新渲染
+    const messages = currentParser.parsed.messages;
+    let orderedMessages;
+    
+    if (isReversed) {
+        // 当前是逆序，切换到正序
+        orderedMessages = [...messages];
+        toggleBtn.setAttribute('data-reversed', 'false');
+        icon.textContent = '↑';
+        text.textContent = '正向排列';
+    } else {
+        // 当前是正序，切换到逆序
+        orderedMessages = [...messages].reverse();
+        toggleBtn.setAttribute('data-reversed', 'true');
+        icon.textContent = '↓';
+        text.textContent = '逆向排列';
+    }
+    
+    // 重新渲染消息容器内容
+    let messagesHtml = '';
+    orderedMessages.forEach(message => {
+        messagesHtml += currentUI.renderMessage(message);
+    });
+    
+    container.innerHTML = messagesHtml;
+};
+
 // 检查器初始化
 function initializeInspector() {
     // 检查依赖

@@ -2,14 +2,21 @@
 InspectorUI.prototype.renderMessages = function(messages) {
     let messagesHtml = `
         <div class="inspector-section">
-            <h6 class="inspector-title">💬 对话消息</h6>
+            <div class="inspector-title-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h6 class="inspector-title" style="margin-bottom: 0;">💬 对话消息</h6>
+                <button class="inspector-btn btn btn-sm" onclick="window.inspectorToggleMessageOrder()" id="message-order-toggle" data-reversed="false" style="padding: 4px 12px; font-size: 12px;">
+                    <span id="message-order-icon">↑</span>
+                    <span id="message-order-text">正向排列</span>
+                </button>
+            </div>
+            <div id="messages-container">
     `;
 
     messages.forEach(message => {
         messagesHtml += this.renderMessage(message);
     });
 
-    messagesHtml += '</div>';
+    messagesHtml += '</div></div>';
     this.container.appendChild(this.createElementFromHTML(messagesHtml));
 };
 
