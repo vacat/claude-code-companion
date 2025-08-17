@@ -35,54 +35,16 @@ class InspectorUI {
         const overviewHtml = `
             <div class="inspector-section">
                 <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${overviewId}')">
-                    <span class="inspector-collapse-icon" id="${overviewId}-icon">▶</span>
+                    <span class="inspector-collapse-icon" id="${overviewId}-icon">▼</span>
                     📊 请求概览
                 </div>
-                <div class="inspector-collapse-content" id="${overviewId}" style="display: none;">
-                    <div class="row g-3">
-                    <div class="col-md-3">
-                        <div class="inspector-stat">
-                            <div class="inspector-stat-label">模型</div>
-                            <div class="inspector-stat-value">${this.escapeHtml(overview.model)}</div>
-                        </div>
+                <div class="inspector-collapse-content" id="${overviewId}" style="display: block;">
+                    <div class="inspector-overview-compact">
+                        📈 ${this.escapeHtml(overview.model)} | 
+                        🎯 ${overview.maxTokens} tokens | 
+                        💬 ${overview.messageCount} 消息 | 
+                        🔧 ${overview.toolCount} 工具${overview.thinkingEnabled ? ` | 🧠 ${overview.thinkingBudget} tokens` : ''}${overview.estimatedTokens > 0 ? ` | 📊 预估 ${overview.estimatedTokens} tokens` : ''}
                     </div>
-                    <div class="col-md-3">
-                        <div class="inspector-stat">
-                            <div class="inspector-stat-label">最大令牌</div>
-                            <div class="inspector-stat-value">${overview.maxTokens}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="inspector-stat">
-                            <div class="inspector-stat-label">消息数</div>
-                            <div class="inspector-stat-value">${overview.messageCount}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="inspector-stat">
-                            <div class="inspector-stat-label">工具数</div>
-                            <div class="inspector-stat-value">${overview.toolCount}</div>
-                        </div>
-                    </div>
-                    ${overview.thinkingEnabled ? `
-                    <div class="col-md-3">
-                        <div class="inspector-stat">
-                            <div class="inspector-stat-label">思考模式</div>
-                            <div class="inspector-stat-value">${overview.thinkingBudget} tokens</div>
-                        </div>
-                    </div>
-                    ` : ''}
-                    </div>
-                    ${overview.estimatedTokens > 0 ? `
-                    <div class="row g-3 mt-2">
-                        <div class="col-md-12">
-                            <div class="inspector-stat">
-                                <div class="inspector-stat-label">预估令牌</div>
-                                <div class="inspector-stat-value">${overview.estimatedTokens}</div>
-                            </div>
-                        </div>
-                    </div>
-                    ` : ''}
                 </div>
             </div>
         `;

@@ -295,3 +295,30 @@
     margin-left: 0.5rem;
     opacity: 0.8;
 }
+
+/* 请求概览密集布局样式 */
+.inspector-overview-compact {
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #495057;
+    line-height: 1.4;
+}
+
+/* Inspector主按钮样式 */
+.inspector-main-btn {
+    white-space: nowrap;
+    font-weight: 500;
+    border-color: #007bff !important;
+    color: #007bff !important;
+    transition: all 0.2s ease;
+}
+
+.inspector-main-btn:hover {
+    background-color: #007bff !important;
+    color: white !important;
+    transform: scale(1.02);
+}

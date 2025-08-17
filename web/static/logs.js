@@ -218,6 +218,14 @@ function generateRequestComparisonHtml(log, attemptNum) {
                     <span class="collapsible-toggle">▼</span>
                     <h6 class="mb-0">请求体对比 (${log.request_body_size} 字节) ${hasBodyChanges ? '<span class="badge bg-warning">有修改</span>' : ''}</h6>
                 </div>
+                ${isRequestBodyAnthropicRequest(log.final_request_body || log.request_body) ? `
+                <button class="btn btn-outline-primary btn-sm ms-2 inspector-main-btn" 
+                        data-request-body="${safeBase64Encode(log.final_request_body || log.request_body)}"
+                        onclick="openRequestInspectorFromMain(this)"
+                        title="打开 Anthropic 请求检查器">
+                    🔍 分析请求
+                </button>
+                ` : ''}
             </div>
             <div class="collapsible-content" id="requestBody${attemptNum}">
                 ${hasBodyChanges ? `
@@ -507,21 +515,6 @@ function createContentBoxWithActions(content, filename, encodedContent, maxHeigh
     if (!content) content = '无内容';
     if (!encodedContent) encodedContent = '';
     
-    // 检查是否为 Anthropic 请求（只在请求体中显示检查器按钮）
-    const isRequestBody = filename.includes('请求体') || filename.includes('request_body');
-    let shouldShowInspector = false;
-    let requestBodyContent = '';
-    
-    if (isRequestBody && encodedContent) {
-        try {
-            requestBodyContent = safeBase64Decode(encodedContent);
-            shouldShowInspector = isAnthropicRequest(requestBodyContent);
-        } catch (e) {
-            // Base64 解码失败，跳过检查器
-            shouldShowInspector = false;
-        }
-    }
-    
     return `
         <div class="json-pretty-container">
             <div class="json-pretty" style="max-height: ${maxHeight};">${content}</div>
@@ -540,14 +533,6 @@ function createContentBoxWithActions(content, filename, encodedContent, maxHeigh
                         title="保存到文件">
                     <i class="fas fa-download"></i>
                 </button>
-                ${shouldShowInspector ? `
-                <button class="floating-action-btn inspector-btn" 
-                        data-request-body="${encodedContent}"
-                        onclick="openRequestInspectorFromFloating(this)"
-                        title="检查 Anthropic 请求">
-                    🔍
-                </button>
-                ` : ''}
             </div>
         </div>`;
 }
@@ -649,5 +634,48 @@ function openRequestInspectorFromFloating(button) {
     } catch (e) {
         console.error('Failed to decode request body:', e);
         alert('请求数据解码失败');
+    }
+}
+
+// 从主按钮打开请求检查器
+function openRequestInspectorFromMain(button) {
+    const encodedContent = button.getAttribute('data-request-body');
+    if (!encodedContent) {
+        alert('未找到请求数据');
+        return;
+    }
+    
+    try {
+        // 使用 safeBase64Decode 而不是 atob 来正确处理UTF-8编码
+        const requestBody = safeBase64Decode(encodedContent);
+        
+        // 临时设置到隐藏的按钮元素上，供 openRequestInspector 使用
+        let tempBtn = document.getElementById('tempInspectRequestBtn');
+        if (!tempBtn) {
+            tempBtn = document.createElement('button');
+            tempBtn.id = 'tempInspectRequestBtn';
+            tempBtn.style.display = 'none';
+            document.body.appendChild(tempBtn);
+        }
+        tempBtn.setAttribute('data-request-body', requestBody);
+        
+        // 调用检查器
+        openRequestInspector();
+    } catch (e) {
+        console.error('Failed to decode request body:', e);
+        alert('请求数据解码失败');
+    }
+}
+
+// 检查请求体是否为Anthropic请求
+function isRequestBodyAnthropicRequest(requestBody) {
+    if (!requestBody) return false;
+    
+    try {
+        const data = JSON.parse(requestBody);
+        // 检查基本的 Anthropic API 格式
+        return data.model && data.messages && Array.isArray(data.messages);
+    } catch {
+        return false;
     }
 }
