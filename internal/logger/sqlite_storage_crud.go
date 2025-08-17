@@ -23,30 +23,30 @@ func (s *SQLiteStorage) SaveLog(log *RequestLog) {
 
 	insertSQL := `
 	INSERT INTO request_logs (
-		timestamp, request_id, endpoint, method, path, status_code, duration_ms, attempt_number,
+		timestamp, request_id, endpoint, method, path, status_code, duration_ms,
 		request_headers, request_body, request_body_size,
 		response_headers, response_body, response_body_size,
 		is_streaming, model, error, tags, content_type_override,
 		original_model, rewritten_model, model_rewrite_applied,
-		thinking_enabled, thinking_budget_tokens,
 		original_request_url, original_request_headers, original_request_body,
 		original_response_headers, original_response_body,
 		final_request_url, final_request_headers, final_request_body,
-		final_response_headers, final_response_body
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		final_response_headers, final_response_body,
+		attempt_number, thinking_enabled, thinking_budget_tokens
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.Exec(insertSQL,
 		log.Timestamp, log.RequestID, log.Endpoint, log.Method, log.Path,
-		log.StatusCode, log.DurationMs, log.AttemptNumber,
+		log.StatusCode, log.DurationMs,
 		string(requestHeaders), log.RequestBody, log.RequestBodySize,
 		string(responseHeaders), log.ResponseBody, log.ResponseBodySize,
 		log.IsStreaming, log.Model, log.Error, string(tags), log.ContentTypeOverride,
 		log.OriginalModel, log.RewrittenModel, log.ModelRewriteApplied,
-		log.ThinkingEnabled, log.ThinkingBudgetTokens,
 		log.OriginalRequestURL, string(originalRequestHeaders), log.OriginalRequestBody,
 		string(originalResponseHeaders), log.OriginalResponseBody,
 		log.FinalRequestURL, string(finalRequestHeaders), log.FinalRequestBody,
 		string(finalResponseHeaders), log.FinalResponseBody,
+		log.AttemptNumber, log.ThinkingEnabled, log.ThinkingBudgetTokens,
 	)
 
 	if err != nil {
