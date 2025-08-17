@@ -54,9 +54,9 @@ data: [DONE]
 		t.Error("Result should be in SSE format with 'data:' prefixes")
 	}
 
-	// 验证包含结束标记
-	if !strings.Contains(resultStr, "[DONE]") {
-		t.Error("Result should contain [DONE] marker")
+	// Anthropic 格式不使用 [DONE] 标记，而是以 message_stop 事件结束
+	if !strings.Contains(resultStr, "message_stop") {
+		t.Error("Result should contain message_stop event")
 	}
 }
 
