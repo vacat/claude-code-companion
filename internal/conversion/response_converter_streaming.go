@@ -98,6 +98,38 @@ func (c *ResponseConverter) convertStreamingResponse(openaiResp []byte, ctx *Con
 		for _, state := range ctx.StreamState.ToolCallStates {
 			// 只有已经开始且未完成的工具调用才需要发送 content_block_stop
 			if state.Started && !state.Completed {
+				// 在结束工具调用前，发送任何剩余的修复后的 JSON 内容
+				if state.JSONBuffer != nil {
+					// 检查是否有剩余的增量内容需要发送（使用修复后的方法）
+					if incrementalContent, hasNewContent := state.JSONBuffer.GetFixedIncrementalOutput(); hasNewContent && incrementalContent != "" {
+						deltaEvent := map[string]interface{}{
+							"type":  "content_block_delta",
+							"index": state.BlockIndex,
+							"delta": map[string]interface{}{
+								"type": "input_json_delta",
+								"partial_json": incrementalContent,
+							},
+						}
+						deltaData, _ := json.Marshal(deltaEvent)
+						allEvents = append(allEvents, "event: content_block_delta")
+						allEvents = append(allEvents, "data: "+string(deltaData))
+						allEvents = append(allEvents, "")
+					}
+					
+					// 应用最终的 Python 风格修复（如果需要）
+					originalContent := state.JSONBuffer.GetBufferedContent()
+					fixedContent := state.JSONBuffer.GetFixedBufferedContent()
+					
+					// 如果修复后的内容与原始内容不同，说明进行了修复
+					if originalContent != fixedContent && c.logger != nil {
+						c.logger.Debug("Applied Python JSON fix at tool call completion", map[string]interface{}{
+							"tool_name": state.Name,
+							"original": originalContent,
+							"fixed": fixedContent,
+						})
+					}
+				}
+				
 				stopEvent := map[string]interface{}{
 					"type":  "content_block_stop",
 					"index": state.BlockIndex,

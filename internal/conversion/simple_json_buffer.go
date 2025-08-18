@@ -146,6 +146,83 @@ func (b *SimpleJSONBuffer) GetFixedBufferedContent() string {
 	return content
 }
 
+// GetFixedIncrementalOutput 获取修复后的增量输出
+// 返回 (incrementalContent, hasNewContent)
+func (b *SimpleJSONBuffer) GetFixedIncrementalOutput() (string, bool) {
+	// 首先获取原始的增量内容
+	current := b.buffer.String()
+	currentLength := len(current)
+	
+	if currentLength <= b.lastOutputLength {
+		return "", false
+	}
+	
+	// 计算原始增量部分
+	originalIncrement := current[b.lastOutputLength:]
+	
+	// 检查当前缓冲内容是否看起来像完整或接近完整的JSON
+	// 只有当JSON结构相对完整时才尝试修复
+	isCompleteEnough := b.isJSONCompleteEnough(current)
+	
+	if !isCompleteEnough {
+		// 如果JSON还不够完整，直接返回原始增量
+		b.lastOutputLength = currentLength
+		return originalIncrement, len(originalIncrement) > 0
+	}
+	
+	// JSON看起来够完整了，尝试应用修复
+	workingContent := current
+	if b.fixer != nil && b.fixer.ShouldApplyFix(b.toolName, current) {
+		if fixed, wasFixed := b.fixer.FixPythonStyleJSON(current); wasFixed {
+			workingContent = fixed
+		}
+	}
+	
+	// 计算修复后的增量部分
+	workingLength := len(workingContent)
+	if workingLength <= b.lastOutputLength {
+		// 修复后的内容可能更短，返回剩余部分
+		newContent := workingContent[min(b.lastOutputLength, workingLength):]
+		b.lastOutputLength = workingLength
+		return newContent, len(newContent) > 0
+	}
+	
+	// 返回自上次输出以来的新增内容
+	newContent := workingContent[b.lastOutputLength:]
+	b.lastOutputLength = workingLength
+	
+	return newContent, len(newContent) > 0
+}
+
+// isJSONCompleteEnough 检查JSON是否足够完整以进行修复
+func (b *SimpleJSONBuffer) isJSONCompleteEnough(content string) bool {
+	if content == "" {
+		return false
+	}
+	
+	// 简单的启发式检查：
+	// 1. 内容以 { 开始且以 } 结束
+	// 2. 或者内容以 [ 开始且以 ] 结束
+	// 3. 且长度足够长（避免在很短的片段上进行修复）
+	
+	if len(content) < 20 {
+		return false
+	}
+	
+	trimmed := strings.TrimSpace(content)
+	if len(trimmed) == 0 {
+		return false
+	}
+	
+	// 检查是否有匹配的开始和结束符号
+	if (trimmed[0] == '{' && trimmed[len(trimmed)-1] == '}') ||
+	   (trimmed[0] == '[' && trimmed[len(trimmed)-1] == ']') {
+		return true
+	}
+	
+	return false
+}
+
 // tryFixPythonStyle 尝试修复当前缓冲内容中的Python风格格式
 func (b *SimpleJSONBuffer) tryFixPythonStyle() bool {
 	if b.fixer == nil {
@@ -169,4 +246,12 @@ func (b *SimpleJSONBuffer) tryFixPythonStyle() bool {
 	}
 	
 	return false
+}
+
+// min 返回两个整数的最小值
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

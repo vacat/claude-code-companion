@@ -166,8 +166,8 @@ func (c *ResponseConverter) convertSingleChunkToEvents(chunk OpenAIStreamChunk, 
 				
 				// 只有在工具已经开始（有name）时才发送增量
 				if state.Started && state.NameReceived {
-					// 获取增量输出
-					if incrementalContent, hasNewContent := state.JSONBuffer.GetIncrementalOutput(); hasNewContent && incrementalContent != "" {
+					// 获取修复后的增量输出
+					if incrementalContent, hasNewContent := state.JSONBuffer.GetFixedIncrementalOutput(); hasNewContent && incrementalContent != "" {
 						deltaEvent := map[string]interface{}{
 							"type":  "content_block_delta",
 							"index": state.BlockIndex,
