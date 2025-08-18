@@ -83,15 +83,44 @@ func (a *MessageAggregator) processChunk(chunk OpenAIStreamChunk, aggregated *Ag
 
 // processToolCall processes a single tool call delta
 func (a *MessageAggregator) processToolCall(toolCall OpenAIToolCall, toolCallStates map[string]*AggregatedToolCall) {
-	// Get or create tool call state
-	state, exists := toolCallStates[toolCall.ID]
-	if !exists {
-		state = &AggregatedToolCall{
-			ID:        toolCall.ID,
-			Name:      "",
-			Arguments: "",
+	var state *AggregatedToolCall
+	var stateKey string
+	
+	// Handle case where subsequent chunks don't have ID (OpenAI streaming behavior)
+	if toolCall.ID == "" {
+		// Find existing tool call by index (should only have one active tool call per index)
+		// In most cases, there will be only one tool call, so we can use the first one
+		for key, existingState := range toolCallStates {
+			if key != "" { // Skip any accidentally created empty-key states
+				state = existingState
+				stateKey = key
+				break
+			}
 		}
-		toolCallStates[toolCall.ID] = state
+		
+		// If no existing state found, this is an error case - create one with a placeholder ID
+		if state == nil {
+			stateKey = fmt.Sprintf("tool_call_%d", toolCall.Index)
+			state = &AggregatedToolCall{
+				ID:        stateKey,
+				Name:      "",
+				Arguments: "",
+			}
+			toolCallStates[stateKey] = state
+		}
+	} else {
+		// Normal case: tool call has ID
+		stateKey = toolCall.ID
+		var exists bool
+		state, exists = toolCallStates[stateKey]
+		if !exists {
+			state = &AggregatedToolCall{
+				ID:        toolCall.ID,
+				Name:      "",
+				Arguments: "",
+			}
+			toolCallStates[stateKey] = state
+		}
 	}
 
 	// Update name (should only be set once)
