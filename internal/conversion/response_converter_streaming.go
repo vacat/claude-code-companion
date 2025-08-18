@@ -122,33 +122,36 @@ func (c *ResponseConverter) convertStreamingResponse(openaiResp []byte, ctx *Con
 			allEvents = append(allEvents, "")
 		}
 
-		// 发送 message_delta（如果有usage信息）
-		if finalUsage != nil {
-			// 转换 OpenAI 的 finish_reason 到 Anthropic 格式
-			stopReason := "end_turn"  // 默认值
-			if finalStopReason == "tool_calls" {
-				stopReason = "tool_use"
-			} else if finalStopReason == "length" {
-				stopReason = "max_tokens"
-			}
-			// 其他情况（包括 "stop"）都映射为 "end_turn"
-			
-			messageDeltaEvent := map[string]interface{}{
-				"type": "message_delta",
-				"delta": map[string]interface{}{
-					"stop_reason": stopReason,
-					"stop_sequence": nil,
-				},
-				"usage": map[string]interface{}{
-					"input_tokens":  finalUsage.PromptTokens,
-					"output_tokens": finalUsage.CompletionTokens,
-				},
-			}
-			messageDeltaData, _ := json.Marshal(messageDeltaEvent)
-			allEvents = append(allEvents, "event: message_delta")
-			allEvents = append(allEvents, "data: "+string(messageDeltaData))
-			allEvents = append(allEvents, "")
+		// 转换 OpenAI 的 finish_reason 到 Anthropic 格式
+		stopReason := "end_turn"  // 默认值
+		if finalStopReason == "tool_calls" {
+			stopReason = "tool_use"
+		} else if finalStopReason == "length" {
+			stopReason = "max_tokens"
 		}
+		// 其他情况（包括 "stop"）都映射为 "end_turn"
+		
+		// 发送 message_delta 事件（包含 stop_reason）
+		messageDeltaEvent := map[string]interface{}{
+			"type": "message_delta",
+			"delta": map[string]interface{}{
+				"stop_reason": stopReason,
+				"stop_sequence": nil,
+			},
+		}
+		
+		// 如果有 usage 信息，则添加到 message_delta 中
+		if finalUsage != nil {
+			messageDeltaEvent["usage"] = map[string]interface{}{
+				"input_tokens":  finalUsage.PromptTokens,
+				"output_tokens": finalUsage.CompletionTokens,
+			}
+		}
+		
+		messageDeltaData, _ := json.Marshal(messageDeltaEvent)
+		allEvents = append(allEvents, "event: message_delta")
+		allEvents = append(allEvents, "data: "+string(messageDeltaData))
+		allEvents = append(allEvents, "")
 
 		// 发送最终的消息结束事件
 		messageStopEvent := map[string]interface{}{
