@@ -154,3 +154,21 @@ function isAnthropicResponse(responseBody) {
         return false;
     }
 }
+
+function hasSSEFormatError(log) {
+    if (!log || !log.error) return false;
+    
+    // 检查是否有 SSE 格式相关的错误信息
+    const sseErrorPatterns = [
+        'Incomplete SSE stream',
+        'incomplete SSE stream',
+        'missing message_stop',
+        'missing [DONE]',
+        'missing finish_reason',
+        'has message_start but missing message_stop'
+    ];
+    
+    return sseErrorPatterns.some(pattern => 
+        log.error.includes(pattern)
+    );
+}
