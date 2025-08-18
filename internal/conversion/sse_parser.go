@@ -114,10 +114,38 @@ func (p *SSEParser) BuildAnthropicSSEStream(events []string) []byte {
 
 // ValidateSSEFormat 验证数据是否为有效的 SSE 格式
 func (p *SSEParser) ValidateSSEFormat(data []byte) bool {
-	// 简单检查是否包含 SSE 特征
+	if len(data) == 0 {
+		return false
+	}
+	
 	dataStr := string(data)
-	return strings.Contains(dataStr, "data:") && 
-		   (strings.Contains(dataStr, "text/event-stream") || 
-		    strings.Contains(dataStr, "[DONE]") ||
-		    len(strings.Split(dataStr, "\n")) > 1)
+	
+	// 首先检查是否是有效的JSON，如果是JSON则不是SSE
+	trimmed := strings.TrimSpace(dataStr)
+	if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
+		(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
+		// 尝试解析JSON来确认
+		var temp interface{}
+		if json.Unmarshal(data, &temp) == nil {
+			return false // 是有效的JSON，不是SSE
+		}
+	}
+	
+	// 检查SSE格式：必须有以"event: "或"data: "开头的行
+	lines := strings.Split(dataStr, "\n")
+	hasEventLine := false
+	hasDataLine := false
+	
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmedLine, "event: ") {
+			hasEventLine = true
+		}
+		if strings.HasPrefix(trimmedLine, "data: ") {
+			hasDataLine = true
+		}
+	}
+	
+	// SSE格式必须至少有一个data:行
+	return hasDataLine && (hasEventLine || strings.Contains(dataStr, "[DONE]") || len(lines) > 2)
 }
