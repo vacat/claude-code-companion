@@ -27,10 +27,11 @@ func NewRewriter(logger logger.Logger) *Rewriter {
 
 // RewriteRequest 重写请求中的模型名称
 func (r *Rewriter) RewriteRequest(req *http.Request, modelRewriteConfig *config.ModelRewriteConfig) (string, string, error) {
-	if modelRewriteConfig == nil || !modelRewriteConfig.Enabled {
-		return "", "", nil // 未启用重写，返回空字符串表示无重写
-	}
+	return r.RewriteRequestWithTags(req, modelRewriteConfig, nil)
+}
 
+// RewriteRequestWithTags 重写请求中的模型名称，支持通用端点的隐式重写规则
+func (r *Rewriter) RewriteRequestWithTags(req *http.Request, modelRewriteConfig *config.ModelRewriteConfig, endpointTags []string) (string, string, error) {
 	// 读取请求体
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -61,8 +62,33 @@ func (r *Rewriter) RewriteRequest(req *http.Request, modelRewriteConfig *config.
 		return "", "", nil // model字段不是字符串，跳过重写
 	}
 
+	// 确定重写规则
+	var rules []config.ModelRewriteRule
+	isGenericEndpoint := len(endpointTags) == 0
+	hasExplicitRules := modelRewriteConfig != nil && modelRewriteConfig.Enabled && len(modelRewriteConfig.Rules) > 0
+
+	if hasExplicitRules {
+		// 使用显式配置的规则
+		rules = modelRewriteConfig.Rules
+	} else if isGenericEndpoint && !strings.HasPrefix(originalModel, "claude") {
+		// 通用端点的隐式规则：非claude模型重写为claude-sonnet-4-20250514
+		rules = []config.ModelRewriteRule{
+			{
+				SourcePattern: "*",
+				TargetModel:   "claude-sonnet-4-20250514",
+			},
+		}
+		r.logger.Debug("Applying implicit model rewrite rule for generic endpoint", map[string]interface{}{
+			"original_model": originalModel,
+			"target_model":   "claude-sonnet-4-20250514",
+		})
+	} else {
+		// 没有规则应用
+		return "", "", nil
+	}
+
 	// 应用重写规则
-	newModel := r.applyRewriteRules(originalModel, modelRewriteConfig.Rules)
+	newModel := r.applyRewriteRules(originalModel, rules)
 	if newModel == originalModel {
 		return "", "", nil // 没有重写，返回空字符串
 	}
