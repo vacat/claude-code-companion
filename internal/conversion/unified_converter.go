@@ -100,7 +100,7 @@ func (c *UnifiedConverter) generateContentEvents(msg *AggregatedMessage, blockIn
 
 	// Generate tool call events
 	for _, toolCall := range msg.ToolCalls {
-		toolEvents, err := c.generateToolUseEvents(toolCall, blockIndex, msg.FinishReason)
+		toolEvents, err := c.generateToolUseEvents(toolCall, blockIndex)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate tool events for %s: %w", toolCall.Name, err)
 		}
@@ -175,25 +175,9 @@ func (c *UnifiedConverter) generateTextEvents(textContent string, blockIndex *in
 }
 
 // generateToolUseEvents creates events for a tool call using streaming partial_json approach
-func (c *UnifiedConverter) generateToolUseEvents(toolCall AggregatedToolCall, blockIndex *int, finishReason string) ([]AnthropicSSEEvent, error) {
+func (c *UnifiedConverter) generateToolUseEvents(toolCall AggregatedToolCall, blockIndex *int) ([]AnthropicSSEEvent, error) {
 	var events []AnthropicSSEEvent
 	currentIndex := *blockIndex
-
-	// Check if response was truncated due to max_tokens and arguments are incomplete JSON
-	if finishReason == "max_tokens" && !c.isValidCompleteJSON(toolCall.Arguments) {
-		// Skip tool_use content block for truncated responses with incomplete JSON
-		// This prevents Claude Code from treating incomplete arguments as valid tool calls
-		if c.logger != nil {
-			c.logger.Debug("Skipping tool_use block for truncated response with incomplete JSON", map[string]interface{}{
-				"tool_name": toolCall.Name,
-				"tool_id": toolCall.ID,
-				"arguments_length": len(toolCall.Arguments),
-				"finish_reason": finishReason,
-			})
-		}
-		// Don't increment blockIndex since no block was created
-		return events, nil
-	}
 
 	// Content block start for tool use - with empty input (streaming approach)
 	contentBlock := &AnthropicContentBlock{
@@ -301,61 +285,6 @@ func (c *UnifiedConverter) insertPingAfterFirstContentBlock(events []AnthropicSS
 	}
 	// If no content_block_start found, append at end
 	return append(events, pingEvent)
-}
-
-// isValidCompleteJSON checks if the given string is valid and complete JSON
-func (c *UnifiedConverter) isValidCompleteJSON(jsonStr string) bool {
-	if jsonStr == "" {
-		return true // Empty is considered complete
-	}
-	
-	// Try to unmarshal as JSON
-	var result interface{}
-	err := json.Unmarshal([]byte(jsonStr), &result)
-	if err != nil {
-		// If JSON parsing fails, it's incomplete or invalid
-		return false
-	}
-	
-	// Additional structural checks for common incomplete patterns
-	// Check for unmatched braces/brackets
-	braceCount := 0
-	bracketCount := 0
-	inString := false
-	escaped := false
-	
-	for _, r := range jsonStr {
-		if escaped {
-			escaped = false
-			continue
-		}
-		
-		if r == '\\' {
-			escaped = true
-			continue
-		}
-		
-		if r == '"' {
-			inString = !inString
-			continue
-		}
-		
-		if !inString {
-			switch r {
-			case '{':
-				braceCount++
-			case '}':
-				braceCount--
-			case '[':
-				bracketCount++
-			case ']':
-				bracketCount--
-			}
-		}
-	}
-	
-	// Check if all braces and brackets are balanced
-	return braceCount == 0 && bracketCount == 0 && !inString
 }
 
 // splitUTF8String safely splits a UTF-8 string into chunks without breaking multi-byte characters
