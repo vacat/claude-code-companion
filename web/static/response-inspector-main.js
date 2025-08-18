@@ -75,6 +75,11 @@ function exportResponseAnalysis() {
 }
 
 function isAnthropicResponse(responseBody) {
+    // 检查 responseBody 是否为有效值
+    if (!responseBody) {
+        return false;
+    }
+    
     try {
         // 检查非流式响应
         const data = JSON.parse(responseBody);
