@@ -16,24 +16,25 @@ func (s *AdminServer) saveEndpointsToConfig(endpointConfigs []config.EndpointCon
 }
 
 // createEndpointConfigFromRequest 从请求创建端点配置，自动设置优先级
-func createEndpointConfigFromRequest(name, url, endpointType, pathPrefix, authType, authValue string, enabled bool, priority int, tags []string, proxy *config.ProxyConfig, oauthConfig *config.OAuthConfig) config.EndpointConfig {
+func createEndpointConfigFromRequest(name, url, endpointType, pathPrefix, authType, authValue string, enabled bool, priority int, tags []string, proxy *config.ProxyConfig, oauthConfig *config.OAuthConfig, overrideMaxTokens *int) config.EndpointConfig {
 	// 如果没有指定endpoint_type，默认为anthropic（向后兼容）
 	if endpointType == "" {
 		endpointType = "anthropic"
 	}
 	
 	return config.EndpointConfig{
-		Name:         name,
-		URL:          url,
-		EndpointType: endpointType,
-		PathPrefix:   pathPrefix, // 新增：支持路径前缀
-		AuthType:     authType,
-		AuthValue:    authValue,
-		Enabled:      enabled,
-		Priority:     priority,
-		Tags:         tags,
-		Proxy:        proxy, // 新增：支持代理配置
-		OAuthConfig:  oauthConfig, // 新增：支持OAuth配置
+		Name:              name,
+		URL:               url,
+		EndpointType:      endpointType,
+		PathPrefix:        pathPrefix, // 新增：支持路径前缀
+		AuthType:          authType,
+		AuthValue:         authValue,
+		Enabled:           enabled,
+		Priority:          priority,
+		Tags:              tags,
+		Proxy:             proxy, // 新增：支持代理配置
+		OAuthConfig:       oauthConfig, // 新增：支持OAuth配置
+		OverrideMaxTokens: overrideMaxTokens, // 新增：支持max_tokens覆盖配置
 	}
 }
 

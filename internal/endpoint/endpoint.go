@@ -24,27 +24,28 @@ const (
 // 删除不再需要的 RequestRecord 定义，因为已经移到 utils 包
 
 type Endpoint struct {
-	ID              string                   `json:"id"`
-	Name            string                   `json:"name"`
-	URL             string                   `json:"url"`
-	EndpointType    string                   `json:"endpoint_type"` // "anthropic" | "openai" 等
-	PathPrefix      string                   `json:"path_prefix,omitempty"` // OpenAI端点的路径前缀
-	AuthType        string                   `json:"auth_type"`
-	AuthValue       string                   `json:"auth_value"`
-	Enabled         bool                     `json:"enabled"`
-	Priority        int                      `json:"priority"`
-	Tags            []string                 `json:"tags"`           // 新增：支持的tag列表
-	ModelRewrite    *config.ModelRewriteConfig `json:"model_rewrite,omitempty"` // 新增：模型重写配置
-	Proxy           *config.ProxyConfig      `json:"proxy,omitempty"` // 新增：代理配置
-	OAuthConfig     *config.OAuthConfig      `json:"oauth_config,omitempty"` // 新增：OAuth配置
-	Status          Status                   `json:"status"`
-	LastCheck       time.Time                `json:"last_check"`
-	FailureCount    int                      `json:"failure_count"`
-	TotalRequests   int                      `json:"total_requests"`
-	SuccessRequests int                      `json:"success_requests"`
-	LastFailure     time.Time                `json:"last_failure"`
-	RequestHistory  *utils.CircularBuffer    `json:"-"` // 使用环形缓冲区，不导出到JSON
-	mutex           sync.RWMutex
+	ID                string                   `json:"id"`
+	Name              string                   `json:"name"`
+	URL               string                   `json:"url"`
+	EndpointType      string                   `json:"endpoint_type"` // "anthropic" | "openai" 等
+	PathPrefix        string                   `json:"path_prefix,omitempty"` // OpenAI端点的路径前缀
+	AuthType          string                   `json:"auth_type"`
+	AuthValue         string                   `json:"auth_value"`
+	Enabled           bool                     `json:"enabled"`
+	Priority          int                      `json:"priority"`
+	Tags              []string                 `json:"tags"`           // 新增：支持的tag列表
+	ModelRewrite      *config.ModelRewriteConfig `json:"model_rewrite,omitempty"` // 新增：模型重写配置
+	Proxy             *config.ProxyConfig      `json:"proxy,omitempty"` // 新增：代理配置
+	OAuthConfig       *config.OAuthConfig      `json:"oauth_config,omitempty"` // 新增：OAuth配置
+	OverrideMaxTokens *int                     `json:"override_max_tokens,omitempty"` // 新增：覆盖max_tokens配置
+	Status            Status                   `json:"status"`
+	LastCheck         time.Time                `json:"last_check"`
+	FailureCount      int                      `json:"failure_count"`
+	TotalRequests     int                      `json:"total_requests"`
+	SuccessRequests   int                      `json:"success_requests"`
+	LastFailure       time.Time                `json:"last_failure"`
+	RequestHistory    *utils.CircularBuffer    `json:"-"` // 使用环形缓冲区，不导出到JSON
+	mutex             sync.RWMutex
 }
 
 func NewEndpoint(config config.EndpointConfig) *Endpoint {
@@ -55,22 +56,23 @@ func NewEndpoint(config config.EndpointConfig) *Endpoint {
 	}
 	
 	return &Endpoint{
-		ID:             generateID(config.Name),
-		Name:           config.Name,
-		URL:            config.URL,
-		EndpointType:   endpointType,
-		PathPrefix:     config.PathPrefix,  // 新增：复制PathPrefix
-		AuthType:       config.AuthType,
-		AuthValue:      config.AuthValue,
-		Enabled:        config.Enabled,
-		Priority:       config.Priority,
-		Tags:           config.Tags,       // 新增：从配置中复制tags
-		ModelRewrite:   config.ModelRewrite, // 新增：从配置中复制模型重写配置
-		Proxy:          config.Proxy,      // 新增：从配置中复制代理配置
-		OAuthConfig:    config.OAuthConfig, // 新增：从配置中复制OAuth配置
-		Status:         StatusActive,
-		LastCheck:      time.Now(),
-		RequestHistory: utils.NewCircularBuffer(100, 140*time.Second), // 100个记录，140秒窗口
+		ID:                generateID(config.Name),
+		Name:              config.Name,
+		URL:               config.URL,
+		EndpointType:      endpointType,
+		PathPrefix:        config.PathPrefix,  // 新增：复制PathPrefix
+		AuthType:          config.AuthType,
+		AuthValue:         config.AuthValue,
+		Enabled:           config.Enabled,
+		Priority:          config.Priority,
+		Tags:              config.Tags,       // 新增：从配置中复制tags
+		ModelRewrite:      config.ModelRewrite, // 新增：从配置中复制模型重写配置
+		Proxy:             config.Proxy,      // 新增：从配置中复制代理配置
+		OAuthConfig:       config.OAuthConfig, // 新增：从配置中复制OAuth配置
+		OverrideMaxTokens: config.OverrideMaxTokens, // 新增：从配置中复制max_tokens覆盖配置
+		Status:            StatusActive,
+		LastCheck:         time.Now(),
+		RequestHistory:    utils.NewCircularBuffer(100, 140*time.Second), // 100个记录，140秒窗口
 	}
 }
 

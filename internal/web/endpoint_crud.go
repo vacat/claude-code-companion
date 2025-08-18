@@ -51,16 +51,17 @@ func (s *AdminServer) handleUpdateEndpoints(c *gin.Context) {
 // handleCreateEndpoint 创建新端点
 func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 	var request struct {
-		Name         string               `json:"name" binding:"required"`
-		URL          string               `json:"url" binding:"required"`
-		EndpointType string               `json:"endpoint_type"` // "anthropic" | "openai"
-		PathPrefix   string               `json:"path_prefix"`   // OpenAI 端点的路径前缀
-		AuthType     string               `json:"auth_type" binding:"required"`
-		AuthValue    string               `json:"auth_value"`    // OAuth时不需要
-		Enabled      bool                 `json:"enabled"`
-		Tags         []string             `json:"tags"`
-		Proxy        *config.ProxyConfig  `json:"proxy,omitempty"` // 新增：代理配置
-		OAuthConfig  *config.OAuthConfig  `json:"oauth_config,omitempty"` // 新增：OAuth配置
+		Name              string               `json:"name" binding:"required"`
+		URL               string               `json:"url" binding:"required"`
+		EndpointType      string               `json:"endpoint_type"` // "anthropic" | "openai"
+		PathPrefix        string               `json:"path_prefix"`   // OpenAI 端点的路径前缀
+		AuthType          string               `json:"auth_type" binding:"required"`
+		AuthValue         string               `json:"auth_value"`    // OAuth时不需要
+		Enabled           bool                 `json:"enabled"`
+		Tags              []string             `json:"tags"`
+		Proxy             *config.ProxyConfig  `json:"proxy,omitempty"` // 新增：代理配置
+		OAuthConfig       *config.OAuthConfig  `json:"oauth_config,omitempty"` // 新增：OAuth配置
+		OverrideMaxTokens *int                 `json:"override_max_tokens,omitempty"` // 新增：覆盖max_tokens配置
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -118,7 +119,7 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 	newEndpoint := createEndpointConfigFromRequest(
 		request.Name, request.URL, request.EndpointType, request.PathPrefix,
 		request.AuthType, request.AuthValue, 
-		request.Enabled, maxPriority+1, request.Tags, request.Proxy, request.OAuthConfig)
+		request.Enabled, maxPriority+1, request.Tags, request.Proxy, request.OAuthConfig, request.OverrideMaxTokens)
 	currentEndpoints = append(currentEndpoints, newEndpoint)
 
 	// 使用热更新机制
@@ -140,16 +141,17 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 	endpointName := c.Param("id") // 使用名称作为ID
 
 	var request struct {
-		Name         string               `json:"name"`
-		URL          string               `json:"url"`
-		EndpointType string               `json:"endpoint_type"`
-		PathPrefix   string               `json:"path_prefix"` // OpenAI 端点的路径前缀
-		AuthType     string               `json:"auth_type"`
-		AuthValue    string               `json:"auth_value"`
-		Enabled      bool                 `json:"enabled"`
-		Tags         []string             `json:"tags"`
-		Proxy        *config.ProxyConfig  `json:"proxy,omitempty"` // 新增：代理配置
-		OAuthConfig  *config.OAuthConfig  `json:"oauth_config,omitempty"` // 新增：OAuth配置
+		Name              string               `json:"name"`
+		URL               string               `json:"url"`
+		EndpointType      string               `json:"endpoint_type"`
+		PathPrefix        string               `json:"path_prefix"` // OpenAI 端点的路径前缀
+		AuthType          string               `json:"auth_type"`
+		AuthValue         string               `json:"auth_value"`
+		Enabled           bool                 `json:"enabled"`
+		Tags              []string             `json:"tags"`
+		Proxy             *config.ProxyConfig  `json:"proxy,omitempty"` // 新增：代理配置
+		OAuthConfig       *config.OAuthConfig  `json:"oauth_config,omitempty"` // 新增：OAuth配置
+		OverrideMaxTokens *int                 `json:"override_max_tokens,omitempty"` // 新增：覆盖max_tokens配置
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -236,6 +238,9 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 			
 			// 更新代理配置
 			currentEndpoints[i].Proxy = request.Proxy
+			
+			// 更新max_tokens覆盖配置
+			currentEndpoints[i].OverrideMaxTokens = request.OverrideMaxTokens
 			
 			found = true
 			break

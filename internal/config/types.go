@@ -23,18 +23,19 @@ type ServerConfig struct {
 }
 
 type EndpointConfig struct {
-	Name         string              `yaml:"name"`
-	URL          string              `yaml:"url"`
-	EndpointType string              `yaml:"endpoint_type"` // "anthropic" | "openai" 等
-	PathPrefix   string              `yaml:"path_prefix,omitempty"` // OpenAI端点的路径前缀，如 "/v1/chat/completions"
-	AuthType     string              `yaml:"auth_type"`
-	AuthValue    string              `yaml:"auth_value"`
-	Enabled      bool                `yaml:"enabled"`
-	Priority     int                 `yaml:"priority"`
-	Tags         []string            `yaml:"tags"`         // 新增：支持的tag列表
-	ModelRewrite *ModelRewriteConfig `yaml:"model_rewrite,omitempty"` // 新增：模型重写配置
-	Proxy        *ProxyConfig        `yaml:"proxy,omitempty"`         // 新增：代理配置
-	OAuthConfig  *OAuthConfig        `yaml:"oauth_config,omitempty"`  // 新增：OAuth配置
+	Name              string              `yaml:"name"`
+	URL               string              `yaml:"url"`
+	EndpointType      string              `yaml:"endpoint_type"` // "anthropic" | "openai" 等
+	PathPrefix        string              `yaml:"path_prefix,omitempty"` // OpenAI端点的路径前缀，如 "/v1/chat/completions"
+	AuthType          string              `yaml:"auth_type"`
+	AuthValue         string              `yaml:"auth_value"`
+	Enabled           bool                `yaml:"enabled"`
+	Priority          int                 `yaml:"priority"`
+	Tags              []string            `yaml:"tags"`         // 新增：支持的tag列表
+	ModelRewrite      *ModelRewriteConfig `yaml:"model_rewrite,omitempty"` // 新增：模型重写配置
+	Proxy             *ProxyConfig        `yaml:"proxy,omitempty"`         // 新增：代理配置
+	OAuthConfig       *OAuthConfig        `yaml:"oauth_config,omitempty"`  // 新增：OAuth配置
+	OverrideMaxTokens *int                `yaml:"override_max_tokens,omitempty"` // 新增：覆盖max_tokens配置
 }
 
 // 新增：代理配置结构

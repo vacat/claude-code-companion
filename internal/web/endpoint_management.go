@@ -92,15 +92,16 @@ func (s *AdminServer) handleCopyEndpoint(c *gin.Context) {
 
 	// 创建新端点（复制所有属性，除了名称和优先级）
 	newEndpoint := config.EndpointConfig{
-		Name:         newName,
-		URL:          sourceEndpoint.URL,
-		EndpointType: sourceEndpoint.EndpointType,
-		PathPrefix:   sourceEndpoint.PathPrefix,
-		AuthType:     sourceEndpoint.AuthType,
-		AuthValue:    sourceEndpoint.AuthValue,
-		Enabled:      sourceEndpoint.Enabled,
-		Priority:     maxPriority + 1,
-		Tags:         make([]string, len(sourceEndpoint.Tags)), // 复制tags
+		Name:              newName,
+		URL:               sourceEndpoint.URL,
+		EndpointType:      sourceEndpoint.EndpointType,
+		PathPrefix:        sourceEndpoint.PathPrefix,
+		AuthType:          sourceEndpoint.AuthType,
+		AuthValue:         sourceEndpoint.AuthValue,
+		Enabled:           sourceEndpoint.Enabled,
+		Priority:          maxPriority + 1,
+		Tags:              make([]string, len(sourceEndpoint.Tags)), // 复制tags
+		OverrideMaxTokens: sourceEndpoint.OverrideMaxTokens, // 复制max_tokens覆盖配置
 	}
 
 	// 深度复制Tags切片

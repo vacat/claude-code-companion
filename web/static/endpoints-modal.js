@@ -23,6 +23,9 @@ function showAddEndpointModal() {
     // Clear model rewrite configuration
     loadModelRewriteConfig(null);
     
+    // Clear max_tokens override configuration
+    loadMaxTokensOverrideConfig(null);
+    
     // Reset to basic configuration tab
     resetModalTabs();
     
@@ -79,6 +82,9 @@ function showEditEndpointModal(endpointName) {
     
     // Load model rewrite configuration
     loadModelRewriteConfig(endpoint.model_rewrite);
+    
+    // Load max_tokens override configuration
+    loadMaxTokensOverrideConfig(endpoint.override_max_tokens);
     
     // Reset to basic configuration tab
     resetModalTabs();
@@ -158,7 +164,8 @@ function saveEndpoint() {
         auth_value: authValue,
         enabled: document.getElementById('endpoint-enabled').checked,
         tags: tags,
-        proxy: collectProxyData() // New: collect proxy configuration
+        proxy: collectProxyData(), // New: collect proxy configuration
+        override_max_tokens: collectMaxTokensOverrideData() // New: collect max_tokens override configuration
     };
     
     // Add OAuth config if present

@@ -62,6 +62,22 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		finalRequestBody = requestBody // 使用原始请求体
 	}
 
+	// 应用max_tokens重写（在模型重写之后，格式转换之前）
+	if ep.OverrideMaxTokens != nil && *ep.OverrideMaxTokens > 0 {
+		overriddenBody, err := s.overrideMaxTokens(finalRequestBody, *ep.OverrideMaxTokens)
+		if err != nil {
+			s.logger.Debug("Failed to override max_tokens", map[string]interface{}{
+				"error": err.Error(),
+			})
+			// 不返回错误，继续使用原始请求体
+		} else {
+			finalRequestBody = overriddenBody
+			s.logger.Info("max_tokens overridden", map[string]interface{}{
+				"value": *ep.OverrideMaxTokens,
+			})
+		}
+	}
+
 	// 格式转换（在模型重写之后）
 	var conversionContext *conversion.ConversionContext
 	if s.converter.ShouldConvert(ep.EndpointType) {
