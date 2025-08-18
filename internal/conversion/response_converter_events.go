@@ -96,7 +96,7 @@ func (c *ResponseConverter) convertSingleChunkToEvents(chunk OpenAIStreamChunk, 
 					BlockIndex:      blockIndex,
 					ID:              tc.ID, // 记录ID（如果有的话）
 					ArgumentsBuffer: "",
-					JSONBuffer:      NewSimpleJSONBuffer(),
+					JSONBuffer:      NewSimpleJSONBufferWithFixer(c.logger),
 					Completed:       false,
 					Started:         false,
 					NameReceived:    false,
@@ -162,7 +162,7 @@ func (c *ResponseConverter) convertSingleChunkToEvents(chunk OpenAIStreamChunk, 
 				state.ArgumentsBuffer += tc.Function.Arguments
 				
 				// 使用简单JSON缓冲器处理参数增量
-				state.JSONBuffer.AppendFragment(tc.Function.Arguments)
+				state.JSONBuffer.AppendFragmentWithFix(tc.Function.Arguments, state.Name)
 				
 				// 只有在工具已经开始（有name）时才发送增量
 				if state.Started && state.NameReceived {

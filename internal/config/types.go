@@ -77,9 +77,18 @@ type LoggingConfig struct {
 }
 
 type ValidationConfig struct {
-	StrictAnthropicFormat bool `yaml:"strict_anthropic_format"`
-	ValidateStreaming     bool `yaml:"validate_streaming"`
-	DisconnectOnInvalid   bool `yaml:"disconnect_on_invalid"`
+	StrictAnthropicFormat bool                    `yaml:"strict_anthropic_format"`
+	ValidateStreaming     bool                    `yaml:"validate_streaming"`
+	DisconnectOnInvalid   bool                    `yaml:"disconnect_on_invalid"`
+	PythonJSONFixing      PythonJSONFixingConfig  `yaml:"python_json_fixing"`
+}
+
+// PythonJSONFixing 配置结构
+type PythonJSONFixingConfig struct {
+	Enabled       bool     `yaml:"enabled" json:"enabled"`               // 是否启用 Python JSON 修复
+	TargetTools   []string `yaml:"target_tools" json:"target_tools"`     // 需要修复的工具列表
+	DebugLogging  bool     `yaml:"debug_logging" json:"debug_logging"`   // 是否启用调试日志
+	MaxAttempts   int      `yaml:"max_attempts" json:"max_attempts"`     // 最大修复尝试次数
 }
 
 // 新增：超时配置结构

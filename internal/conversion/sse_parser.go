@@ -13,12 +13,14 @@ import (
 // SSEParser 处理 Server-Sent Events 流的解析和重组
 type SSEParser struct {
 	logger *logger.Logger
+	fixer  *PythonJSONFixer
 }
 
 // NewSSEParser 创建新的 SSE 解析器
 func NewSSEParser(logger *logger.Logger) *SSEParser {
 	return &SSEParser{
 		logger: logger,
+		fixer:  NewPythonJSONFixer(logger),
 	}
 }
 
@@ -47,6 +49,28 @@ func (p *SSEParser) ParseSSEStream(sseData []byte) ([]OpenAIStreamChunk, error) 
 			// 尝试解析 JSON
 			var chunk OpenAIStreamChunk
 			if err := json.Unmarshal([]byte(dataContent), &chunk); err != nil {
+				// 尝试使用 Python JSON 修复器
+				if fixedData, wasFixed := p.fixer.FixPythonStyleJSON(dataContent); wasFixed {
+					if fixErr := json.Unmarshal([]byte(fixedData), &chunk); fixErr == nil {
+						if p.logger != nil {
+							p.logger.Debug("Successfully fixed and parsed Python-style JSON", map[string]interface{}{
+								"original": dataContent,
+								"fixed":    fixedData,
+							})
+						}
+						chunks = append(chunks, chunk)
+						continue
+					} else {
+						if p.logger != nil {
+							p.logger.Debug("Fixed JSON still failed to parse", map[string]interface{}{
+								"original": dataContent,
+								"fixed":    fixedData,
+								"error":    fixErr.Error(),
+							})
+						}
+					}
+				}
+				
 				if p.logger != nil {
 					p.logger.Debug("Failed to parse SSE data chunk, skipping", map[string]interface{}{
 						"data": dataContent,
