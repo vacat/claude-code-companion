@@ -46,8 +46,8 @@ func (c *RequestConverter) Convert(anthropicReq []byte) ([]byte, *ConversionCont
 	// 温控映射
 	out.Temperature = anthReq.Temperature
 	out.TopP = anthReq.TopP
-	// Anthropic 的 max_tokens -> OpenAI 的 max_completion_tokens
-	out.MaxCompletionTokens = anthReq.MaxTokens
+	// Anthropic 的 max_tokens -> OpenAI 的 max_tokens（使用兼容字段）
+	out.MaxTokens = anthReq.MaxTokens
 	out.Stream = anthReq.Stream
 	out.Stop = anthReq.StopSequences
 
@@ -275,7 +275,7 @@ func (c *RequestConverter) Convert(anthropicReq []byte) ([]byte, *ConversionCont
 
 	// 记录忽略的字段
 	if c.logger != nil {
-		if anthReq.Thinking != "" {
+		if anthReq.Thinking != nil {
 			c.logger.Debug("Ignoring thinking field (not supported by OpenAI)")
 		}
 		if anthReq.TopK != nil {

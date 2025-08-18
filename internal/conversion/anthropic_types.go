@@ -18,8 +18,14 @@ type AnthropicRequest struct {
 	Metadata    map[string]interface{}  `json:"metadata,omitempty"`
 	Stream      *bool         `json:"stream,omitempty"` // 是否要求流式
 	StopSequences []string    `json:"stop_sequences,omitempty"`
-	Thinking    string        `json:"thinking,omitempty"` // 将被忽略，OpenAI不支持
+	Thinking    *AnthropicThinking `json:"thinking,omitempty"` // 将被忽略，OpenAI不支持
 	DisableParallelToolUse *bool `json:"disable_parallel_tool_use,omitempty"`
+}
+
+// AnthropicThinking 思考模式配置
+type AnthropicThinking struct {
+	Type         string `json:"type,omitempty"`          // "enabled" 表示启用思考模式
+	BudgetTokens int    `json:"budget_tokens,omitempty"` // 思考模式的token预算
 }
 
 // AnthropicMessage 消息体
