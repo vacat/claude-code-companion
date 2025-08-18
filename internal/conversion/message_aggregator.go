@@ -180,6 +180,26 @@ func (a *MessageAggregator) applyContentFixes(aggregated *AggregatedMessage) {
 	// Apply finish reason mapping
 	aggregated.FinishReason = a.mapFinishReason(aggregated.FinishReason)
 
+	// Apply Python JSON fixes to tool call arguments, especially for TodoWrite
+	for i := range aggregated.ToolCalls {
+		toolCall := &aggregated.ToolCalls[i]
+		
+		// Check if this tool should have Python JSON fixing applied
+		if a.pythonFixer != nil && a.pythonFixer.ShouldApplyFix(toolCall.Name, toolCall.Arguments) {
+			if fixedArgs, wasFixed := a.pythonFixer.FixPythonStyleJSON(toolCall.Arguments); wasFixed {
+				if a.logger != nil {
+					a.logger.Debug("Applied Python JSON fix to tool arguments", map[string]interface{}{
+						"tool_name": toolCall.Name,
+						"tool_id": toolCall.ID,
+						"original": toolCall.Arguments,
+						"fixed": fixedArgs,
+					})
+				}
+				toolCall.Arguments = fixedArgs
+			}
+		}
+	}
+
 	// Generate message ID if needed (following existing convention)
 	if aggregated.ID == "" && len(aggregated.ID) > 0 {
 		aggregated.ID = "msg_" + aggregated.ID

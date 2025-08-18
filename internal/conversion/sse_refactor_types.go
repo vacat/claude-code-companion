@@ -41,13 +41,15 @@ type ConversionMetadata struct {
 
 // MessageAggregator aggregates OpenAI chunks into a complete message
 type MessageAggregator struct {
-	logger *logger.Logger
+	logger      *logger.Logger
+	pythonFixer *PythonJSONFixer
 }
 
 // NewMessageAggregator creates a new MessageAggregator
 func NewMessageAggregator(logger *logger.Logger) *MessageAggregator {
 	return &MessageAggregator{
-		logger: logger,
+		logger:      logger,
+		pythonFixer: NewPythonJSONFixer(logger),
 	}
 }
 
