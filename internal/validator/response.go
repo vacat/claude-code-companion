@@ -371,13 +371,9 @@ func (v *ResponseValidator) DetectJSONContent(body []byte) bool {
 		return false
 	}
 	
-	// 如果能解析为JSON，再检查是否不是SSE格式
-	bodyStr := string(body)
-	// SSE格式通常包含 "event: " 和 "data: " 标记
-	hasSSEFormat := strings.Contains(bodyStr, "event: ") && strings.Contains(bodyStr, "data: ")
-	
-	// 如果是有效JSON且不包含SSE格式标记，则认为是JSON内容
-	return !hasSSEFormat
+	// 如果能成功解析为JSON，就是JSON内容
+	// 不需要检查内容中是否包含SSE相关字符串，因为JSON可以包含任何字符串内容
+	return true
 }
 
 // DetectSSEContent 检测内容是否为SSE格式
@@ -387,8 +383,35 @@ func (v *ResponseValidator) DetectSSEContent(body []byte) bool {
 	}
 	
 	bodyStr := string(body)
-	// SSE格式通常包含 "event: " 和 "data: " 标记
-	return strings.Contains(bodyStr, "event: ") && strings.Contains(bodyStr, "data: ")
+	
+	// 首先检查是否是有效的JSON，如果是JSON则不是SSE
+	trimmed := strings.TrimSpace(bodyStr)
+	if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
+		(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
+		// 尝试解析JSON来确认
+		var temp interface{}
+		if json.Unmarshal(body, &temp) == nil {
+			return false // 是有效的JSON，不是SSE
+		}
+	}
+	
+	// 检查SSE格式：必须有以"event: "或"data: "开头的行
+	lines := strings.Split(bodyStr, "\n")
+	hasEventLine := false
+	hasDataLine := false
+	
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmedLine, "event: ") {
+			hasEventLine = true
+		}
+		if strings.HasPrefix(trimmedLine, "data: ") {
+			hasDataLine = true
+		}
+	}
+	
+	// SSE格式必须至少有一个data:行，通常还有event:行
+	return hasDataLine && (hasEventLine || len(lines) > 1)
 }
 
 // SmartDetectContentType 智能检测内容类型并返回应该设置的Content-Type和覆盖信息

@@ -129,10 +129,11 @@ data: {"type":"content_block_start","index":0}
 	}
 	
 	// 测试用例5: JSON格式但包含SSE关键字（边界情况）
+	// 如果能成功解析为JSON，就应该被识别为JSON，不管内容中包含什么关键字
 	jsonWithSSEKeywords := []byte(`{"message":"This contains event: and data: keywords but is still JSON"}`)
 	
-	if validator.DetectJSONContent(jsonWithSSEKeywords) {
-		t.Error("Expected JSON with SSE keywords to NOT be detected as JSON (conservative approach)")
+	if !validator.DetectJSONContent(jsonWithSSEKeywords) {
+		t.Error("Expected valid JSON to be detected as JSON, even if it contains SSE keywords in the content")
 	}
 }
 

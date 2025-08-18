@@ -196,7 +196,7 @@ function generateResponseComparisonHtml(log, attemptNum) {
                     <span class="collapsible-toggle">▼</span>
                     <h6 class="mb-0">响应体对比 (${log.response_body_size} 字节) ${hasBodyChanges ? '<span class="badge bg-warning">有修改</span>' : ''}</h6>
                 </div>
-                ${isAnthropicResponse(log.final_response_body || log.response_body || log.original_response_body) ? `
+                ${(isAnthropicResponse(log.final_response_body || log.response_body || log.original_response_body) && !hasSSEFormatError(log)) ? `
                 <button class="inspect-response-btn btn btn-outline-success btn-sm ms-2" 
                         data-response-body="${safeBase64Encode(log.final_response_body || log.response_body || log.original_response_body)}"
                         data-is-streaming="${log.is_streaming || false}"
