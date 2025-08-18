@@ -10,10 +10,21 @@ import (
 	"claude-proxy/internal/logger"
 )
 
+// PythonJSONAccumulator manages state across multiple SSE fragments
+type PythonJSONAccumulator struct {
+	buffer           string  // Accumulated arguments content
+	insideToolCall   bool    // Whether we're inside tool_calls.arguments
+	pythonSyntaxMode bool    // Whether Python syntax has been detected
+	braceDepth       int     // Nesting depth of braces
+	inStringLiteral  bool    // Whether we're inside a string literal
+	lastWasEscape    bool    // Whether the last character was an escape
+}
+
 // PythonJSONFixer handles the conversion of Python-style dictionary syntax to valid JSON
 type PythonJSONFixer struct {
-	logger *logger.Logger
-	config config.PythonJSONFixingConfig
+	logger      *logger.Logger
+	config      config.PythonJSONFixingConfig
+	accumulator *PythonJSONAccumulator
 }
 
 // NewPythonJSONFixer creates a new PythonJSONFixer instance
@@ -29,6 +40,7 @@ func NewPythonJSONFixer(log *logger.Logger) *PythonJSONFixer {
 	return &PythonJSONFixer{
 		logger: log,
 		config: defaultConfig,
+		accumulator: &PythonJSONAccumulator{},
 	}
 }
 
@@ -37,7 +49,207 @@ func NewPythonJSONFixerWithConfig(log *logger.Logger, cfg config.PythonJSONFixin
 	return &PythonJSONFixer{
 		logger: log,
 		config: cfg,
+		accumulator: &PythonJSONAccumulator{},
 	}
+}
+
+// ProcessSSEFragment processes a single SSE fragment with accumulation support
+// Returns: (processedFragment, shouldBuffer, wasFixed)
+func (f *PythonJSONFixer) ProcessSSEFragment(input string) (string, bool, bool) {
+	// First check if this fragment contains tool_calls arguments
+	isInToolArgs := f.isInToolCallArguments(input)
+	
+	if isInToolArgs {
+		f.accumulator.insideToolCall = true
+	}
+	
+	// If we're inside tool_calls arguments, use accumulation logic
+	if f.accumulator.insideToolCall {
+		return f.processWithAccumulation(input)
+	}
+	
+	// Otherwise, use traditional single-fragment processing
+	fixed, wasFixed := f.FixPythonStyleJSON(input)
+	return fixed, false, wasFixed
+}
+
+// processWithAccumulation handles fragments when we're inside tool_calls.arguments
+func (f *PythonJSONFixer) processWithAccumulation(input string) (string, bool, bool) {
+	// Extract arguments content from the fragment if possible
+	argsContent := f.extractArgumentsContent(input)
+	
+	// Add to buffer
+	f.accumulator.buffer += argsContent
+	
+	// Check if we should detect Python syntax in the accumulated buffer
+	if !f.accumulator.pythonSyntaxMode {
+		if f.DetectPythonStyle(f.accumulator.buffer) || f.DetectPythonStyleAccumulated(f.accumulator.buffer) {
+			f.accumulator.pythonSyntaxMode = true
+			if f.config.DebugLogging {
+				f.logger.Debug("Python syntax detected in accumulated buffer", map[string]interface{}{
+					"buffer": f.accumulator.buffer,
+				})
+			}
+		}
+	}
+	
+	// Check if we should attempt conversion
+	shouldConvert, canConvert := f.shouldAttemptConversion(input)
+	
+	if shouldConvert && canConvert && f.accumulator.pythonSyntaxMode {
+		// Attempt to fix the accumulated buffer
+		fixed, success := f.convertAccumulatedBuffer()
+		if success {
+			// Reset accumulator and return the fixed content
+			f.resetAccumulator()
+			return f.reconstructFragmentWithFixed(input, fixed), false, true
+		}
+	}
+	
+	// Check if we should reset (end of tool_calls.arguments)
+	if f.shouldResetAccumulator(input) {
+		f.resetAccumulator()
+		return input, false, false
+	}
+	
+	// Continue buffering
+	return input, true, false
+}
+
+// DetectPythonStyleAccumulated checks accumulated buffer for Python-style patterns
+func (f *PythonJSONFixer) DetectPythonStyleAccumulated(buffer string) bool {
+	// Enhanced detection for accumulated content
+	accumulatedPatterns := []string{
+		`{'[^']*':\s*'[^']*'`,                    // Complete key-value pair
+		`{\s*'[^']*':\s*'[^']*',\s*'[^']*'`,    // Multiple key-value pairs
+		`'[^']*':\s*'[^']*',\s*'[^']*':\s*'`,   // Chained key-value pairs
+		`^\s*{\s*'[^']*':\s*'`,                  // Dict start with key
+		`',\s*'[^']*':\s*'[^']*'\s*}`,          // Multiple entries with end
+	}
+	
+	for _, pattern := range accumulatedPatterns {
+		if matched, _ := regexp.MatchString(pattern, buffer); matched {
+			return true
+		}
+	}
+	
+	// Check for partial but growing Python syntax
+	if strings.Contains(buffer, "{'") || strings.Contains(buffer, "': '") {
+		return true
+	}
+	
+	return false
+}
+
+// isInToolCallArguments checks if the input contains tool_calls arguments
+func (f *PythonJSONFixer) isInToolCallArguments(input string) bool {
+	return strings.Contains(input, `"arguments"`) || 
+		   strings.Contains(input, `"function"`) ||
+		   (f.accumulator.insideToolCall && !f.shouldResetAccumulator(input))
+}
+
+// extractArgumentsContent extracts the arguments value from a JSON fragment
+func (f *PythonJSONFixer) extractArgumentsContent(input string) string {
+	// Look for arguments content patterns
+	argumentsPattern := regexp.MustCompile(`"arguments":\s*"([^"]*)"`)
+	if match := argumentsPattern.FindStringSubmatch(input); len(match) > 1 {
+		return match[1]
+	}
+	
+	// If we're already inside arguments, the whole input might be arguments content
+	if f.accumulator.insideToolCall {
+		// Remove JSON wrapper if present
+		if strings.Contains(input, `"arguments":"`) {
+			start := strings.Index(input, `"arguments":"`) + len(`"arguments":"`)
+			end := strings.LastIndex(input, `"`)
+			if end > start {
+				return input[start:end]
+			}
+		}
+	}
+	
+	return ""
+}
+
+// shouldAttemptConversion determines if we should try to convert the buffer
+func (f *PythonJSONFixer) shouldAttemptConversion(input string) (should bool, can bool) {
+	buffer := f.accumulator.buffer
+	
+	// Should convert if:
+	// 1. We detect the end of arguments field
+	// 2. Buffer contains what looks like complete Python dict
+	// 3. Buffer reaches reasonable size threshold
+	
+	endsArguments := strings.Contains(input, `"}`) || strings.Contains(input, `"finish_reason"`)
+	hasCompleteDict := strings.Count(buffer, "{") > 0 && strings.Count(buffer, "{") <= strings.Count(buffer, "}")
+	bufferSizable := len(buffer) > 20
+	
+	should = endsArguments || (hasCompleteDict && bufferSizable)
+	
+	// Can convert if buffer has meaningful content
+	can = len(strings.TrimSpace(buffer)) > 0 && (strings.Contains(buffer, "{") || strings.Contains(buffer, "'"))
+	
+	return should, can
+}
+
+// convertAccumulatedBuffer attempts to fix the accumulated buffer
+func (f *PythonJSONFixer) convertAccumulatedBuffer() (string, bool) {
+	buffer := strings.TrimSpace(f.accumulator.buffer)
+	if buffer == "" {
+		return "", false
+	}
+	
+	// Apply the existing conversion logic
+	fixed := f.convertPythonQuotes(buffer)
+	
+	// For accumulated content, we might have partial JSON, so be more lenient
+	if f.isValidJSON(fixed) {
+		return fixed, true
+	}
+	
+	// Try to wrap in quotes if it looks like a partial value
+	if !strings.HasPrefix(fixed, "{") && !strings.HasPrefix(fixed, "[") {
+		wrappedFixed := `"` + strings.ReplaceAll(fixed, `"`, `\"`) + `"`
+		if f.isValidJSON(wrappedFixed) {
+			return wrappedFixed, true
+		}
+	}
+	
+	// Try to complete JSON structure if possible
+	if strings.Contains(fixed, "{") && !strings.HasSuffix(fixed, "}") {
+		completedFixed := fixed + "}"
+		if f.isValidJSON(completedFixed) {
+			return completedFixed, true
+		}
+	}
+	
+	return fixed, false // Return fixed version even if not valid JSON, let caller decide
+}
+
+// reconstructFragmentWithFixed rebuilds the input fragment with fixed arguments
+func (f *PythonJSONFixer) reconstructFragmentWithFixed(original, fixed string) string {
+	// Replace the arguments content in the original fragment
+	argumentsPattern := regexp.MustCompile(`("arguments":\s*")([^"]*)(")`)
+	return argumentsPattern.ReplaceAllString(original, `${1}`+fixed+`${3}`)
+}
+
+// shouldResetAccumulator determines if we should reset the accumulator state
+func (f *PythonJSONFixer) shouldResetAccumulator(input string) bool {
+	// Reset when we see the end of tool_calls or move to next field
+	return strings.Contains(input, `"finish_reason"`) ||
+		   strings.Contains(input, `"index"`) ||
+		   strings.Contains(input, `[DONE]`) ||
+		   (strings.Contains(input, `}`) && !strings.Contains(input, `"arguments"`))
+}
+
+// resetAccumulator resets the accumulator state
+func (f *PythonJSONFixer) resetAccumulator() {
+	f.accumulator.buffer = ""
+	f.accumulator.insideToolCall = false
+	f.accumulator.pythonSyntaxMode = false
+	f.accumulator.braceDepth = 0
+	f.accumulator.inStringLiteral = false
+	f.accumulator.lastWasEscape = false
 }
 
 // FixPythonStyleJSON attempts to fix Python-style JSON syntax and returns the fixed string
@@ -53,23 +265,63 @@ func (f *PythonJSONFixer) FixPythonStyleJSON(input string) (string, bool) {
 		})
 	}
 
-	fixed := f.convertPythonQuotes(input)
-	
-	// Validate the fixed JSON
-	if f.isValidJSON(fixed) {
-		if f.config.DebugLogging {
-			f.logger.Debug("Successfully fixed Python-style JSON", map[string]interface{}{
-				"original": input,
-				"fixed":    fixed,
-			})
+	// Check if Python syntax is within an arguments field
+	argumentsPattern := regexp.MustCompile(`("arguments":\s*")([^"]*)(")`)
+	if argumentsPattern.MatchString(input) {
+		// Fix the arguments content specifically
+		fixed := argumentsPattern.ReplaceAllStringFunc(input, func(match string) string {
+			submatches := argumentsPattern.FindStringSubmatch(match)
+			if len(submatches) == 4 {
+				prefix := submatches[1]
+				argumentsContent := submatches[2]
+				suffix := submatches[3]
+				
+				// Fix Python quotes in the arguments content
+				fixedContent := f.convertPythonQuotes(argumentsContent)
+				return prefix + fixedContent + suffix
+			}
+			return match
+		})
+		
+		// For arguments content, validate the outer JSON structure rather than the inner content
+		if f.isValidJSON(fixed) {
+			if f.config.DebugLogging {
+				f.logger.Debug("Successfully fixed Python-style JSON in arguments", map[string]interface{}{
+					"original": input,
+					"fixed":    fixed,
+				})
+			}
+			return fixed, true
+		} else {
+			// Even if overall JSON validation fails, return the fixed version for arguments
+			// This is because arguments content might be incomplete in SSE streams
+			if f.config.DebugLogging {
+				f.logger.Debug("Fixed Python-style JSON in arguments (no validation)", map[string]interface{}{
+					"original": input,
+					"fixed":    fixed,
+				})
+			}
+			return fixed, true
 		}
-		return fixed, true
+	} else {
+		// Use existing logic for non-arguments content
+		fixed := f.convertPythonQuotes(input)
+		
+		// Validate the fixed JSON
+		if f.isValidJSON(fixed) {
+			if f.config.DebugLogging {
+				f.logger.Debug("Successfully fixed Python-style JSON", map[string]interface{}{
+					"original": input,
+					"fixed":    fixed,
+				})
+			}
+			return fixed, true
+		}
 	}
 
 	if f.config.DebugLogging {
 		f.logger.Debug("Failed to fix Python-style JSON - result is not valid JSON", map[string]interface{}{
 			"original": input,
-			"fixed":    fixed,
 		})
 	}
 	
@@ -78,6 +330,15 @@ func (f *PythonJSONFixer) FixPythonStyleJSON(input string) (string, bool) {
 
 // DetectPythonStyle checks if the input contains Python-style dictionary syntax
 func (f *PythonJSONFixer) DetectPythonStyle(input string) bool {
+	// Check for Python syntax within JSON strings (arguments field)
+	argumentsPattern := regexp.MustCompile(`"arguments":\s*"([^"]*)"`)
+	if match := argumentsPattern.FindStringSubmatch(input); len(match) > 1 {
+		argumentsContent := match[1]
+		if f.detectPythonSyntaxInString(argumentsContent) {
+			return true
+		}
+	}
+	
 	// Complete patterns that indicate Python-style syntax
 	completePatterns := []string{
 		`{'[^']*':\s*'[^']*'}`,           // Single key-value pair: {'key': 'value'}
@@ -122,6 +383,28 @@ func (f *PythonJSONFixer) DetectPythonStyle(input string) bool {
 		}
 	}
 
+	return false
+}
+
+// detectPythonSyntaxInString checks for Python syntax within a string value
+func (f *PythonJSONFixer) detectPythonSyntaxInString(content string) bool {
+	// Patterns that indicate Python dictionary syntax within a string
+	pythonInStringPatterns := []string{
+		`{'[^']*':\s*'[^']*'}`,         // Complete dict: {'key': 'value'}
+		`{'[^']*':\s*'[^']*',`,         // Dict start: {'key': 'value',
+		`',\s*'[^']*':\s*'[^']*'}`,     // Dict middle to end: , 'key': 'value'}
+		`'[^']*':\s*'[^']*'`,           // Key-value pair: 'key': 'value'
+		`^{'[^']*':\s*'`,               // Dict start: {'key': '
+		`':\s*'[^']*'$`,                // Value end: ': 'value'
+		`'},\s*{'[^']*'`,               // Dict transition: '}, {'key'
+	}
+	
+	for _, pattern := range pythonInStringPatterns {
+		if matched, _ := regexp.MatchString(pattern, content); matched {
+			return true
+		}
+	}
+	
 	return false
 }
 
