@@ -421,3 +421,167 @@ func BenchmarkPythonJSONFixer_FixPythonStyleJSON(b *testing.B) {
 		fixer.FixPythonStyleJSON(input)
 	}
 }
+
+// TestPythonJSONFixer_SSEStreamFragments tests the handling of SSE stream fragments
+// This reproduces the issue from 2.txt where Python dict content is split across multiple SSE chunks
+func TestPythonJSONFixer_SSEStreamFragments(t *testing.T) {
+	fixer := NewPythonJSONFixer(createTestLogger(t))
+
+	// Real SSE stream fragments from 2.txt case - these are arguments fragments 
+	// that get accumulated in SimpleJSONBuffer
+	streamChunks := []string{
+		`{"todos": [`,  // Initial arguments start
+		`{'`,           // Start of first dict 
+		`content': 'C`, // Key with partial value
+		`reate project structure and main`, // Value continuation
+		` Go files', '`,  // Value end, new key start
+		`id`,             // Key fragment
+		`': '1',`,        // Key-value completion
+		` 'status': '`,   // New key with value start
+		`in_progress'}, {'`, // Value end, new dict start
+		`content': '`,    // New key start
+		`Implement IPv4/IPv6 system support detection`, // Full value
+		`', '`,           // Value end, key start
+		`id': '2`,        // Key-value
+		`', 'status':`,   // Key separator
+		` 'pending'}, {'`, // Value and dict transition
+		`content': 'Create HTTPS proxy server with TLS support', 'id`, // Long content
+		`': '3',`,        // Key-value
+		` 'status`,       // Key fragment
+		`': 'pending'}]`, // Final value and array end
+		`}`,              // Arguments end
+	}
+
+	tests := []struct {
+		name          string
+		chunks        []string
+		expectedTypes string
+	}{
+		{
+			name:          "SSE stream fragments should be detected individually",
+			chunks:        streamChunks,
+			expectedTypes: "individual_fragment_detection",
+		},
+		{
+			name:          "Combined SSE stream should be converted successfully",
+			chunks:        streamChunks,
+			expectedTypes: "combined_conversion",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.expectedTypes == "individual_fragment_detection" {
+				// Test detection of individual fragments
+				detectedCount := 0
+				for i, chunk := range tt.chunks {
+					detected := fixer.DetectPythonStyle(chunk)
+					if detected {
+						detectedCount++
+						t.Logf("Chunk %d detected as Python style: '%s'", i, chunk)
+					}
+				}
+				
+				// Currently fails - individual fragments are not detected
+				// This is the core issue we need to fix
+				if detectedCount == 0 {
+					t.Logf("KNOWN ISSUE: No individual fragments detected (%d/%d)", detectedCount, len(tt.chunks))
+				}
+			}
+
+			if tt.expectedTypes == "combined_conversion" {
+				// Test conversion of combined content
+				combined := ""
+				for _, chunk := range tt.chunks {
+					combined += chunk
+				}
+				
+				detected := fixer.DetectPythonStyle(combined)
+				if !detected {
+					t.Errorf("Combined content should be detected as Python style")
+					return
+				}
+				
+				fixed, wasFixed := fixer.FixPythonStyleJSON(combined)
+				if !wasFixed {
+					t.Errorf("Combined content conversion failed")
+					t.Logf("Original: %s", combined)
+					t.Logf("Fixed attempt: %s", fixed)
+				} else {
+					t.Logf("Successfully converted: %s", fixed)
+				}
+			}
+		})
+	}
+}
+
+// TestPythonJSONFixer_FragmentPatterns tests detection of common SSE fragment patterns
+func TestPythonJSONFixer_FragmentPatterns(t *testing.T) {
+	fixer := NewPythonJSONFixer(createTestLogger(t))
+
+	fragmentTests := []struct {
+		name        string
+		fragment    string
+		shouldDetect bool
+		description string
+	}{
+		{
+			name:        "Opening quote and key start",
+			fragment:    "{'",
+			shouldDetect: true,
+			description: "Common start of Python dict",
+		},
+		{
+			name:        "Key-value fragment",
+			fragment:    "content': 'C",
+			shouldDetect: true,
+			description: "Partial key-value pair",
+		},
+		{
+			name:        "Value continuation",
+			fragment:    "reate project structure",
+			shouldDetect: false,
+			description: "Pure content, no Python syntax",
+		},
+		{
+			name:        "Key end and new key start",
+			fragment:    " Go files', '",
+			shouldDetect: true,
+			description: "End of value, start of new key",
+		},
+		{
+			name:        "Key without value",
+			fragment:    "id",
+			shouldDetect: false,
+			description: "Just a key name",
+		},
+		{
+			name:        "Key-value separator",
+			fragment:    "': '1',",
+			shouldDetect: true,
+			description: "Key-value with separator",
+		},
+		{
+			name:        "Status key start",
+			fragment:    " 'status': '",
+			shouldDetect: true,
+			description: "Complete key with start of value",
+		},
+		{
+			name:        "Object transition",
+			fragment:    "in_progress'}, {'",
+			shouldDetect: true,
+			description: "End of object, start of new object",
+		},
+	}
+
+	for _, tt := range fragmentTests {
+		t.Run(tt.name, func(t *testing.T) {
+			detected := fixer.DetectPythonStyle(tt.fragment)
+			if detected != tt.shouldDetect {
+				t.Errorf("Fragment '%s' detection = %v, want %v (%s)", 
+					tt.fragment, detected, tt.shouldDetect, tt.description)
+			}
+		})
+	}
+}

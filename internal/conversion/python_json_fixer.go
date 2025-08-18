@@ -78,8 +78,8 @@ func (f *PythonJSONFixer) FixPythonStyleJSON(input string) (string, bool) {
 
 // DetectPythonStyle checks if the input contains Python-style dictionary syntax
 func (f *PythonJSONFixer) DetectPythonStyle(input string) bool {
-	// Common patterns that indicate Python-style syntax
-	patterns := []string{
+	// Complete patterns that indicate Python-style syntax
+	completePatterns := []string{
 		`{'[^']*':\s*'[^']*'}`,           // Single key-value pair: {'key': 'value'}
 		`'[^']*':\s*'[^']*'`,             // Key-value fragment: 'key': 'value'
 		`\[{'[^']*':\s*'[^']*'`,          // Array start: [{'key': 'value'
@@ -87,7 +87,36 @@ func (f *PythonJSONFixer) DetectPythonStyle(input string) bool {
 		`',\s*'[^']*':\s*'[^']*'`,        // Middle key-value: , 'key': 'value'
 	}
 
-	for _, pattern := range patterns {
+	// Check complete patterns first
+	for _, pattern := range completePatterns {
+		if matched, _ := regexp.MatchString(pattern, input); matched {
+			return true
+		}
+	}
+
+	// SSE Stream fragment patterns - for handling split content across multiple chunks
+	streamPatterns := []string{
+		`^{'$`,                          // Opening dict: {'
+		`^'[^']*':\s*'[^']*$`,          // Key with incomplete value: 'key': 'val
+		`^[^']*',\s*'[^']*$`,           // Value end with new key start: ue', 'newkey
+		`^':\s*'[^']*$`,                // Continuation after key: ': 'value
+		`^'[^']*':\s*'$`,               // Key with colon: 'key': '
+		`^'[^']*'},\s*{'$`,             // Object transition: 'value'}, {'
+		`'},\s*{'[^']*$`,               // Object end to start: }, {'key
+		`^[^']*'},\s*{'$`,              // Value end to new object: alue'}, {'
+		`^'[^']*':\s*'$`,               // Key with start of value: 'key': '
+		`':\s*'[^']*',?\s*$`,           // Key-value completion: ': 'value',
+		`^[^']*',\s*'$`,                // Value end, new key start: value', '
+		`^\s*'[^']*':\s*'$`,            // Key with colon space: 'status': '
+		`^'[^']*'}\s*$`,                // Key with object end: 'value'}
+		`^\s*'[^']*':\s*$`,             // Key with colon: 'status':
+		`'}\s*,?\s*$`,                  // Object closing: '}
+		`^'\s*$`,                       // Just a quote: '
+		`[a-zA-Z0-9_]+'\s*:\s*'[a-zA-Z0-9]`,  // Simple key-value pattern: key': 'val
+	}
+
+	// Check stream fragment patterns
+	for _, pattern := range streamPatterns {
 		if matched, _ := regexp.MatchString(pattern, input); matched {
 			return true
 		}
@@ -120,8 +149,7 @@ func (f *PythonJSONFixer) isStructuralQuote(runes []rune, pos int) bool {
 		return false
 	}
 
-	// Look at the context around the quote to determine if it's structural
-	// This is a simplified heuristic that works for TodoWrite tool format
+	// Enhanced heuristic for SSE stream fragments and complete structures
 	
 	// Find the preceding non-whitespace character
 	prevNonSpace := -1
@@ -147,11 +175,12 @@ func (f *PythonJSONFixer) isStructuralQuote(runes []rune, pos int) bool {
 	// 3. At the beginning of input (pos == 0)
 	// 4. At the end of input
 	
-	// Special case: beginning of input or after whitespace from beginning
+	// Special case: beginning of input (common in SSE fragments)
 	if prevNonSpace == -1 {
 		return true
 	}
 	
+	// Check preceding context
 	if prevNonSpace >= 0 {
 		prevChar := runes[prevNonSpace]
 		if prevChar == '{' || prevChar == '[' || prevChar == ',' || prevChar == ':' {
@@ -159,6 +188,7 @@ func (f *PythonJSONFixer) isStructuralQuote(runes []rune, pos int) bool {
 		}
 	}
 	
+	// Check following context
 	if nextNonSpace >= 0 {
 		nextChar := runes[nextNonSpace]
 		if nextChar == ':' || nextChar == ',' || nextChar == '}' || nextChar == ']' {
@@ -166,9 +196,45 @@ func (f *PythonJSONFixer) isStructuralQuote(runes []rune, pos int) bool {
 		}
 	}
 	
-	// Special case: end of input
+	// Special case: end of input (common in SSE fragments)
 	if nextNonSpace == -1 {
 		return true
+	}
+	
+	// Enhanced heuristics for SSE stream fragments
+	// If we have very limited context, be more permissive
+	inputLength := len(runes)
+	
+	// For very short fragments (likely SSE chunks), assume structural if it contains typical patterns
+	if inputLength <= 5 {
+		return true
+	}
+	
+	// Look for common SSE fragment patterns around the quote
+	startIdx := pos - 2
+	if startIdx < 0 {
+		startIdx = 0
+	}
+	endIdx := pos + 3
+	if endIdx > len(runes) {
+		endIdx = len(runes)
+	}
+	
+	context := string(runes[startIdx:endIdx])
+	
+	// Common SSE fragment patterns that indicate structural quotes
+	fragmentPatterns := []string{
+		"{'",     // Start of dict
+		"':",     // Key separator  
+		"',",     // Value separator
+		"'}",     // End of dict entry
+		"' ",     // Quote with space (often structural)
+	}
+	
+	for _, pattern := range fragmentPatterns {
+		if strings.Contains(context, pattern) {
+			return true
+		}
 	}
 	
 	return false
