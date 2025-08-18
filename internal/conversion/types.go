@@ -18,12 +18,13 @@ type ConversionContext struct {
 	ToolCallIDMap   map[string]string      // 工具调用ID映射 (Anthropic ID -> OpenAI ID)
 	IsStreaming     bool                   // 是否为流式请求
 	RequestHeaders  map[string]string      // 原始请求头
-	StreamState     *StreamState           // 流式转换状态
 	StopSequences   []string               // 请求中的停止序列，用于响应时检测
+	StreamState     *StreamState           // DEPRECATED: 流式转换状态 (only for old architecture)
+	// Note: StreamState is deprecated in refactored architecture but kept for old code compatibility
 	// 注意：不包含模型映射，因为转换发生在模型重写之后
 }
 
-// StreamState 流式转换状态
+// StreamState 流式转换状态 - DEPRECATED: Use refactored architecture instead
 type StreamState struct {
 	ContentBlockIndex int                         // 当前内容块索引
 	ToolCallStates    map[string]*ToolCallState   // 工具调用状态
@@ -33,7 +34,7 @@ type StreamState struct {
 	PingSent          bool                        // ping事件是否已发送
 }
 
-// ToolCallState 工具调用状态
+// ToolCallState 工具调用状态 - DEPRECATED: Use refactored architecture instead
 type ToolCallState struct {
 	BlockIndex        int    // 内容块索引
 	ID               string // 工具调用ID

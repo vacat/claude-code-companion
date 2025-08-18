@@ -112,6 +112,32 @@ func (p *SSEParser) BuildAnthropicSSEStream(events []string) []byte {
 	return buffer.Bytes()
 }
 
+// BuildAnthropicSSEFromEvents 将 AnthropicSSEEvent 数组转换为 SSE 格式
+func (p *SSEParser) BuildAnthropicSSEFromEvents(events []AnthropicSSEEvent) []byte {
+	var buffer bytes.Buffer
+	
+	for _, event := range events {
+		// 序列化事件数据
+		eventData, err := json.Marshal(event.Data)
+		if err != nil {
+			if p.logger != nil {
+				p.logger.Debug("Failed to marshal event data", map[string]interface{}{
+					"event_type": event.Type,
+					"error": err.Error(),
+				})
+			}
+			continue
+		}
+		
+		// 写入 SSE 格式
+		buffer.WriteString("event: " + event.Type + "\n")
+		buffer.WriteString("data: " + string(eventData) + "\n")
+		buffer.WriteString("\n")
+	}
+	
+	return buffer.Bytes()
+}
+
 // ValidateSSEFormat 验证数据是否为有效的 SSE 格式
 func (p *SSEParser) ValidateSSEFormat(data []byte) bool {
 	// 简单检查是否包含 SSE 特征

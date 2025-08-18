@@ -5,6 +5,10 @@ import (
 	"fmt"
 )
 
+// DEPRECATED: This file contains the old fragment-based event conversion logic.
+// The new refactored architecture is in unified_converter.go and message_aggregator.go
+// This file is kept for backward compatibility during migration.
+
 // convertSingleChunkToEvents 将单个OpenAI chunk转换为Anthropic事件列表
 func (c *ResponseConverter) convertSingleChunkToEvents(chunk OpenAIStreamChunk, streamState *StreamState) []string {
 	var events []string

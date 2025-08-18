@@ -7,6 +7,10 @@ import (
 	_ "claude-proxy/internal/logger"
 )
 
+// DEPRECATED: This file contains the old single chunk conversion logic.
+// The new refactored architecture is in response_converter_streaming_refactored.go
+// This file is kept for backward compatibility during migration.
+
 // convertSingleChunk 转换单个chunk（向后兼容）
 func (c *ResponseConverter) convertSingleChunk(openaiResp []byte, ctx *ConversionContext) ([]byte, error) {
 	// 解析单个流式chunk

@@ -33,7 +33,7 @@ type AnthropicContentBlock struct {
 	Type string `json:"type"` // "text" | "image" | "tool_use" | "tool_result"
 
 	// text
-	Text string `json:"text,omitempty"`
+	Text string `json:"text"` // Removed omitempty to ensure empty string is included
 
 	// image (仅支持 base64)
 	// Anthropic: {type:"image", source:{type:"base64", media_type:"image/png", data:"..."}}
@@ -125,8 +125,15 @@ type AnthropicContentBlockStop struct {
 
 // AnthropicMessageDelta 消息增量事件
 type AnthropicMessageDelta struct {
-	Type  string             `json:"type"`
-	Delta *AnthropicResponse `json:"delta"`
+	Type  string                           `json:"type"`
+	Delta *AnthropicMessageDeltaContent    `json:"delta"`
+	Usage *AnthropicUsage                  `json:"usage,omitempty"` // Usage is sibling to delta, not inside it
+}
+
+// AnthropicMessageDeltaContent represents only the fields that should be in message_delta.delta
+type AnthropicMessageDeltaContent struct {
+	StopReason   string `json:"stop_reason,omitempty"`
+	StopSequence string `json:"stop_sequence,omitempty"`
 }
 
 // AnthropicMessageStop 消息结束事件

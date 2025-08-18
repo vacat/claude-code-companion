@@ -6,6 +6,10 @@ import (
 	_ "claude-proxy/internal/logger"
 )
 
+// DEPRECATED: This file contains the old fragment-based streaming conversion logic.
+// The new refactored architecture is in response_converter_streaming_refactored.go
+// This file is kept for backward compatibility during migration.
+
 // convertStreamingResponse 转换流式响应 - 处理完整的 SSE 流
 func (c *ResponseConverter) convertStreamingResponse(openaiResp []byte, ctx *ConversionContext) ([]byte, error) {
 	// 检查是否为SSE格式
