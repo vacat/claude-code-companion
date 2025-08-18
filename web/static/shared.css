@@ -124,9 +124,14 @@
 .before-after-tabs {
     margin-bottom: 1rem;
 }
+.before-after-tabs .nav-item {
+    flex: 1;
+}
 .before-after-tabs .nav-link {
     font-size: 0.9rem;
     padding: 0.5rem 1rem;
+    text-align: center;
+    width: 100%;
 }
 .comparison-badge {
     font-size: 0.7em;
