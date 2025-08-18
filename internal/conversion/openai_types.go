@@ -89,7 +89,6 @@ type OpenAIUsage struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
 	TotalTokens      int `json:"total_tokens"`
-	CachedTokens     int `json:"cached_tokens,omitempty"` // Some APIs provide cached token count
 }
 
 // OpenAIStreamChunk OpenAI 流式片段（SSE 的 delta 合并结果；这里假定你已收集完所有 chunk）

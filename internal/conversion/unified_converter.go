@@ -68,10 +68,10 @@ func (c *UnifiedConverter) generateMessageStartEvent(msg *AggregatedMessage) (An
 		},
 	}
 
-	// Update usage if available
+	// Update usage if available - for message_start, show input tokens but 0 output tokens
 	if msg.Usage != nil {
 		anthropicResp.Usage.InputTokens = msg.Usage.PromptTokens
-		anthropicResp.Usage.OutputTokens = msg.Usage.CompletionTokens
+		anthropicResp.Usage.OutputTokens = 0 // Always show 0 in message_start
 	}
 
 	messageStart := &AnthropicMessageStart{
@@ -252,11 +252,11 @@ func (c *UnifiedConverter) generateMessageEndEvents(msg *AggregatedMessage) ([]A
 		},
 	}
 
-	// Add usage information if available (as sibling to delta)
+	// Add usage information if available (as sibling to delta) - show actual output tokens in message_delta
 	if msg.Usage != nil {
 		messageDelta.Usage = &AnthropicUsage{
 			InputTokens:  msg.Usage.PromptTokens,
-			OutputTokens: msg.Usage.CompletionTokens,
+			OutputTokens: msg.Usage.CompletionTokens, // Show actual completion tokens in message_delta
 		}
 	}
 

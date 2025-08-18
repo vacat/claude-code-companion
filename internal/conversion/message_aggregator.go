@@ -94,7 +94,6 @@ func (a *MessageAggregator) updateUsageInfo(aggregated *AggregatedMessage, usage
 			PromptTokens:     usage.PromptTokens,
 			CompletionTokens: usage.CompletionTokens,
 			TotalTokens:      usage.TotalTokens,
-			CachedTokens:     usage.CachedTokens,
 		}
 	} else {
 		// Accumulate usage info
@@ -109,10 +108,6 @@ func (a *MessageAggregator) updateUsageInfo(aggregated *AggregatedMessage, usage
 			aggregated.Usage.TotalTokens = usage.TotalTokens
 		} else if aggregated.Usage.PromptTokens > 0 && aggregated.Usage.CompletionTokens > 0 {
 			aggregated.Usage.TotalTokens = aggregated.Usage.PromptTokens + aggregated.Usage.CompletionTokens
-		}
-		// For cached_tokens: use the latest non-zero value
-		if usage.CachedTokens > 0 {
-			aggregated.Usage.CachedTokens = usage.CachedTokens
 		}
 	}
 }
