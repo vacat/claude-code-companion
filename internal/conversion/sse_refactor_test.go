@@ -6,6 +6,101 @@ import (
 	"testing"
 )
 
+// Test the MessageAggregator component with usage accumulation
+func TestMessageAggregator_UsageAccumulation(t *testing.T) {
+	aggregator := NewMessageAggregator(getTestLogger())
+
+	// Create test chunks with multiple usage info to test accumulation
+	chunks := []OpenAIStreamChunk{
+		{
+			ID:    "chatcmpl-123",
+			Model: "gpt-4",
+			Choices: []OpenAIStreamChoice{
+				{
+					Index: 0,
+					Delta: OpenAIMessage{
+						Content: "Hello",
+					},
+				},
+			},
+			Usage: &OpenAIUsage{
+				PromptTokens:     10,
+				CompletionTokens: 1,
+				TotalTokens:      11,
+			},
+		},
+		{
+			ID:    "chatcmpl-123",
+			Model: "gpt-4",
+			Choices: []OpenAIStreamChoice{
+				{
+					Index: 0,
+					Delta: OpenAIMessage{
+						Content: " World!",
+					},
+				},
+			},
+			Usage: &OpenAIUsage{
+				PromptTokens:     10, // Should remain the same
+				CompletionTokens: 2,  // Should be accumulated: 1 + 2 = 3
+				TotalTokens:      12,
+			},
+		},
+		{
+			ID:    "chatcmpl-123",
+			Model: "gpt-4",
+			Choices: []OpenAIStreamChoice{
+				{
+					Index:        0,
+					Delta:        OpenAIMessage{},
+					FinishReason: "stop",
+				},
+			},
+			Usage: &OpenAIUsage{
+				PromptTokens:     10, // Should remain the same
+				CompletionTokens: 2,  // Should be accumulated: 3 + 2 = 5
+				TotalTokens:      15, // Final total
+			},
+		},
+	}
+
+	// Aggregate chunks
+	result, err := aggregator.AggregateChunks(chunks)
+	if err != nil {
+		t.Fatalf("Aggregation failed: %v", err)
+	}
+
+	// Verify basic properties
+	if result.ID != "msg_chatcmpl-123" {
+		t.Errorf("Expected ID 'msg_chatcmpl-123', got '%s'", result.ID)
+	}
+
+	if result.TextContent != "Hello World!" {
+		t.Errorf("Expected text 'Hello World!', got '%s'", result.TextContent)
+	}
+
+	if result.FinishReason != "end_turn" {
+		t.Errorf("Expected finish reason 'end_turn', got '%s'", result.FinishReason)
+	}
+
+	// Verify usage accumulation
+	if result.Usage == nil {
+		t.Fatal("Expected usage to be set")
+	}
+
+	if result.Usage.PromptTokens != 10 {
+		t.Errorf("Expected prompt tokens 10, got %d", result.Usage.PromptTokens)
+	}
+
+	if result.Usage.CompletionTokens != 5 { // 1 + 2 + 2 = 5
+		t.Errorf("Expected completion tokens 5 (1+2+2), got %d", result.Usage.CompletionTokens)
+	}
+
+	if result.Usage.TotalTokens != 15 {
+		t.Errorf("Expected total tokens 15, got %d", result.Usage.TotalTokens)
+	}
+}
+
 // Test the MessageAggregator component
 func TestMessageAggregator_SimpleText(t *testing.T) {
 	aggregator := NewMessageAggregator(getTestLogger())

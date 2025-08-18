@@ -71,14 +71,50 @@ func (a *MessageAggregator) processChunk(chunk OpenAIStreamChunk, aggregated *Ag
 		if choice.FinishReason != "" {
 			aggregated.FinishReason = choice.FinishReason
 		}
+
+		// Process usage info from choice (some APIs put usage in choice rather than chunk level)
+		if choice.Usage != nil {
+			a.updateUsageInfo(aggregated, choice.Usage)
+		}
 	}
 
-	// Update usage info (last non-nil wins)
+	// Update usage info with accumulation strategy from chunk level
 	if chunk.Usage != nil {
-		aggregated.Usage = chunk.Usage
+		a.updateUsageInfo(aggregated, chunk.Usage)
 	}
 
 	return nil
+}
+
+// updateUsageInfo updates usage information with accumulation strategy
+func (a *MessageAggregator) updateUsageInfo(aggregated *AggregatedMessage, usage *OpenAIUsage) {
+	if aggregated.Usage == nil {
+		// First usage info - initialize with a copy
+		aggregated.Usage = &OpenAIUsage{
+			PromptTokens:     usage.PromptTokens,
+			CompletionTokens: usage.CompletionTokens,
+			TotalTokens:      usage.TotalTokens,
+			CachedTokens:     usage.CachedTokens,
+		}
+	} else {
+		// Accumulate usage info
+		// For prompt_tokens: use the latest non-zero value (usually consistent across chunks)
+		if usage.PromptTokens > 0 {
+			aggregated.Usage.PromptTokens = usage.PromptTokens
+		}
+		// For completion_tokens: accumulate (sum up incremental tokens)
+		aggregated.Usage.CompletionTokens += usage.CompletionTokens
+		// For total_tokens: use the latest non-zero value or calculate if needed
+		if usage.TotalTokens > 0 {
+			aggregated.Usage.TotalTokens = usage.TotalTokens
+		} else if aggregated.Usage.PromptTokens > 0 && aggregated.Usage.CompletionTokens > 0 {
+			aggregated.Usage.TotalTokens = aggregated.Usage.PromptTokens + aggregated.Usage.CompletionTokens
+		}
+		// For cached_tokens: use the latest non-zero value
+		if usage.CachedTokens > 0 {
+			aggregated.Usage.CachedTokens = usage.CachedTokens
+		}
+	}
 }
 
 // processToolCall processes a single tool call delta

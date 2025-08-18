@@ -89,6 +89,7 @@ type OpenAIUsage struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
 	TotalTokens      int `json:"total_tokens"`
+	CachedTokens     int `json:"cached_tokens,omitempty"` // Some APIs provide cached token count
 }
 
 // OpenAIStreamChunk OpenAI 流式片段（SSE 的 delta 合并结果；这里假定你已收集完所有 chunk）
@@ -104,4 +105,5 @@ type OpenAIStreamChoice struct {
 	Index        int       `json:"index"`
 	Delta        OpenAIMessage `json:"delta"`         // 增量：content 片段、或 tool_calls 的增量
 	FinishReason string    `json:"finish_reason"` // 片段可能为空，最后一个包含 finish_reason
+	Usage        *OpenAIUsage `json:"usage,omitempty"` // 可能在最后一个choice中包含usage信息
 }

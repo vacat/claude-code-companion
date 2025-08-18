@@ -27,7 +27,7 @@ data: [DONE]
 	}
 
 	// 执行转换
-	result, err := converter.convertStreamingResponse([]byte(openaiSSE), ctx)
+	result, err := converter.Convert([]byte(openaiSSE), ctx, true)
 	if err != nil {
 		t.Fatalf("Conversion failed: %v", err)
 	}

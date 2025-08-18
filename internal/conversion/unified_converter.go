@@ -243,14 +243,21 @@ func (c *UnifiedConverter) generateToolUseEvents(toolCall AggregatedToolCall, bl
 func (c *UnifiedConverter) generateMessageEndEvents(msg *AggregatedMessage) ([]AnthropicSSEEvent, error) {
 	var events []AnthropicSSEEvent
 
-	// Message delta with stop reason (FIXED: Using correct structure)
+	// Message delta with stop reason and usage information
 	messageDelta := &AnthropicMessageDelta{
 		Type: "message_delta",
 		Delta: &AnthropicMessageDeltaContent{
 			StopReason: msg.FinishReason,
 			// StopSequence is omitted (nil) as it's not used in OpenAI responses
 		},
-		// Usage could be added here as a sibling to delta if needed
+	}
+
+	// Add usage information if available (as sibling to delta)
+	if msg.Usage != nil {
+		messageDelta.Usage = &AnthropicUsage{
+			InputTokens:  msg.Usage.PromptTokens,
+			OutputTokens: msg.Usage.CompletionTokens,
+		}
 	}
 
 	events = append(events, AnthropicSSEEvent{
