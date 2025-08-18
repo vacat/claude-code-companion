@@ -132,16 +132,17 @@ func (c *ResponseConverter) convertSingleChunkToEvents(chunk OpenAIStreamChunk, 
 					streamState.TextBlockStarted = false
 				}
 				
-				// 如果这是第一次收到工具名称，发送 content_block_start（包含 name）
+				// 如果这是第一次收到工具名称，发送 content_block_start（带空 input）
 				if !state.Started {
 					startEvent := map[string]interface{}{
 						"type":  "content_block_start",
 						"index": state.BlockIndex,
 						"content_block": map[string]interface{}{
 							"type":  "tool_use",
-							"id":    state.ID, // 使用记录的ID
+							"id":    state.ID,
 							"name":  state.Name,
-							"input": map[string]interface{}{},
+							"input": map[string]interface{}{}, // Empty input for streaming
+							// Note: No text field for tool_use type
 						},
 					}
 					startData, _ := json.Marshal(startEvent)
@@ -152,7 +153,7 @@ func (c *ResponseConverter) convertSingleChunkToEvents(chunk OpenAIStreamChunk, 
 					// 在第一个content_block_start后发送ping事件
 					if !streamState.PingSent {
 						events = append(events, "event: ping")
-						events = append(events, "data: {}")
+						events = append(events, "data: {\"type\":\"ping\"}")
 						events = append(events, "")
 						streamState.PingSent = true
 					}
@@ -165,26 +166,24 @@ func (c *ResponseConverter) convertSingleChunkToEvents(chunk OpenAIStreamChunk, 
 			if tc.Function.Arguments != "" {
 				state.ArgumentsBuffer += tc.Function.Arguments
 				
-				// 使用简单JSON缓冲器处理参数增量
+				// 使用简单JSON缓冲器处理参数增量（保留用于其他用途）
 				state.JSONBuffer.AppendFragmentWithFix(tc.Function.Arguments, state.Name)
 				
-				// 只有在工具已经开始（有name）时才发送增量
+				// 如果工具已经开始，发送 partial_json 增量事件
 				if state.Started && state.NameReceived {
-					// 获取修复后的增量输出
-					if incrementalContent, hasNewContent := state.JSONBuffer.GetFixedIncrementalOutput(); hasNewContent && incrementalContent != "" {
-						deltaEvent := map[string]interface{}{
-							"type":  "content_block_delta",
-							"index": state.BlockIndex,
-							"delta": map[string]interface{}{
-								"type": "input_json_delta",
-								"partial_json": incrementalContent,
-							},
-						}
-						deltaData, _ := json.Marshal(deltaEvent)
-						events = append(events, "event: content_block_delta")
-						events = append(events, "data: "+string(deltaData))
-						events = append(events, "")
+					// 发送当前片段作为 partial_json
+					deltaEvent := map[string]interface{}{
+						"type":  "content_block_delta",
+						"index": state.BlockIndex,
+						"delta": map[string]interface{}{
+							"type": "input_json_delta",
+							"partial_json": tc.Function.Arguments,
+						},
 					}
+					deltaData, _ := json.Marshal(deltaEvent)
+					events = append(events, "event: content_block_delta")
+					events = append(events, "data: "+string(deltaData))
+					events = append(events, "")
 				}
 			}
 		}

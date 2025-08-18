@@ -127,10 +127,10 @@ func (c *UnifiedConverter) generateTextEvents(textContent string, blockIndex *in
 	var events []AnthropicSSEEvent
 	currentIndex := *blockIndex
 
-	// Content block start (FIXED: Explicitly include empty text field)
+	// Content block start (text should start with empty text field)
 	contentBlock := &AnthropicContentBlock{
 		Type: "text",
-		Text: "", // FIXED: Explicitly set empty string for initialization
+		Text: "",
 	}
 
 	startEvent := &AnthropicContentBlockStart{
@@ -174,25 +174,18 @@ func (c *UnifiedConverter) generateTextEvents(textContent string, blockIndex *in
 	return events, nil
 }
 
-// generateToolUseEvents creates events for a tool call
+// generateToolUseEvents creates events for a tool call using streaming partial_json approach
 func (c *UnifiedConverter) generateToolUseEvents(toolCall AggregatedToolCall, blockIndex *int) ([]AnthropicSSEEvent, error) {
 	var events []AnthropicSSEEvent
 	currentIndex := *blockIndex
 
-	// Parse tool arguments
-	var input json.RawMessage
-	if toolCall.Arguments != "" {
-		input = json.RawMessage(toolCall.Arguments)
-	} else {
-		input = json.RawMessage("{}")
-	}
-
-	// Content block start for tool use
+	// Content block start for tool use - with empty input (streaming approach)
 	contentBlock := &AnthropicContentBlock{
 		Type:  "tool_use",
 		ID:    toolCall.ID,
 		Name:  toolCall.Name,
-		Input: input,
+		Input: json.RawMessage("{}"), // Empty input for streaming
+		// Note: No Text field for tool_use type
 	}
 
 	startEvent := &AnthropicContentBlockStart{
@@ -206,20 +199,30 @@ func (c *UnifiedConverter) generateToolUseEvents(toolCall AggregatedToolCall, bl
 		Data: startEvent,
 	})
 
-	// For tool use, we typically send the complete input in delta
-	deltaEvent := &AnthropicContentBlockDelta{
-		Type:  "content_block_delta",
-		Index: currentIndex,
-		Delta: &AnthropicContentBlock{
-			Type:  "input_json_delta", // FIXED: Was "tool_use", should be "input_json_delta"
-			Input: input,
-		},
+	// Generate partial_json delta events for the tool arguments
+	if toolCall.Arguments != "" {
+		// Split the JSON string into UTF-8 safe chunks for streaming effect
+		jsonStr := toolCall.Arguments
+		chunkSize := 10 // Use smaller chunk size for better streaming (in runes, not bytes)
+		
+		chunks := splitUTF8String(jsonStr, chunkSize)
+		
+		for _, chunk := range chunks {
+			deltaEvent := &AnthropicContentBlockDelta{
+				Type:  "content_block_delta",
+				Index: currentIndex,
+				Delta: &AnthropicContentBlock{
+					Type:        "input_json_delta",
+					PartialJSON: chunk,
+				},
+			}
+			
+			events = append(events, AnthropicSSEEvent{
+				Type: "content_block_delta",
+				Data: deltaEvent,
+			})
+		}
 	}
-
-	events = append(events, AnthropicSSEEvent{
-		Type: "content_block_delta",
-		Data: deltaEvent,
-	})
 
 	// Content block stop
 	stopEvent := &AnthropicContentBlockStop{
@@ -282,4 +285,25 @@ func (c *UnifiedConverter) insertPingAfterFirstContentBlock(events []AnthropicSS
 	}
 	// If no content_block_start found, append at end
 	return append(events, pingEvent)
+}
+
+// splitUTF8String safely splits a UTF-8 string into chunks without breaking multi-byte characters
+func splitUTF8String(s string, chunkSize int) []string {
+	if len(s) == 0 {
+		return nil
+	}
+	
+	var chunks []string
+	runes := []rune(s)
+	
+	for i := 0; i < len(runes); i += chunkSize {
+		end := i + chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+		chunk := string(runes[i:end])
+		chunks = append(chunks, chunk)
+	}
+	
+	return chunks
 }

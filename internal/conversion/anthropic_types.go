@@ -30,10 +30,10 @@ type AnthropicMessage struct {
 
 // AnthropicContentBlock 内容块（Claude Code 会混用 text / image / tool_use / tool_result）
 type AnthropicContentBlock struct {
-	Type string `json:"type"` // "text" | "image" | "tool_use" | "tool_result"
+	Type string `json:"type"` // "text" | "image" | "tool_use" | "tool_result" | "text_delta" | "input_json_delta"
 
 	// text
-	Text string `json:"text"` // Removed omitempty to ensure empty string is included
+	Text string `json:"text,omitempty"`
 
 	// image (仅支持 base64)
 	// Anthropic: {type:"image", source:{type:"base64", media_type:"image/png", data:"..."}}
@@ -51,6 +51,9 @@ type AnthropicContentBlock struct {
 	ToolUseID string             `json:"tool_use_id,omitempty"`
 	Content   interface{}        `json:"content,omitempty"`
 	IsError   *bool              `json:"is_error,omitempty"`
+
+	// 用于流式事件的增量字段
+	PartialJSON string `json:"partial_json,omitempty"` // 用于 input_json_delta
 }
 
 // AnthropicImageSource 图片源
