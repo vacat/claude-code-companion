@@ -77,7 +77,7 @@ func generateDefaultConfig(filename string) error {
 				OAuthConfig: &OAuthConfig{
 					AccessToken:  "sk-ant-oat01-YOUR_ACCESS_TOKEN_HERE",
 					RefreshToken: "sk-ant-ort01-YOUR_REFRESH_TOKEN_HERE",
-					ExpiresAt:    0, // 设置为实际过期时间戳（毫秒）
+					ExpiresAt:    1724924000000, // 示例时间戳，请设置为实际过期时间戳（毫秒）
 					TokenURL:     "https://console.anthropic.com/v1/oauth/token",
 					ClientID:     "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
 					Scopes:       []string{"user:inference", "user:profile"},
