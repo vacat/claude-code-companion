@@ -13,6 +13,10 @@ Claude Code Companion 是一个为 Claude Code 提供的本地 API 代理工具�
 
 ## 快速开始（面向新手）
 
+[一个带图的配置多个号池入口的例子文档](https://ucn0s6hcz1w1.feishu.cn/docx/PkCGd4qproRu80xr2yBcz1PinVe)
+
+## 快速开始
+
 1. 下载并解压
 
    - 从 Release 页面下载对应操作系统的压缩包，解压后进入目录。
