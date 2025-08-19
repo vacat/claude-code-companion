@@ -30,15 +30,26 @@
                     <div class="tab-content" id="endpointModalTabContent">
                         <!-- Basic Configuration Tab -->
                         <div class="tab-pane fade show active" id="basic-tab-pane" role="tabpanel" aria-labelledby="basic-tab">
-                            <!-- 第一行：名称和启用状态 -->
+                            <!-- 第一行：名称和默认模型 -->
                             <div class="row mb-3">
-                                <div class="col-9">
+                                <div class="col-6">
                                     <label for="endpoint-name" class="form-label">
                                         <i class="fas fa-tag form-label-icon"></i><span data-t="name">名称</span> <span class="text-danger">*</span>
                                     </label>
                                     <input type="text" class="form-control" id="endpoint-name" required>
                                 </div>
-                                <div class="col-3">
+                                <div class="col-6">
+                                    <label for="endpoint-default-model" class="form-label">
+                                        <i class="fas fa-robot form-label-icon"></i><span data-t="default_model">默认模型</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="endpoint-default-model" 
+                                           placeholder="claude-sonnet-4-20250514">
+                                </div>
+                            </div>
+
+                            <!-- 第二行：启用状态 -->
+                            <div class="row mb-3">
+                                <div class="col-12">
                                     <h6 class="mb-2">
                                         <i class="fas fa-power-off form-label-icon"></i> <span data-t="enable">启用</span>
                                     </h6>
@@ -51,7 +62,7 @@
                                 </div>
                             </div>
 
-                            <!-- 第二行：URL 和 Tags -->
+                            <!-- 第三行：URL 和 Tags -->
                             <div class="row mb-3">
                                 <div class="col-8">
                                     <label for="endpoint-url" class="form-label">
@@ -66,11 +77,11 @@
                                     </label>
                                     <input type="text" class="form-control" id="endpoint-tags" 
                                            placeholder="用逗号分隔">
-                                    <small class="form-text text-muted" data-t="empty_for_universal_endpoint">留空endpoint</small>
+                                    <small class="form-text text-muted" data-t="empty_for_universal_endpoint">留空为万用端点</small>
                                 </div>
                             </div>
 
-                            <!-- 第三行：端点类型和路径前缀 -->
+                            <!-- 第四行：端点类型和路径前缀 -->
                             <div class="row mb-3">
                                 <div class="col-6">
                                     <label for="endpoint-type" class="form-label">
@@ -92,7 +103,7 @@
                                 </div>
                             </div>
 
-                            <!-- 第四行：认证方式和认证值 -->
+                            <!-- 第五行：认证方式和认证值 -->
                             <div class="row mb-3">
                                 <div class="col-4">
                                     <label for="endpoint-auth-type" class="form-label">

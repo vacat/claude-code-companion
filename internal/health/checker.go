@@ -80,7 +80,7 @@ func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
 	}
 
 	// 应用模型重写（如果配置了）
-	_, _, err = c.modelRewriter.RewriteRequestWithTags(tempReq, ep.ModelRewrite, ep.Tags)
+	_, _, err = c.modelRewriter.RewriteRequestWithTags(tempReq, ep.ModelRewrite, ep.Tags, ep.DefaultModel)
 	if err != nil {
 		return fmt.Errorf("model rewrite failed during health check: %v", err)
 	}

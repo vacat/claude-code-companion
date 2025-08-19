@@ -10,6 +10,7 @@ function showAddEndpointModal() {
     document.getElementById('endpoint-enabled').checked = true;
     document.getElementById('endpoint-type').value = 'anthropic'; // Default to Anthropic
     document.getElementById('endpoint-tags').value = ''; // Clear tags field
+    document.getElementById('endpoint-default-model').value = ''; // Clear default model field
     
     // Set endpoint type and switch path prefix display
     onEndpointTypeChange();
@@ -28,6 +29,9 @@ function showAddEndpointModal() {
     
     // Reset to basic configuration tab
     resetModalTabs();
+    
+    // Initialize default model and model rewrite mutual exclusion
+    updateModelConfigMutualExclusion();
     
     endpointModal.show();
 }
@@ -51,6 +55,7 @@ function showEditEndpointModal(endpointName) {
     document.getElementById('endpoint-type').value = endpoint.endpoint_type || 'anthropic';
     document.getElementById('endpoint-path-prefix').value = endpoint.path_prefix || '';
     document.getElementById('endpoint-enabled').checked = endpoint.enabled;
+    document.getElementById('endpoint-default-model').value = endpoint.default_model || '';
     
     // Set endpoint type and switch path prefix display first
     onEndpointTypeChange();
@@ -88,6 +93,9 @@ function showEditEndpointModal(endpointName) {
     
     // Reset to basic configuration tab
     resetModalTabs();
+    
+    // Initialize default model and model rewrite mutual exclusion
+    updateModelConfigMutualExclusion();
     
     endpointModal.show();
 }
@@ -164,6 +172,8 @@ function saveEndpoint() {
         auth_value: authValue,
         enabled: document.getElementById('endpoint-enabled').checked,
         tags: tags,
+        default_model: document.getElementById('endpoint-default-model').value.trim() || '', // New: default model
+        model_rewrite: collectModelRewriteData(), // New: include model rewrite config
         proxy: collectProxyData(), // New: collect proxy configuration
         override_max_tokens: collectMaxTokensOverrideData() // New: collect max_tokens override configuration
     };
@@ -191,26 +201,9 @@ function saveEndpoint() {
         if (data.error) {
             showAlert(data.error, 'danger');
         } else {
-            // After successful save, if there's model rewrite configuration, save it too
-            const modelRewriteConfig = collectModelRewriteData();
-            const endpointName = document.getElementById('endpoint-name').value;
-            
-            const saveModelRewrite = modelRewriteConfig 
-                ? saveModelRewriteConfig(endpointName, modelRewriteConfig)
-                : Promise.resolve();
-            
-            saveModelRewrite
-                .then(() => {
-                    endpointModal.hide();
-                    showAlert(data.message, 'success');
-                    loadEndpoints(); // Reload data instead of refreshing page
-                })
-                .catch(error => {
-                    console.error('Failed to save model rewrite config:', error);
-                    showAlert('端点保存成功，但模型重写配置保存失败: ' + error.message, 'warning');
-                    endpointModal.hide();
-                    loadEndpoints();
-                });
+            endpointModal.hide();
+            showAlert(data.message, 'success');
+            loadEndpoints(); // Reload data instead of refreshing page
         }
     })
     .catch(error => {
@@ -349,4 +342,106 @@ function reorderEndpoints() {
         showAlert('Failed to reorder endpoints', 'danger');
         loadEndpoints(); // Reload to restore order
     });
+}
+
+// Default model and model rewrite mutual exclusion functions
+function updateModelConfigMutualExclusion() {
+    const defaultModelInput = document.getElementById('endpoint-default-model');
+    const modelRewriteCheckbox = document.getElementById('model-rewrite-enabled');
+    
+    if (!defaultModelInput || !modelRewriteCheckbox) {
+        return; // Elements not found, skip
+    }
+    
+    // Add event listeners for mutual exclusion
+    defaultModelInput.addEventListener('input', onDefaultModelChange);
+    modelRewriteCheckbox.addEventListener('change', onModelRewriteChange);
+    
+    // Initial state check
+    checkMutualExclusion();
+}
+
+function onDefaultModelChange() {
+    checkMutualExclusion();
+}
+
+function onModelRewriteChange() {
+    checkMutualExclusion();
+}
+
+function checkMutualExclusion() {
+    const defaultModelInput = document.getElementById('endpoint-default-model');
+    const modelRewriteCheckbox = document.getElementById('model-rewrite-enabled');
+    
+    if (!defaultModelInput || !modelRewriteCheckbox) {
+        return;
+    }
+    
+    const hasDefaultModel = defaultModelInput.value.trim() !== '';
+    const hasModelRewrite = modelRewriteCheckbox.checked;
+    
+    if (hasDefaultModel && hasModelRewrite) {
+        // If both are set, prioritize the most recent change
+        // Clear the other one without showing alert
+        if (document.activeElement === defaultModelInput) {
+            // Default model was just changed, disable model rewrite
+            modelRewriteCheckbox.checked = false;
+            onModelRewriteEnabledChange(); // Trigger the model rewrite UI update
+        } else {
+            // Model rewrite was just enabled, clear default model
+            defaultModelInput.value = '';
+        }
+    }
+    
+    // Update UI state
+    updateMutualExclusionUI();
+}
+
+function updateMutualExclusionUI() {
+    const defaultModelInput = document.getElementById('endpoint-default-model');
+    const modelRewriteCheckbox = document.getElementById('model-rewrite-enabled');
+    
+    if (!defaultModelInput || !modelRewriteCheckbox) {
+        return;
+    }
+    
+    const hasDefaultModel = defaultModelInput.value.trim() !== '';
+    const hasModelRewrite = modelRewriteCheckbox.checked;
+    
+    // Update input states
+    if (hasDefaultModel) {
+        modelRewriteCheckbox.disabled = true;
+        // Add visual indication
+        const modelRewriteLabel = document.querySelector('label[for="model-rewrite-enabled"]');
+        if (modelRewriteLabel) {
+            modelRewriteLabel.style.opacity = '0.6';
+            modelRewriteLabel.title = '已配置默认模型，模型重写被禁用';
+        }
+        // Clear default model tooltip
+        defaultModelInput.style.opacity = '1';
+        defaultModelInput.title = '';
+        defaultModelInput.disabled = false;
+    } else if (hasModelRewrite) {
+        defaultModelInput.disabled = true;
+        defaultModelInput.style.opacity = '0.6';
+        defaultModelInput.title = '已启用模型重写规则，默认模型被禁用';
+        // Clear model rewrite tooltip
+        modelRewriteCheckbox.disabled = false;
+        const modelRewriteLabel = document.querySelector('label[for="model-rewrite-enabled"]');
+        if (modelRewriteLabel) {
+            modelRewriteLabel.style.opacity = '1';
+            modelRewriteLabel.title = '';
+        }
+    } else {
+        // Both disabled, enable both and clear tooltips
+        defaultModelInput.disabled = false;
+        defaultModelInput.style.opacity = '1';
+        defaultModelInput.title = '';
+        modelRewriteCheckbox.disabled = false;
+        const modelRewriteLabel = document.querySelector('label[for="model-rewrite-enabled"]');
+        if (modelRewriteLabel) {
+            modelRewriteLabel.style.opacity = '1';
+            modelRewriteLabel.title = '';
+        }
+    }
 }

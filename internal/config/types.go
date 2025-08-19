@@ -32,6 +32,7 @@ type EndpointConfig struct {
 	Enabled           bool                `yaml:"enabled"`
 	Priority          int                 `yaml:"priority"`
 	Tags              []string            `yaml:"tags"`         // 新增：支持的tag列表
+	DefaultModel      string              `yaml:"default_model,omitempty" json:"default_model,omitempty"`  // 新增：默认模型配置
 	ModelRewrite      *ModelRewriteConfig `yaml:"model_rewrite,omitempty"` // 新增：模型重写配置
 	Proxy             *ProxyConfig        `yaml:"proxy,omitempty"`         // 新增：代理配置
 	OAuthConfig       *OAuthConfig        `yaml:"oauth_config,omitempty"`  // 新增：OAuth配置
