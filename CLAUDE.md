@@ -60,5 +60,5 @@ validation:
 
 完整的实现细节和配置说明请参考：
 
-- **[DESIGN.md](./DESIGN.md)** - 详细的技术实现文档
+- **[DESIGN.md](./docs/DESIGN.md)** - 详细的技术实现文档
 - **[config.yaml.example](./config.yaml.example)** - 完整配置示例
