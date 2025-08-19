@@ -246,9 +246,33 @@ function switchLanguage(lang) {
 }
 
 function updateLanguageDropdown() {
+    // Get language data from data attributes
+    const languageDataElement = document.getElementById('languageData');
+    let availableLanguages = {};
+    let currentLang = null;
+    
+    if (languageDataElement) {
+        try {
+            const languageDataStr = languageDataElement.getAttribute('data-available-languages');
+            if (languageDataStr) {
+                availableLanguages = JSON.parse('{' + languageDataStr + '}');
+            }
+            currentLang = languageDataElement.getAttribute('data-current-language');
+        } catch (error) {
+            console.warn('Failed to parse language data from attributes:', error);
+        }
+    }
+    
+    // Fallback to global variable if data attributes are not available
+    if (Object.keys(availableLanguages).length === 0 && window.availableLanguages) {
+        availableLanguages = window.availableLanguages;
+    }
+    
     // Get current language from dropdown data attribute first, then fallback to other methods
     const dropdownElement = document.getElementById('languageDropdown');
-    let currentLang = dropdownElement ? dropdownElement.getAttribute('data-current-lang') : null;
+    if (!currentLang && dropdownElement) {
+        currentLang = dropdownElement.getAttribute('data-current-lang');
+    }
     
     if (!currentLang) {
         // Fallback: get from URL parameter
@@ -276,8 +300,8 @@ function updateLanguageDropdown() {
     const flagElement = document.getElementById('currentLanguageFlag');
     const textElement = document.getElementById('currentLanguageText');
     
-    if (flagElement && textElement && window.availableLanguages) {
-        const langInfo = window.availableLanguages[currentLang];
+    if (flagElement && textElement && Object.keys(availableLanguages).length > 0) {
+        const langInfo = availableLanguages[currentLang];
         if (langInfo) {
             flagElement.textContent = langInfo.flag;
             textElement.textContent = langInfo.name;

@@ -1,13 +1,8 @@
-<!-- Language data for JavaScript -->
-<script>
-window.availableLanguages = {
-    {{range .AvailableLanguages}}
-    "{{.code}}": {
-        "flag": "{{.flag}}",
-        "name": "{{.name}}"
-    },{{end}}
-};
-</script>
+<!-- Language data stored in data attributes -->
+<div id="languageData" style="display: none;" 
+     data-available-languages='{{range $i, $lang := .AvailableLanguages}}{{if $i}},{{end}}"{{$lang.code}}":{"flag":"{{$lang.flag}}","name":"{{$lang.name}}"}{{end}}'
+     data-current-language="{{.CurrentLanguage}}">
+</div>
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
