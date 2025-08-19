@@ -95,7 +95,6 @@ func generateDefaultConfig(filename string) error {
 		Validation: ValidationConfig{
 			StrictAnthropicFormat: false,
 			ValidateStreaming:     false,
-			DisconnectOnInvalid:   false,
 		},
 		Tagging: TaggingConfig{
 			PipelineTimeout: "5s",

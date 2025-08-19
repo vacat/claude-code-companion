@@ -32,7 +32,6 @@ logging:
 validation:
     strict_anthropic_format: true  # Validate response format compatibility
     validate_streaming: true       # Validate SSE streaming format
-    disconnect_on_invalid: true    # Disconnect on invalid responses
 
 web_admin:
     enabled: true                 # Admin interface runs on same host:port as proxy server

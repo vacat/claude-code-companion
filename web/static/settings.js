@@ -23,8 +23,7 @@ function collectFormData() {
         },
         validation: {
             strict_anthropic_format: document.getElementById('strictAnthropicFormat').checked,
-            validate_streaming: document.getElementById('validateStreaming').checked,
-            disconnect_on_invalid: document.getElementById('disconnectOnInvalid').checked
+            validate_streaming: document.getElementById('validateStreaming').checked
         },
         timeouts: {
             proxy: {
@@ -96,7 +95,6 @@ function resetSettings() {
     document.getElementById('logDirectory').value = originalConfig.logging.log_directory;
     document.getElementById('strictAnthropicFormat').checked = originalConfig.validation.strict_anthropic_format;
     document.getElementById('validateStreaming').checked = originalConfig.validation.validate_streaming;
-    document.getElementById('disconnectOnInvalid').checked = originalConfig.validation.disconnect_on_invalid;
     document.getElementById('proxyTLSHandshake').value = originalConfig.timeouts.proxy.tls_handshake;
     document.getElementById('proxyResponseHeader').value = originalConfig.timeouts.proxy.response_header;
     document.getElementById('proxyIdleConnection').value = originalConfig.timeouts.proxy.idle_connection;

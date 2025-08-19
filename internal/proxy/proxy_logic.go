@@ -87,7 +87,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			s.logger.Error("Request format conversion failed", err)
 			duration := time.Since(endpointStartTime)
 			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, nil, nil, nil, duration, err, false, tags, "", originalModel, rewrittenModel, attemptNumber)
-			return false, true // 转换失败，尝试下一个端点
+			// Request转换失败是请求格式问题，不应该重试其他端点，直接返回错误
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Request format conversion failed", "details": err.Error()})
+			return false, false // 不重试，直接返回
 		}
 		finalRequestBody = convertedBody
 		conversionContext = ctx
@@ -240,16 +242,12 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 				return false, true // SSE流不完整，尝试下一个endpoint
 			}
 			
-			if s.config.Validation.DisconnectOnInvalid {
-				s.logger.Error("Invalid response format, disconnecting", err)
-				// 记录验证失败的请求日志
-				duration := time.Since(endpointStartTime)
-				validationError := fmt.Sprintf("Response validation failed: %v", err)
-				s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags, "", originalModel, rewrittenModel, attemptNumber)
-				c.Header("Connection", "close")
-				c.AbortWithStatus(http.StatusBadGateway)
-				return false, false
-			}
+			// 验证失败，尝试下一个端点
+			s.logger.Info(fmt.Sprintf("Response validation failed for endpoint %s, trying next endpoint: %v", ep.Name, err))
+			duration := time.Since(endpointStartTime)
+			validationError := fmt.Sprintf("Response validation failed: %v", err)
+			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags, "", originalModel, rewrittenModel, attemptNumber)
+			return false, true // 验证失败，尝试下一个endpoint
 		}
 	}
 
@@ -262,7 +260,11 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		convertedResp, err := s.converter.ConvertResponse(decompressedBody, conversionContext, isStreaming)
 		if err != nil {
 			s.logger.Error("Response format conversion failed", err)
-			// 转换失败，使用原始响应体
+			// Response转换失败，记录错误并尝试下一个端点
+			duration := time.Since(endpointStartTime)
+			conversionError := fmt.Sprintf("Response format conversion failed: %v", err)
+			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, fmt.Errorf(conversionError), isStreaming, tags, "", originalModel, rewrittenModel, attemptNumber)
+			return false, true // Response转换失败，尝试下一个端点
 		} else {
 			convertedResponseBody = convertedResp
 			s.logger.Info(fmt.Sprintf("Response conversion successful! Original: %d bytes -> Converted: %d bytes", len(decompressedBody), len(convertedResp)))
