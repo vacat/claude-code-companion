@@ -21,10 +21,10 @@ Claude Code Companion 是一个多协议 API 代理服务，为 Claude Code 等�
 make build
 
 # 运行
-./claude-proxy -config config.yaml
+./claude-code-companion -config config.yaml
 
 # 或指定端口
-./claude-proxy --port 8080
+./claude-code-companion --port 8080
 ```
 
 ### 基本配置

@@ -2,7 +2,7 @@
 
 ## 概述
 
-本文档描述了为 claude-proxy 项目添加 OpenAI 格式端点支持的详细设计方案。该功能允许代理服务将客户端发送的 Anthropic Messages API 请求转换为 OpenAI Chat Completions API 格式，并将响应转换回 Anthropic 格式。
+本文档描述了为 Claude Code Companion 项目添加 OpenAI 格式端点支持的详细设计方案。该功能允许代理服务将客户端发送的 Anthropic Messages API 请求转换为 OpenAI Chat Completions API 格式，并将响应转换回 Anthropic 格式。
 
 ## 目标
 

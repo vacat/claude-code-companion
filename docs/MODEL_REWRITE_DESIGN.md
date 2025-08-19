@@ -2,7 +2,7 @@
 
 ## 需求概述
 
-为 claude-proxy 的 endpoint 增加 model rewrite 功能，允许在请求发送到上游 endpoint 之前对模型名称进行重写。主要场景是将 Claude 模型请求重写为其他提供商的模型（如 DeepSeek）。
+为 Claude Code Companion 的 endpoint 增加 model rewrite 功能，允许在请求发送到上游 endpoint 之前对模型名称进行重写。主要场景是将 Claude 模型请求重写为其他提供商的模型（如 DeepSeek）。
 
 ## 功能设计
 

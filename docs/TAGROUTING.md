@@ -392,7 +392,7 @@ def should_tag():
 
 1. **启动服务器**
    ```bash
-   ./claude-proxy -config config.yaml
+   ./claude-code-companion -config config.yaml
    ```
 
 2. **访问管理界面**
