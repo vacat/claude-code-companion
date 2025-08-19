@@ -74,19 +74,3 @@ function exportResponseAnalysis() {
     URL.revokeObjectURL(url);
 }
 
-function isAnthropicResponse(responseBody) {
-    // 检查 responseBody 是否为有效值
-    if (!responseBody) {
-        return false;
-    }
-    
-    try {
-        // 检查非流式响应
-        const data = JSON.parse(responseBody);
-        return data.type === 'message' && data.role === 'assistant';
-    } catch {
-        // 检查流式响应（SSE 格式）
-        return responseBody.includes('event: message_start') && 
-               responseBody.includes('data: {"type"');
-    }
-}

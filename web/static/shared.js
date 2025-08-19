@@ -180,6 +180,34 @@ function copyRequestId(requestId) {
     copyToClipboard(requestId);
 }
 
+// Check if response body is from Anthropic API
+function isAnthropicResponse(responseBody) {
+    if (!responseBody) return false;
+    
+    try {
+        // 尝试解码 base64
+        let decodedBody = responseBody;
+        try {
+            decodedBody = safeBase64Decode(responseBody);
+        } catch (e) {
+            // 如果不是 base64，就使用原始字符串
+        }
+        
+        // 检查非流式响应
+        try {
+            const data = JSON.parse(decodedBody);
+            return data.type === 'message' && data.role === 'assistant';
+        } catch {
+            // 检查流式响应（SSE 格式）
+            return decodedBody.includes('event: message_start') && 
+                   decodedBody.includes('data: {"type"');
+        }
+    } catch (error) {
+        console.error('Error checking if response is Anthropic:', error);
+        return false;
+    }
+}
+
 function fallbackCopyToClipboard(content) {
     try {
         // Create a temporary textarea element

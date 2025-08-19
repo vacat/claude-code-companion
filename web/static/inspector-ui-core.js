@@ -38,11 +38,7 @@ class InspectorUI {
     }
 
     escapeHtml(text) {
-        if (!text) return '';
-        // 保持中文字符不变，只转义必要的HTML字符
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        return escapeHtml(text);
     }
 
     formatJSON(obj) {
