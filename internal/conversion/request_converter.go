@@ -273,11 +273,35 @@ func (c *RequestConverter) Convert(anthropicReq []byte) ([]byte, *ConversionCont
 		out.ParallelToolCalls = boolPtr(false)
 	}
 
+	// 处理 thinking 模式转换为 OpenAI 推理模式
+	if anthReq.Thinking != nil && anthReq.Thinking.Type == "enabled" {
+		// 根据 budget_tokens 映射推理强度
+		if anthReq.Thinking.BudgetTokens > 0 {
+			out.MaxReasoningTokens = &anthReq.Thinking.BudgetTokens
+			
+			// 根据 budget_tokens 的大小设置推理强度
+			if anthReq.Thinking.BudgetTokens <= 5000 {
+				out.ReasoningEffort = stringPtr("low")
+			} else if anthReq.Thinking.BudgetTokens <= 15000 {
+				out.ReasoningEffort = stringPtr("medium")
+			} else {
+				out.ReasoningEffort = stringPtr("high")
+			}
+		} else {
+			// 如果没有指定 budget_tokens，使用默认的 medium 强度
+			out.ReasoningEffort = stringPtr("medium")
+		}
+		
+		if c.logger != nil {
+			c.logger.Debug("Converted thinking mode to OpenAI reasoning mode", map[string]interface{}{
+				"budget_tokens": anthReq.Thinking.BudgetTokens,
+				"reasoning_effort": *out.ReasoningEffort,
+			})
+		}
+	}
+
 	// 记录忽略的字段
 	if c.logger != nil {
-		if anthReq.Thinking != nil {
-			c.logger.Debug("Ignoring thinking field (not supported by OpenAI)")
-		}
 		if anthReq.TopK != nil {
 			c.logger.Debug("Ignoring top_k field (not supported by OpenAI)")
 		}
@@ -299,6 +323,11 @@ func (c *RequestConverter) Convert(anthropicReq []byte) ([]byte, *ConversionCont
 // boolPtr 返回bool指针
 func boolPtr(b bool) *bool {
 	return &b
+}
+
+// stringPtr 返回string指针
+func stringPtr(s string) *string {
+	return &s
 }
 
 // makeDataURL 将 Anthropic Image(base64) 转成 OpenAI data URL

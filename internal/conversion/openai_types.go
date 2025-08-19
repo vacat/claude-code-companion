@@ -17,6 +17,9 @@ type OpenAIRequest struct {
 	Stop                []string    `json:"stop,omitempty"`
 	User                string      `json:"user,omitempty"`
 	ParallelToolCalls   *bool       `json:"parallel_tool_calls,omitempty"`
+	// 推理相关字段 (o1 模型)
+	ReasoningEffort     *string     `json:"reasoning_effort,omitempty"`     // "low"|"medium"|"high" 推理强度
+	MaxReasoningTokens  *int        `json:"max_reasoning_tokens,omitempty"` // 推理阶段的最大 token 数
 }
 
 // OpenAIMessage OpenAI 消息结构
