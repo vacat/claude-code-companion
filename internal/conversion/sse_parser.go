@@ -81,8 +81,24 @@ func (p *SSEParser) ParseSSEStream(sseData []byte) ([]OpenAIStreamChunk, error) 
 			}
 			
 			chunks = append(chunks, chunk)
+		} else {
+			// 检查非标准行是否包含错误信息
+			if strings.Contains(line, "error") && (strings.HasPrefix(line, "{") || strings.HasPrefix(line, "[")) {
+				var errorObj map[string]interface{}
+				if err := json.Unmarshal([]byte(line), &errorObj); err == nil {
+					if errorInfo, exists := errorObj["error"]; exists {
+						if p.logger != nil {
+							p.logger.Info("Found error in SSE stream", map[string]interface{}{
+								"error_line": line,
+								"error_info": errorInfo,
+							})
+						}
+						return nil, fmt.Errorf("error found in stream: %s", line)
+					}
+				}
+			}
+			// 其他 SSE 字段 (event:, id:, retry:) 在 OpenAI 流中不常用，继续忽略
 		}
-		// 其他 SSE 字段 (event:, id:, retry:) 在 OpenAI 流中不常用，暂时忽略
 	}
 	
 	if err := scanner.Err(); err != nil {
