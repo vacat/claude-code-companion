@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"claude-code-companion/internal/common/httpclient"
 	"claude-code-companion/internal/config"
 	"claude-code-companion/internal/interfaces"
 	"claude-code-companion/internal/oauth"
-	"claude-code-companion/internal/proxyclient"
 	"claude-code-companion/internal/utils"
 )
 
@@ -224,13 +224,36 @@ func generateID(name string) string {
 	return fmt.Sprintf("endpoint-%s-%d", name, time.Now().Unix())
 }
 
+// parseDuration 解析时间字符串，失败时返回默认值
+func parseDuration(durationStr string, defaultDuration time.Duration) time.Duration {
+	if durationStr == "" {
+		return defaultDuration
+	}
+	if duration, err := time.ParseDuration(durationStr); err == nil {
+		return duration
+	}
+	return defaultDuration
+}
+
 // CreateProxyClient 为这个端点创建支持代理的HTTP客户端
 func (e *Endpoint) CreateProxyClient(timeoutConfig config.ProxyTimeoutConfig) (*http.Client, error) {
 	e.mutex.RLock()
 	proxyConfig := e.Proxy
 	e.mutex.RUnlock()
 	
-	return proxyclient.CreateHTTPClient(proxyConfig, timeoutConfig)
+	factory := httpclient.NewFactory()
+	clientConfig := httpclient.ClientConfig{
+		Type: httpclient.ClientTypeEndpoint,
+		Timeouts: httpclient.TimeoutConfig{
+			TLSHandshake:   parseDuration(timeoutConfig.TLSHandshake, 10*time.Second),
+			ResponseHeader: parseDuration(timeoutConfig.ResponseHeader, 60*time.Second),
+			IdleConnection: parseDuration(timeoutConfig.IdleConnection, 90*time.Second),
+			OverallRequest: parseDuration(timeoutConfig.OverallRequest, 0),
+		},
+		ProxyConfig: proxyConfig,
+	}
+	
+	return factory.CreateClient(clientConfig)
 }
 
 // CreateHealthClient 为健康检查创建HTTP客户端（使用与代理相同的配置，但超时较短）
@@ -239,15 +262,19 @@ func (e *Endpoint) CreateHealthClient(timeoutConfig config.HealthCheckTimeoutCon
 	proxyConfig := e.Proxy
 	e.mutex.RUnlock()
 	
-	// 将健康检查超时配置转换为代理超时配置格式
-	proxyTimeoutConfig := config.ProxyTimeoutConfig{
-		TLSHandshake:     timeoutConfig.TLSHandshake,
-		ResponseHeader:   timeoutConfig.ResponseHeader,
-		IdleConnection:   timeoutConfig.IdleConnection,
-		OverallRequest:   timeoutConfig.OverallRequest,
+	factory := httpclient.NewFactory()
+	clientConfig := httpclient.ClientConfig{
+		Type: httpclient.ClientTypeHealth,
+		Timeouts: httpclient.TimeoutConfig{
+			TLSHandshake:   parseDuration(timeoutConfig.TLSHandshake, 5*time.Second),
+			ResponseHeader: parseDuration(timeoutConfig.ResponseHeader, 30*time.Second),
+			IdleConnection: parseDuration(timeoutConfig.IdleConnection, 60*time.Second),
+			OverallRequest: parseDuration(timeoutConfig.OverallRequest, 30*time.Second),
+		},
+		ProxyConfig: proxyConfig,
 	}
 	
-	return proxyclient.CreateHTTPClient(proxyConfig, proxyTimeoutConfig)
+	return factory.CreateClient(clientConfig)
 }
 
 // RefreshOAuthToken 刷新 OAuth token
@@ -269,7 +296,19 @@ func (e *Endpoint) RefreshOAuthTokenWithCallback(timeoutConfig config.ProxyTimeo
 	}
 	
 	// 创建HTTP客户端用于刷新请求
-	client, err := proxyclient.CreateHTTPClient(e.Proxy, timeoutConfig)
+	factory := httpclient.NewFactory()
+	clientConfig := httpclient.ClientConfig{
+		Type: httpclient.ClientTypeProxy,
+		Timeouts: httpclient.TimeoutConfig{
+			TLSHandshake:   parseDuration(timeoutConfig.TLSHandshake, 10*time.Second),
+			ResponseHeader: parseDuration(timeoutConfig.ResponseHeader, 60*time.Second),
+			IdleConnection: parseDuration(timeoutConfig.IdleConnection, 90*time.Second),
+			OverallRequest: parseDuration(timeoutConfig.OverallRequest, 30*time.Second),
+		},
+		ProxyConfig: e.Proxy,
+	}
+	
+	client, err := factory.CreateClient(clientConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create http client for token refresh: %v", err)
 	}

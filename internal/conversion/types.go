@@ -19,32 +19,9 @@ type ConversionContext struct {
 	IsStreaming     bool                   // 是否为流式请求
 	RequestHeaders  map[string]string      // 原始请求头
 	StopSequences   []string               // 请求中的停止序列，用于响应时检测
-	StreamState     *StreamState           // DEPRECATED: 流式转换状态 (only for old architecture)
-	// Note: StreamState is deprecated in refactored architecture but kept for old code compatibility
 	// 注意：不包含模型映射，因为转换发生在模型重写之后
 }
 
-// StreamState 流式转换状态 - DEPRECATED: Use refactored architecture instead
-type StreamState struct {
-	ContentBlockIndex int                         // 当前内容块索引
-	ToolCallStates    map[string]*ToolCallState   // 工具调用状态
-	NextBlockIndex    int                         // 下一个块索引
-	TextBlockStarted  bool                        // 文本块是否已开始
-	MessageStarted    bool                        // 消息是否已开始
-	PingSent          bool                        // ping事件是否已发送
-}
-
-// ToolCallState 工具调用状态 - DEPRECATED: Use refactored architecture instead
-type ToolCallState struct {
-	BlockIndex        int    // 内容块索引
-	ID               string // 工具调用ID
-	Name             string // 工具名称
-	ArgumentsBuffer  string // 参数缓冲区（保留以兼容现有代码）
-	JSONBuffer       *SimpleJSONBuffer // 简单JSON缓冲器
-	Completed        bool   // 是否已完成
-	Started          bool   // 是否已发送 content_block_start
-	NameReceived     bool   // 是否已收到工具名称
-}
 
 // ConversionError 转换错误
 type ConversionError struct {

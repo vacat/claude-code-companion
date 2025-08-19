@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"claude-code-companion/internal/utils"
 )
 
 // ValidateConfig 导出的配置验证函数
@@ -21,19 +19,13 @@ func validateConfig(config *Config) error {
 		config.Server.Host = "127.0.0.1"
 	}
 
-	// 使用统一的服务器配置验证
-	if err := utils.ValidateServerConfig(config.Server.Host, config.Server.Port); err != nil {
+	// 验证服务器配置
+	if err := validateServerConfig(config.Server.Host, config.Server.Port); err != nil {
 		return err
 	}
 
-	// 转换为接口类型进行统一验证
-	validator := utils.NewEndpointConfigValidator()
-	endpointInterfaces := make([]utils.EndpointConfig, len(config.Endpoints))
-	for i, ep := range config.Endpoints {
-		endpointInterfaces[i] = ep
-	}
-
-	if err := validator.ValidateEndpoints(endpointInterfaces); err != nil {
+	// 验证端点配置
+	if err := validateEndpoints(config.Endpoints); err != nil {
 		return err
 	}
 
@@ -451,6 +443,52 @@ func validateProxyConfig(config *ProxyConfig, context string) error {
 	// 验证认证配置一致性
 	if (config.Username != "" && config.Password == "") || (config.Username == "" && config.Password != "") {
 		return fmt.Errorf("%s: proxy username and password must both be provided or both be empty", context)
+	}
+	
+	return nil
+}
+
+// validateServerConfig validates server configuration
+func validateServerConfig(host string, port int) error {
+	if port <= 0 || port > 65535 {
+		return fmt.Errorf("invalid server port: %d", port)
+	}
+	
+	return nil
+}
+
+// validateEndpoints validates endpoint configurations
+func validateEndpoints(endpoints []EndpointConfig) error {
+	if len(endpoints) == 0 {
+		return fmt.Errorf("at least one endpoint must be configured")
+	}
+	
+	for i, endpoint := range endpoints {
+		if err := validateEndpoint(endpoint, i); err != nil {
+			return err
+		}
+	}
+	
+	return nil
+}
+
+// validateEndpoint validates a single endpoint configuration
+func validateEndpoint(endpoint EndpointConfig, index int) error {
+	if endpoint.Name == "" {
+		return fmt.Errorf("endpoint %d: name cannot be empty", index)
+	}
+	
+	if endpoint.URL == "" {
+		return fmt.Errorf("endpoint %d: url cannot be empty", index)
+	}
+	
+	if endpoint.AuthType != "api_key" && endpoint.AuthType != "auth_token" && endpoint.AuthType != "oauth" {
+		return fmt.Errorf("endpoint %d: invalid auth_type '%s', must be 'api_key', 'auth_token', or 'oauth'", index, endpoint.AuthType)
+	}
+	
+	// OAuth 认证不需要 auth_value，其他认证类型需要
+	if endpoint.AuthType != "oauth" && endpoint.AuthValue == "" {
+		return fmt.Errorf("endpoint %d: auth_value cannot be empty for non-oauth authentication", index)
 	}
 	
 	return nil

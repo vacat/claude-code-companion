@@ -50,9 +50,9 @@ func setupGORMStorage() (*GORMStorage, func()) {
 	return storage, cleanup
 }
 
-func setupSQLiteStorage() (*SQLiteStorage, func()) {
+func setupSQLiteStorage() (*GORMStorage, func()) {
 	tempDir := "./benchmark_sqlite_storage"
-	storage, err := NewSQLiteStorage(tempDir)
+	storage, err := NewGORMStorage(tempDir)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create SQLite storage: %v", err))
 	}

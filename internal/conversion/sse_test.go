@@ -23,7 +23,6 @@ data: [DONE]
 	// 创建转换上下文
 	ctx := &ConversionContext{
 		EndpointType: "openai",
-		StreamState: nil,
 	}
 
 	// 执行转换

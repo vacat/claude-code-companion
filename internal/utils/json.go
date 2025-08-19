@@ -2,53 +2,21 @@ package utils
 
 import (
 	"encoding/json"
+	
+	commonjson "claude-code-companion/internal/common/json"
 )
 
 // ExtractStringField extracts a string field from JSON data
+// 兼容性函数，委托给新的json工具包
 func ExtractStringField(data []byte, field string) (string, error) {
-	if len(data) == 0 {
-		return "", nil
-	}
-
-	var parsed map[string]interface{}
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return "", err
-	}
-
-	if value, ok := parsed[field].(string); ok {
-		return value, nil
-	}
-
-	return "", nil
+	return commonjson.ExtractField[string](data, field)
 }
 
 // ExtractNestedStringField extracts a nested string field from JSON data
 // path should be like ["metadata", "user_id"]
+// 兼容性函数，委托给新的json工具包
 func ExtractNestedStringField(data []byte, path []string) (string, error) {
-	if len(data) == 0 || len(path) == 0 {
-		return "", nil
-	}
-
-	var parsed map[string]interface{}
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return "", err
-	}
-
-	current := parsed
-	for _, key := range path[:len(path)-1] {
-		if next, ok := current[key].(map[string]interface{}); ok {
-			current = next
-		} else {
-			return "", nil
-		}
-	}
-
-	finalKey := path[len(path)-1]
-	if value, ok := current[finalKey].(string); ok {
-		return value, nil
-	}
-
-	return "", nil
+	return commonjson.ExtractNestedField[string](data, path)
 }
 
 // ExtractModelFromRequestBody extracts the model name from request body JSON
