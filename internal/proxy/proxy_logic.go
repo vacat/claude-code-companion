@@ -35,6 +35,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		duration := time.Since(endpointStartTime)
 		createRequestError := fmt.Sprintf("Failed to create request: %v", err)
 		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, requestBody, c, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "", "", "", attemptNumber)
+		// 设置错误信息到context中
+		c.Set("last_error", fmt.Errorf(createRequestError))
+		c.Set("last_status_code", 0)
 		return false, false
 	}
 
@@ -45,6 +48,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		// 记录模型重写失败的日志
 		duration := time.Since(endpointStartTime)
 		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, requestBody, c, nil, nil, nil, duration, err, false, tags, "", "", "", attemptNumber)
+		// 设置错误信息到context中
+		c.Set("last_error", err)
+		c.Set("last_status_code", 0)
 		return false, false
 	}
 
@@ -56,6 +62,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			s.logger.Error("Failed to read rewritten request body", err)
 			duration := time.Since(endpointStartTime)
 			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, nil, nil, nil, duration, err, false, tags, "", originalModel, rewrittenModel, attemptNumber)
+			// 设置错误信息到context中
+			c.Set("last_error", err)
+			c.Set("last_status_code", 0)
 			return false, false
 		}
 	} else {
@@ -89,6 +98,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, nil, nil, nil, duration, err, false, tags, "", originalModel, rewrittenModel, attemptNumber)
 			// Request转换失败是请求格式问题，不应该重试其他端点，直接返回错误
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Request format conversion failed", "details": err.Error()})
+			// 设置错误信息到context中
+			c.Set("last_error", err)
+			c.Set("last_status_code", http.StatusBadRequest)
 			return false, false // 不重试，直接返回
 		}
 		finalRequestBody = convertedBody
@@ -108,6 +120,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		duration := time.Since(endpointStartTime)
 		createRequestError := fmt.Sprintf("Failed to create final request: %v", err)
 		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, nil, nil, nil, duration, fmt.Errorf(createRequestError), false, tags, "", originalModel, rewrittenModel, attemptNumber)
+		// 设置错误信息到context中
+		c.Set("last_error", fmt.Errorf(createRequestError))
+		c.Set("last_status_code", 0)
 		return false, false
 	}
 
@@ -128,6 +143,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		if err != nil {
 			s.logger.Error(fmt.Sprintf("Failed to get auth header: %v", err), err)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
+			// 设置错误信息到context中
+			c.Set("last_error", err)
+			c.Set("last_status_code", http.StatusUnauthorized)
 			return false, false
 		}
 		req.Header.Set("Authorization", authHeader)
@@ -143,6 +161,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		s.logger.Error("Failed to create proxy client for endpoint", err)
 		duration := time.Since(endpointStartTime)
 		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
+		// 设置错误信息到context中
+		c.Set("last_error", err)
+		c.Set("last_status_code", 0)
 		return false, true
 	}
 
@@ -150,6 +171,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	if err != nil {
 		duration := time.Since(endpointStartTime)
 		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, nil, nil, duration, err, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
+		// 设置错误信息到context中，供重试逻辑使用
+		c.Set("last_error", err)
+		c.Set("last_status_code", 0) // 网络错误，没有状态码
 		return false, true
 	}
 	defer resp.Body.Close()
@@ -168,6 +192,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		
 		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, nil, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
 		s.logger.Debug(fmt.Sprintf("HTTP error %d from endpoint %s, trying next endpoint", resp.StatusCode, ep.Name))
+		// 设置状态码到context中，供重试逻辑使用
+		c.Set("last_error", nil)
+		c.Set("last_status_code", resp.StatusCode)
 		return false, true
 	}
 
@@ -178,6 +205,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		duration := time.Since(endpointStartTime)
 		readError := fmt.Sprintf("Failed to read response body: %v", err)
 		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, nil, duration, fmt.Errorf(readError), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
+		// 设置错误信息到context中
+		c.Set("last_error", fmt.Errorf(readError))
+		c.Set("last_status_code", resp.StatusCode)
 		return false, false
 	}
 
@@ -190,6 +220,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		duration := time.Since(endpointStartTime)
 		decompressError := fmt.Sprintf("Failed to decompress response body: %v", err)
 		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, responseBody, duration, fmt.Errorf(decompressError), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
+		// 设置错误信息到context中
+		c.Set("last_error", fmt.Errorf(decompressError))
+		c.Set("last_status_code", resp.StatusCode)
 		return false, false
 	}
 
@@ -230,6 +263,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 				duration := time.Since(endpointStartTime)
 				errorLog := fmt.Sprintf("Usage validation failed: %v", err)
 				s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
+				// 设置错误信息到context中
+				c.Set("last_error", fmt.Errorf(errorLog))
+				c.Set("last_status_code", resp.StatusCode)
 				return false, true // 验证失败，尝试下一个endpoint
 			}
 			
@@ -239,6 +275,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 				duration := time.Since(endpointStartTime)
 				errorLog := fmt.Sprintf("Incomplete SSE stream: %v", err)
 				s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
+				// 设置错误信息到context中
+				c.Set("last_error", fmt.Errorf(errorLog))
+				c.Set("last_status_code", resp.StatusCode)
 				return false, true // SSE流不完整，尝试下一个endpoint
 			}
 			
@@ -247,6 +286,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			duration := time.Since(endpointStartTime)
 			validationError := fmt.Sprintf("Response validation failed: %v", err)
 			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags, "", originalModel, rewrittenModel, attemptNumber)
+			// 设置错误信息到context中
+			c.Set("last_error", fmt.Errorf(validationError))
+			c.Set("last_status_code", resp.StatusCode)
 			return false, true // 验证失败，尝试下一个endpoint
 		}
 	}
@@ -264,6 +306,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			duration := time.Since(endpointStartTime)
 			conversionError := fmt.Sprintf("Response format conversion failed: %v", err)
 			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, fmt.Errorf(conversionError), isStreaming, tags, "", originalModel, rewrittenModel, attemptNumber)
+			// 设置错误信息到context中
+			c.Set("last_error", fmt.Errorf(conversionError))
+			c.Set("last_status_code", resp.StatusCode)
 			return false, true // Response转换失败，尝试下一个端点
 		} else {
 			convertedResponseBody = convertedResp
@@ -319,6 +364,10 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	
 	// 发送最终响应体给客户端
 	c.Writer.Write(finalResponseBody)
+	
+	// 清除错误信息（成功情况）
+	c.Set("last_error", nil)
+	c.Set("last_status_code", resp.StatusCode)
 
 	duration := time.Since(endpointStartTime)
 	// 创建日志条目，记录修改前后的完整数据

@@ -3,6 +3,7 @@ package proxy
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"claude-code-companion/internal/endpoint"
@@ -12,60 +13,274 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// tryProxyRequest attempts to proxy the request to the given endpoint
-func (s *Server) tryProxyRequest(c *gin.Context, ep *endpoint.Endpoint, requestBody []byte, requestID string, startTime time.Time, path string, taggedRequest *tagging.TaggedRequest, attemptNumber int) (success, shouldRetry bool) {
-	success, _ = s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest, attemptNumber)
-	if success {
-		s.endpointManager.RecordRequest(ep.ID, true)
+// RetryBehavior 定义重试行为
+type RetryBehavior int
+
+const (
+	RetryBehaviorReturnError  RetryBehavior = 0 // 立刻返回错误
+	RetryBehaviorRetryEndpoint RetryBehavior = 1 // 在当前端点重试
+	RetryBehaviorSwitchEndpoint RetryBehavior = 2 // 切换到下一个端点
+)
+
+// MaxEndpointRetries 单个端点最大重试次数
+const MaxEndpointRetries = 2
+
+// tryProxyRequestWithRetry 尝试向端点发送请求，支持单端点重试
+func (s *Server) tryProxyRequestWithRetry(c *gin.Context, ep *endpoint.Endpoint, requestBody []byte, requestID string, startTime time.Time, path string, taggedRequest *tagging.TaggedRequest, globalAttemptNumber int) (success bool, shouldTryNextEndpoint bool) {
+	for endpointAttempt := 1; endpointAttempt <= MaxEndpointRetries; endpointAttempt++ {
+		currentGlobalAttempt := globalAttemptNumber + endpointAttempt - 1
+		s.logger.Debug(fmt.Sprintf("Trying endpoint %s (endpoint attempt %d/%d, global attempt %d)", ep.Name, endpointAttempt, MaxEndpointRetries, currentGlobalAttempt))
 		
-		// 尝试提取基准信息用于健康检查
-		if len(requestBody) > 0 {
-			extracted := s.healthChecker.GetExtractor().ExtractFromRequest(requestBody, c.Request.Header)
-			if extracted {
-				s.logger.Info("Successfully updated health check baseline info from request")
+		success, shouldRetryAnywhere := s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest, currentGlobalAttempt)
+		if success {
+			s.endpointManager.RecordRequest(ep.ID, true)
+			
+			// 尝试提取基准信息用于健康检查
+			if len(requestBody) > 0 {
+				extracted := s.healthChecker.GetExtractor().ExtractFromRequest(requestBody, c.Request.Header)
+				if extracted {
+					s.logger.Info("Successfully updated health check baseline info from request")
+				}
+			}
+			
+			s.logger.Debug(fmt.Sprintf("Request succeeded on endpoint %s (endpoint attempt %d/%d)", ep.Name, endpointAttempt, MaxEndpointRetries))
+			return true, false
+		}
+		
+		// 记录失败
+		s.endpointManager.RecordRequest(ep.ID, false)
+		
+		// 如果明确指示不应重试任何地方，直接返回
+		if !shouldRetryAnywhere {
+			s.logger.Debug(fmt.Sprintf("Endpoint %s indicated no retry should be attempted", ep.Name))
+			return false, false
+		}
+		
+		// 从context中获取最后一次的错误信息和状态码（如果有的话）
+		var lastError error
+		var lastStatusCode int
+		if errInterface, exists := c.Get("last_error"); exists {
+			if err, ok := errInterface.(error); ok {
+				lastError = err
+			}
+		}
+		if statusInterface, exists := c.Get("last_status_code"); exists {
+			if status, ok := statusInterface.(int); ok {
+				lastStatusCode = status
 			}
 		}
 		
-		s.logger.Debug(fmt.Sprintf("Request succeeded on endpoint %s", ep.Name))
-		return true, false
+		// 根据错误类型确定重试行为
+		retryBehavior := s.determineRetryBehaviorFromError(lastError, lastStatusCode, endpointAttempt)
+		
+		switch retryBehavior {
+		case RetryBehaviorReturnError:
+			s.logger.Debug(fmt.Sprintf("Endpoint %s: RetryBehaviorReturnError - stopping all retries", ep.Name))
+			return false, false
+			
+		case RetryBehaviorRetryEndpoint:
+			if endpointAttempt < MaxEndpointRetries {
+				s.logger.Debug(fmt.Sprintf("Endpoint %s: RetryBehaviorRetryEndpoint - retrying same endpoint (attempt %d/%d)", ep.Name, endpointAttempt+1, MaxEndpointRetries))
+				// 重新构建请求体，继续循环
+				s.rebuildRequestBody(c, requestBody)
+				continue
+			} else {
+				s.logger.Debug(fmt.Sprintf("Endpoint %s: Max retries reached, switching to next endpoint", ep.Name))
+				return false, true
+			}
+			
+		case RetryBehaviorSwitchEndpoint:
+			s.logger.Debug(fmt.Sprintf("Endpoint %s: RetryBehaviorSwitchEndpoint - switching to next endpoint", ep.Name))
+			return false, true
+		}
 	}
 	
-	// 记录失败
-	s.endpointManager.RecordRequest(ep.ID, false)
-	s.logger.Debug("Primary endpoint failed, trying fallback endpoints")
+	// 如果所有重试都失败了，切换到下一个端点
+	s.logger.Debug(fmt.Sprintf("All %d attempts failed on endpoint %s, switching to next endpoint", MaxEndpointRetries, ep.Name))
 	return false, true
+}
+
+// ErrorCategory 错误类别
+type ErrorCategory int
+
+const (
+	ErrorCategoryClientError         ErrorCategory = 0 // 客户端错误，不应重试
+	ErrorCategoryServerError         ErrorCategory = 1 // 服务器错误，可以重试
+	ErrorCategoryNetworkError        ErrorCategory = 2 // 网络错误，应该重试
+	ErrorCategoryUsageValidationError ErrorCategory = 3 // Usage验证错误，原地重试
+	ErrorCategorySSEValidationError  ErrorCategory = 4 // SSE流不完整验证错误，原地重试
+	ErrorCategoryOtherValidationError ErrorCategory = 5 // 其他验证错误，切换端点
+	ErrorCategoryResponseTimeoutError ErrorCategory = 6 // 响应超时错误，切换端点
+)
+
+// determineRetryBehaviorFromError 根据错误信息确定重试行为
+func (s *Server) determineRetryBehaviorFromError(err error, statusCode int, currentAttempt int) RetryBehavior {
+	if err == nil && statusCode >= 200 && statusCode < 300 {
+		// 成功情况，不需要重试
+		return RetryBehaviorReturnError
+	}
+
+	errorCategory := s.categorizeError(err, statusCode)
+	
+	switch errorCategory {
+	case ErrorCategoryClientError:
+		// 客户端错误（如请求格式错误、认证失败等），立刻返回错误
+		return RetryBehaviorReturnError
+		
+	case ErrorCategoryNetworkError:
+		// 网络错误（连接失败、超时等），在同一端点重试
+		if currentAttempt < MaxEndpointRetries {
+			return RetryBehaviorRetryEndpoint
+		}
+		return RetryBehaviorSwitchEndpoint
+		
+	case ErrorCategoryServerError:
+		// 服务器错误（5xx状态码），在同一端点重试
+		if currentAttempt < MaxEndpointRetries {
+			return RetryBehaviorRetryEndpoint
+		}
+		return RetryBehaviorSwitchEndpoint
+		
+	case ErrorCategoryUsageValidationError:
+		// Usage验证失败，原地重试
+		if currentAttempt < MaxEndpointRetries {
+			return RetryBehaviorRetryEndpoint
+		}
+		return RetryBehaviorSwitchEndpoint
+		
+	case ErrorCategorySSEValidationError:
+		// SSE流不完整验证失败，原地重试
+		if currentAttempt < MaxEndpointRetries {
+			return RetryBehaviorRetryEndpoint
+		}
+		return RetryBehaviorSwitchEndpoint
+		
+	case ErrorCategoryOtherValidationError:
+		// 其他验证错误，切换端点
+		return RetryBehaviorSwitchEndpoint
+		
+	case ErrorCategoryResponseTimeoutError:
+		// 响应超时错误，切换端点
+		return RetryBehaviorSwitchEndpoint
+		
+	default:
+		// 未知错误，在同一端点重试
+		if currentAttempt < MaxEndpointRetries {
+			return RetryBehaviorRetryEndpoint
+		}
+		return RetryBehaviorSwitchEndpoint
+	}
+}
+
+// categorizeError 对错误进行分类
+func (s *Server) categorizeError(err error, statusCode int) ErrorCategory {
+	if err == nil {
+		// 基于HTTP状态码判断
+		if statusCode >= 400 && statusCode < 500 {
+			return ErrorCategoryClientError
+		} else if statusCode >= 500 {
+			return ErrorCategoryServerError
+		}
+		return ErrorCategoryClientError
+	}
+	
+	errStr := err.Error()
+	
+	// 客户端错误（不应重试）
+	if strings.Contains(errStr, "Request format conversion failed") ||
+	   strings.Contains(errStr, "Authentication failed") ||
+	   strings.Contains(errStr, "Failed to create request") ||
+	   strings.Contains(errStr, "Failed to create final request") ||
+	   strings.Contains(errStr, "Failed to read rewritten request body") ||
+	   strings.Contains(errStr, "Failed to decompress response body") {
+		return ErrorCategoryClientError
+	}
+	
+	// Usage验证错误（原地重试）
+	if strings.Contains(errStr, "Usage validation failed") ||
+	   strings.Contains(errStr, "invalid usage stats") {
+		return ErrorCategoryUsageValidationError
+	}
+	
+	// SSE流不完整验证错误（原地重试）
+	if strings.Contains(errStr, "Incomplete SSE stream") ||
+	   strings.Contains(errStr, "incomplete SSE stream") ||
+	   strings.Contains(errStr, "missing message_stop") ||
+	   strings.Contains(errStr, "missing [DONE]") ||
+	   strings.Contains(errStr, "missing finish_reason") {
+		return ErrorCategorySSEValidationError
+	}
+	
+	// 其他验证错误（切换端点）
+	if strings.Contains(errStr, "validation failed") ||
+	   strings.Contains(errStr, "Response format conversion failed") {
+		return ErrorCategoryOtherValidationError
+	}
+	
+	// 响应读取超时（切换端点）- 特殊处理
+	if strings.Contains(errStr, "Failed to read response body") {
+		return ErrorCategoryResponseTimeoutError
+	}
+	
+	// 网络错误（应该重试）
+	if strings.Contains(errStr, "connection") ||
+	   strings.Contains(errStr, "timeout") ||
+	   strings.Contains(errStr, "network") ||
+	   strings.Contains(errStr, "Failed to create proxy client") ||
+	   strings.Contains(errStr, "no such host") ||
+	   strings.Contains(errStr, "dial tcp") {
+		return ErrorCategoryNetworkError
+	}
+	
+	// 默认为服务器错误（可以重试）
+	return ErrorCategoryServerError
+}
+
+// determineRetryBehavior 根据当前情况确定重试行为（保持向后兼容）
+func (s *Server) determineRetryBehavior(c *gin.Context, ep *endpoint.Endpoint, currentAttempt int) RetryBehavior {
+	// 临时实现：默认在同一端点重试，最后一次尝试时切换端点
+	if currentAttempt < MaxEndpointRetries {
+		return RetryBehaviorRetryEndpoint
+	}
+	return RetryBehaviorSwitchEndpoint
+}
+
+// tryProxyRequest attempts to proxy the request to the given endpoint (保持向后兼容)
+func (s *Server) tryProxyRequest(c *gin.Context, ep *endpoint.Endpoint, requestBody []byte, requestID string, startTime time.Time, path string, taggedRequest *tagging.TaggedRequest, attemptNumber int) (success, shouldRetry bool) {
+	return s.tryProxyRequestWithRetry(c, ep, requestBody, requestID, startTime, path, taggedRequest, attemptNumber)
 }
 
 // tryEndpointList 尝试端点列表，返回(成功, 尝试次数)
 func (s *Server) tryEndpointList(c *gin.Context, endpoints []utils.EndpointSorter, path string, requestBody []byte, requestID string, startTime time.Time, taggedRequest *tagging.TaggedRequest, phase string, startingAttemptNumber int) (bool, int) {
-	attemptedCount := 0
+	totalAttempts := 0
 	
 	for _, epInterface := range endpoints {
 		ep := epInterface.(*endpoint.Endpoint)
-		attemptedCount++
-		currentAttempt := startingAttemptNumber + attemptedCount - 1
-		s.logger.Debug(fmt.Sprintf("%s: Attempting endpoint %s (attempt #%d)", phase, ep.Name, currentAttempt))
+		currentGlobalAttempt := startingAttemptNumber + totalAttempts
+		s.logger.Debug(fmt.Sprintf("%s: Attempting endpoint %s (starting from global attempt #%d)", phase, ep.Name, currentGlobalAttempt))
 		
-		success, shouldRetry := s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest, currentAttempt)
+		success, shouldTryNextEndpoint := s.tryProxyRequestWithRetry(c, ep, requestBody, requestID, startTime, path, taggedRequest, currentGlobalAttempt)
+		
+		// 更新总尝试次数（包括该端点的所有重试）
+		totalAttempts += MaxEndpointRetries
+		
 		if success {
-			s.endpointManager.RecordRequest(ep.ID, true)
-			s.logger.Debug(fmt.Sprintf("%s: Request succeeded on endpoint %s (attempt #%d)", phase, ep.Name, currentAttempt))
-			return true, attemptedCount
+			s.logger.Debug(fmt.Sprintf("%s: Request succeeded on endpoint %s", phase, ep.Name))
+			return true, totalAttempts
 		}
 		
-		s.endpointManager.RecordRequest(ep.ID, false)
-		s.logger.Debug(fmt.Sprintf("%s: Request failed on endpoint %s", phase, ep.Name))
-		
-		if !shouldRetry {
-			s.logger.Debug("Endpoint indicated no retry, stopping fallback")
+		if !shouldTryNextEndpoint {
+			s.logger.Debug("Endpoint indicated no retry should be attempted, stopping fallback")
 			break
 		}
+		
+		s.logger.Debug(fmt.Sprintf("%s: All attempts failed on endpoint %s, trying next endpoint", phase, ep.Name))
 		
 		// 重新构建请求体
 		s.rebuildRequestBody(c, requestBody)
 	}
 	
-	return false, attemptedCount
+	return false, totalAttempts
 }
 
 // filterAndSortEndpoints 过滤并排序端点
@@ -129,7 +344,7 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 		requestTags = taggedRequest.Tags
 	}
 	
-	totalAttempted := 1 // 包括最初失败的endpoint
+	totalAttempted := MaxEndpointRetries // 包括最初失败的endpoint的所有重试
 	
 	if len(requestTags) > 0 {
 		// 有标签请求：分两阶段尝试
