@@ -13,25 +13,39 @@
     transform: scale(1.05) !important;
 }
 
-/* Inspector specific extensions of common styles */
 .inspector-section {
-    /* Use common .content-inspector-section from shared.css */
+    margin-bottom: 2rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1rem;
 }
 
 .inspector-title {
-    /* Use common .content-inspector-title from shared.css */
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 0.5rem;
 }
 
 .inspector-stat {
-    /* Use common .content-inspector-stat from shared.css */
+    text-align: center;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
 }
 
 .inspector-stat-label {
-    /* Use common .content-inspector-stat-label from shared.css */
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
 }
 
 .inspector-stat-value {
-    /* Use common .content-inspector-stat-value from shared.css */
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #495057;
 }
 
 .inspector-subsection {
@@ -39,27 +53,52 @@
 }
 
 .inspector-collapse-header {
-    /* Use common .content-inspector-collapse-header from shared.css */
+    cursor: pointer;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    transition: background-color 0.2s;
+    font-weight: 500;
 }
 
 .inspector-collapse-header:hover {
-    /* Use common .content-inspector-collapse-header:hover from shared.css */
+    background: #e9ecef;
 }
 
 .inspector-collapse-icon {
-    /* Use common .content-inspector-collapse-icon from shared.css */
+    display: inline-block;
+    width: 1rem;
+    text-align: center;
+    margin-right: 0.5rem;
+    transition: transform 0.2s;
 }
 
 .inspector-collapse-content {
-    /* Use common .content-inspector-collapse-content from shared.css */
+    margin-left: 1rem;
+    padding: 0.5rem;
+    border-left: 3px solid #dee2e6;
 }
 
 .inspector-content-box {
-    /* Use common .content-inspector-content-box from shared.css */
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
 }
 
 .inspector-code, .inspector-json, .inspector-text {
-    /* Use common .content-inspector-text from shared.css */
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 
 .inspector-tool-item {
