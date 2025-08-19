@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	_ "claude-proxy/internal/logger"
+	_ "claude-code-companion/internal/logger"
 )
 
 // convertNonStreamingResponse 转换非流式响应 - 基于参考实现

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"claude-proxy/internal/logger"
+	"claude-code-companion/internal/logger"
 )
 
 // RequestConverter 请求转换器 - 基于参考实现

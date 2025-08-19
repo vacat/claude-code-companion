@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strings"
 
-	"claude-proxy/internal/config"
-	"claude-proxy/internal/endpoint"
-	"claude-proxy/internal/i18n"
-	"claude-proxy/internal/logger"
-	"claude-proxy/internal/tagging"
-	"claude-proxy/internal/webres"
+	"claude-code-companion/internal/config"
+	"claude-code-companion/internal/endpoint"
+	"claude-code-companion/internal/i18n"
+	"claude-code-companion/internal/logger"
+	"claude-code-companion/internal/tagging"
+	"claude-code-companion/internal/webres"
 
 	"github.com/gin-gonic/gin"
 )

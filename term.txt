@@ -1,11 +1,11 @@
-# Claude Proxy 中文术语统一文档
+# Claude Code Companion 中文术语统一文档
 
-本文档整理了Claude Proxy Web管理界面中所有的中文文本，并对术语进行统一。
+本文档整理了Claude Code Companion Web管理界面中所有的中文文本，并对术语进行统一。
 
 ## 1. 导航和页面标题
 
 ### 主导航栏
-- Claude 代理管理后台 (Claude Proxy Admin)
+- Claude Code 伴侣管理后台 (Claude Code Companion Admin)
 - 控制台 (Dashboard)
 - 端点配置 (Endpoints)
 - 请求日志 (Request Logs) 
@@ -13,7 +13,7 @@
 - 标记器 (Taggers)
 
 ### 页面标题
-- Claude Proxy Dashboard
+- Claude Code Companion Dashboard
 - Endpoints Configuration  
 - Request Logs
 - Settings

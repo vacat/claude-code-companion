@@ -1,7 +1,7 @@
 package conversion
 
 import (
-	"claude-proxy/internal/logger"
+	"claude-code-companion/internal/logger"
 )
 
 // ResponseConverter 响应转换器 - 基于参考实现

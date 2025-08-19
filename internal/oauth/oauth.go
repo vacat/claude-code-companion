@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"claude-proxy/internal/config"
+	"claude-code-companion/internal/config"
 )
 
 // TokenRefreshResponse OAuth token 刷新响应结构

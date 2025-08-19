@@ -1,7 +1,7 @@
 package tagging
 
 import (
-	"claude-proxy/internal/interfaces"
+	"claude-code-companion/internal/interfaces"
 )
 
 // 重新导出接口以保持向后兼容

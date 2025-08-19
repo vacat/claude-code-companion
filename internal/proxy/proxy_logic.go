@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"claude-proxy/internal/conversion"
-	"claude-proxy/internal/endpoint"
-	"claude-proxy/internal/tagging"
-	"claude-proxy/internal/utils"
+	"claude-code-companion/internal/conversion"
+	"claude-code-companion/internal/endpoint"
+	"claude-code-companion/internal/tagging"
+	"claude-code-companion/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )

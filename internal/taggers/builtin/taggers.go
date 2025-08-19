@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"claude-proxy/internal/interfaces"
+	"claude-code-companion/internal/interfaces"
 )
 
 // wildcardMatch 统一的通配符匹配函数，支持更直观的通配符语义

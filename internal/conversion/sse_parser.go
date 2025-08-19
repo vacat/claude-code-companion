@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"claude-proxy/internal/logger"
+	"claude-code-companion/internal/logger"
 )
 
 // SSEParser 处理 Server-Sent Events 流的解析和重组

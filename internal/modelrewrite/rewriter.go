@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"claude-proxy/internal/config"
-	"claude-proxy/internal/logger"
+	"claude-code-companion/internal/config"
+	"claude-code-companion/internal/logger"
 )
 
 // Rewriter 模型重写器

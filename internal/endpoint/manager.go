@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"claude-proxy/internal/config"
+	"claude-code-companion/internal/config"
 )
 
 type HealthChecker interface {

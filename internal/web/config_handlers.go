@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"claude-proxy/internal/config"
-	"claude-proxy/internal/modelrewrite"
-	"claude-proxy/internal/utils"
+	"claude-code-companion/internal/config"
+	"claude-code-companion/internal/modelrewrite"
+	"claude-code-companion/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )

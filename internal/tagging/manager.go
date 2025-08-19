@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"claude-proxy/internal/config"
-	"claude-proxy/internal/taggers/builtin"
-	"claude-proxy/internal/taggers/starlark"
+	"claude-code-companion/internal/config"
+	"claude-code-companion/internal/taggers/builtin"
+	"claude-code-companion/internal/taggers/starlark"
 )
 
 // Manager 管理整个tagging系统

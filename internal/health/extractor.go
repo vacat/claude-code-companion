@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"claude-proxy/internal/utils"
+	"claude-code-companion/internal/utils"
 )
 
 type RequestInfo struct {

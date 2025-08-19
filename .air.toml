@@ -4,8 +4,8 @@ tmp_dir = "tmp"
 
 [build]
   args_bin = ["-config", "config.yaml"]
-  bin = "./tmp/claude-proxy"
-  cmd = "go build -ldflags \"-X main.Version=dev\" -o ./tmp/claude-proxy ."
+  bin = "./tmp/claude-code-companion"
+  cmd = "go build -ldflags \"-X main.Version=dev\" -o ./tmp/claude-code-companion ."
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata", "logs", "web_backup"]
   exclude_file = []

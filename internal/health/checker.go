@@ -7,10 +7,10 @@ import (
 	"io"
 	"net/http"
 
-	"claude-proxy/internal/config"
-	"claude-proxy/internal/conversion"
-	"claude-proxy/internal/endpoint"
-	"claude-proxy/internal/modelrewrite"
+	"claude-code-companion/internal/config"
+	"claude-code-companion/internal/conversion"
+	"claude-code-companion/internal/endpoint"
+	"claude-code-companion/internal/modelrewrite"
 )
 
 type Checker struct {

@@ -11,10 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	"claude-proxy/internal/config"
-	"claude-proxy/internal/proxy"
-	"claude-proxy/internal/utils"
-	"claude-proxy/internal/webres"
+	"claude-code-companion/internal/config"
+	"claude-code-companion/internal/proxy"
+	"claude-code-companion/internal/utils"
+	"claude-code-companion/internal/webres"
 )
 
 var (
@@ -83,7 +83,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Printf("Claude Proxy Server %s\n", Version)
+		fmt.Printf("Claude Code Companion %s\n", Version)
 		os.Exit(0)
 	}
 
@@ -118,7 +118,7 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-	fmt.Printf("\n=== Claude API Proxy Server %s ===\n", Version)
+	fmt.Printf("\n=== Claude Code Companion %s ===\n", Version)
 	fmt.Printf("Proxy Server: http://%s:%d\n", cfg.Server.Host, cfg.Server.Port)
 	fmt.Printf("Admin Interface: http://%s:%d/admin/\n", cfg.Server.Host, cfg.Server.Port)
 	fmt.Printf("Configuration File: %s\n", *configFile)

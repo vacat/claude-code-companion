@@ -82,24 +82,24 @@ jobs:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
       run: |
-        BINARY_NAME=claude-proxy-${{ matrix.name }}${{ matrix.suffix }}
+        BINARY_NAME=claude-code-companion-${{ matrix.name }}${{ matrix.suffix }}
         go build -ldflags "-X main.Version=${{ steps.version.outputs.VERSION }}" \
           -o $BINARY_NAME .
         
         # Create zip archive
         if [[ "${{ matrix.goos }}" == "windows" ]]; then
-          zip claude-proxy-${{ matrix.name }}.zip $BINARY_NAME
+          zip claude-code-companion-${{ matrix.name }}.zip $BINARY_NAME
         else
-          tar -czf claude-proxy-${{ matrix.name }}.tar.gz $BINARY_NAME
+          tar -czf claude-code-companion-${{ matrix.name }}.tar.gz $BINARY_NAME
         fi
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: claude-proxy-${{ matrix.name }}
+        name: claude-code-companion-${{ matrix.name }}
         path: |
-          claude-proxy-${{ matrix.name }}.zip
-          claude-proxy-${{ matrix.name }}.tar.gz
+          claude-code-companion-${{ matrix.name }}.zip
+          claude-code-companion-${{ matrix.name }}.tar.gz
         retention-days: 30
 
   release:
@@ -158,17 +158,17 @@ jobs:
           
           ### Downloads
           Choose the appropriate binary for your platform:
-          - **Windows**: claude-proxy-windows-amd64.zip
-          - **Linux x64**: claude-proxy-linux-amd64.tar.gz  
-          - **Linux ARM64**: claude-proxy-linux-arm64.tar.gz
-          - **macOS Intel**: claude-proxy-darwin-amd64.tar.gz
-          - **macOS Apple Silicon**: claude-proxy-darwin-arm64.tar.gz
+          - **Windows**: claude-code-companion-windows-amd64.zip
+          - **Linux x64**: claude-code-companion-linux-amd64.tar.gz  
+          - **Linux ARM64**: claude-code-companion-linux-arm64.tar.gz
+          - **macOS Intel**: claude-code-companion-darwin-amd64.tar.gz
+          - **macOS Apple Silicon**: claude-code-companion-darwin-arm64.tar.gz
         files: |
-          artifacts/claude-proxy-windows-amd64/claude-proxy-windows-amd64.zip
-          artifacts/claude-proxy-linux-amd64/claude-proxy-linux-amd64.tar.gz
-          artifacts/claude-proxy-linux-arm64/claude-proxy-linux-arm64.tar.gz
-          artifacts/claude-proxy-darwin-amd64/claude-proxy-darwin-amd64.tar.gz
-          artifacts/claude-proxy-darwin-arm64/claude-proxy-darwin-arm64.tar.gz
+          artifacts/claude-code-companion-windows-amd64/claude-code-companion-windows-amd64.zip
+          artifacts/claude-code-companion-linux-amd64/claude-code-companion-linux-amd64.tar.gz
+          artifacts/claude-code-companion-linux-arm64/claude-code-companion-linux-arm64.tar.gz
+          artifacts/claude-code-companion-darwin-amd64/claude-code-companion-darwin-amd64.tar.gz
+          artifacts/claude-code-companion-darwin-arm64/claude-code-companion-darwin-arm64.tar.gz
         draft: false
         prerelease: false
         generate_release_notes: true

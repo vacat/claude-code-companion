@@ -1,4 +1,4 @@
-/* Claude Proxy Web Admin - Shared JavaScript Functions */
+/* Claude Code Companion Web Admin - Shared JavaScript Functions */
 
 // Shared utility functions
 function showAlert(message, type = 'info') {

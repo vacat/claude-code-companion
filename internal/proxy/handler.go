@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"claude-proxy/internal/utils"
+	"claude-code-companion/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )

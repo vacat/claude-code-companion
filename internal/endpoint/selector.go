@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"claude-proxy/internal/utils"
+	"claude-code-companion/internal/utils"
 )
 
 type Selector struct {

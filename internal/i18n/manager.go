@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"claude-proxy/internal/webres"
+	"claude-code-companion/internal/webres"
 )
 
 // Manager manages internationalization functionality

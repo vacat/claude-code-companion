@@ -1,6 +1,6 @@
-# Claude Proxy
+# Claude Code Companion
 
-Claude Proxy 是一个为 Claude Code 提供的本地 API 代理工具。它通过管理多个上游端点、验证返回格式并在必要时自动切换端点，提升代理的稳定性与可观测性，同时提供完整的 Web 管理界面，方便新手快速上手与维护。
+Claude Code Companion 是一个为 Claude Code 提供的本地 API 代理工具。它通过管理多个上游端点、验证返回格式并在必要时自动切换端点，提升代理的稳定性与可观测性，同时提供完整的 Web 管理界面，方便新手快速上手与维护。
 
 ## 核心功能
 
@@ -31,7 +31,7 @@ Claude Proxy 是一个为 Claude Code 提供的本地 API 代理工具。它通�
    - 进入 Admin → Endpoints，点击新增并填写上游 URL、鉴权信息与类型（例如 Anthropic 或 OpenAI 兼容）。
    - 拖拽可调整优先级，配置实时生效。
 
-5. 在 Claude Code 中使用代理
+5. 在 Claude Code 中使用 Claude Code Companion
 
    - 将 ANTHROPIC_BASE_URL 环境变量指向代理地址（例如 http://localhost:8080/）
    - ANTHROPIC_AUTH_TOKEN 可以随便设置一个，但是不能不设置

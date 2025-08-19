@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"claude-proxy/internal/config"
+	"claude-code-companion/internal/config"
 
 	"github.com/gin-gonic/gin"
 )

@@ -1,4 +1,4 @@
-# Claude API Proxy SQLite 存储 GORM 重构实施计划
+# Claude Code Companion SQLite 存储 GORM 重构实施计划
 
 ## 🎯 项目目标
 

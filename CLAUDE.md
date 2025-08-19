@@ -1,6 +1,6 @@
-# Claude API Proxy 项目说明
+# Claude Code Companion 项目说明
 
-Claude API Proxy 是一个多协议 API 代理服务，为 Claude Code 等客户端提供统一的 API 访问入口。
+Claude Code Companion 是一个多协议 API 代理服务，为 Claude Code 等客户端提供统一的 API 访问入口。
 
 ## 核心功能
 

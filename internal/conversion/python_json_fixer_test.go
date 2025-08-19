@@ -3,8 +3,8 @@ package conversion
 import (
 	"testing"
 
-	"claude-proxy/internal/config"
-	"claude-proxy/internal/logger"
+	"claude-code-companion/internal/config"
+	"claude-code-companion/internal/logger"
 )
 
 // Helper function to create a test logger

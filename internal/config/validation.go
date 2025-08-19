@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"claude-proxy/internal/utils"
+	"claude-code-companion/internal/utils"
 )
 
 // ValidateConfig 导出的配置验证函数

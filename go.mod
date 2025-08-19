@@ -1,4 +1,4 @@
-module claude-proxy
+module claude-code-companion
 
 go 1.23.0
 

@@ -1,7 +1,7 @@
 package conversion
 
 import (
-	"claude-proxy/internal/logger"
+	"claude-code-companion/internal/logger"
 )
 
 // DefaultConverter 默认转换器实现

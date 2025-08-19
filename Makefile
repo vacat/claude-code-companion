@@ -1,6 +1,6 @@
 .PHONY: build clean test run dev windows-amd64 linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 all
 
-BINARY_NAME=claude-proxy
+BINARY_NAME=claude-code-companion
 
 # Generate version in format: YYYYMMDD-<short-hash>[-dirty][-release]
 define GET_VERSION

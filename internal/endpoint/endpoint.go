@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"claude-proxy/internal/config"
-	"claude-proxy/internal/interfaces"
-	"claude-proxy/internal/oauth"
-	"claude-proxy/internal/proxyclient"
-	"claude-proxy/internal/utils"
+	"claude-code-companion/internal/config"
+	"claude-code-companion/internal/interfaces"
+	"claude-code-companion/internal/oauth"
+	"claude-code-companion/internal/proxyclient"
+	"claude-code-companion/internal/utils"
 )
 
 type Status string

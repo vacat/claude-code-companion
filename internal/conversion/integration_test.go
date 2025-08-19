@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"claude-proxy/internal/logger"
+	"claude-code-companion/internal/logger"
 )
 
 // 辅助函数

@@ -3,7 +3,7 @@ package web
 import (
 	"fmt"
 
-	"claude-proxy/internal/config"
+	"claude-code-companion/internal/config"
 )
 
 // saveEndpointsToConfig 将端点配置保存到配置文件

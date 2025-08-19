@@ -1,7 +1,7 @@
 package web
 
 import (
-	"claude-proxy/internal/endpoint"
+	"claude-code-companion/internal/endpoint"
 
 	"github.com/gin-gonic/gin"
 )

@@ -3,7 +3,7 @@ package builtin
 import (
 	"fmt"
 
-	"claude-proxy/internal/interfaces"
+	"claude-code-companion/internal/interfaces"
 )
 
 // TaggerFactory 内置tagger工厂函数类型
