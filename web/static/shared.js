@@ -355,6 +355,97 @@ function updateLanguageDropdown() {
     }
 }
 
+// Version update check functionality
+let versionCheckInterval = null;
+
+async function checkForUpdates() {
+    try {
+        // Use fetch with CORS handling
+        const response = await fetch('https://api.github.com/repos/kxn/claude-code-companion/releases/latest', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'Claude-Code-Companion-Version-Check'
+            },
+            mode: 'cors'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        const latestVersion = data.tag_name;
+        
+        // Get current version from the server
+        const currentVersionElement = document.getElementById('currentVersion');
+        const currentVersion = currentVersionElement ? currentVersionElement.textContent.trim() : '';
+        
+        console.log('Version check:', { current: currentVersion, latest: latestVersion });
+        
+        if (latestVersion && currentVersion && latestVersion !== currentVersion) {
+            showUpdateBadge(latestVersion);
+        } else {
+            hideUpdateBadge();
+        }
+    } catch (error) {
+        console.warn('Failed to check for updates:', error);
+        // Don't show error to user, just log it
+        // Could be CORS, network issue, or API rate limiting
+    }
+}
+
+function showUpdateBadge(latestVersion) {
+    const githubLink = document.querySelector('a[href*="github.com/kxn/claude-code-companion"]');
+    if (!githubLink) return;
+    
+    // Remove existing badge if any
+    const existingBadge = githubLink.querySelector('.update-badge');
+    if (existingBadge) existingBadge.remove();
+    
+    // Create update badge
+    const badge = document.createElement('span');
+    badge.className = 'update-badge';
+    badge.innerHTML = '<i class="fas fa-arrow-up"></i>';
+    badge.title = `发现新版本: ${latestVersion}`;
+    
+    // Position the badge
+    githubLink.style.position = 'relative';
+    githubLink.appendChild(badge);
+    
+    // Update tooltip
+    githubLink.title = `发现新版本: ${latestVersion} - 点击查看GitHub`;
+}
+
+function hideUpdateBadge() {
+    const githubLink = document.querySelector('a[href*="github.com/kxn/claude-code-companion"]');
+    if (!githubLink) return;
+    
+    const badge = githubLink.querySelector('.update-badge');
+    if (badge) badge.remove();
+    
+    // Reset tooltip
+    githubLink.title = 'GitHub 仓库';
+}
+
+function startVersionCheck() {
+    // Check immediately
+    checkForUpdates();
+    
+    // Set up interval to check every 30 minutes (30 * 60 * 1000 ms)
+    if (versionCheckInterval) {
+        clearInterval(versionCheckInterval);
+    }
+    versionCheckInterval = setInterval(checkForUpdates, 30 * 60 * 1000);
+}
+
+function stopVersionCheck() {
+    if (versionCheckInterval) {
+        clearInterval(versionCheckInterval);
+        versionCheckInterval = null;
+    }
+}
+
 // Common DOM ready initialization
 function initializeCommonFeatures() {
     // Format duration cells
@@ -378,4 +469,7 @@ function initializeCommonFeatures() {
     
     // Update language dropdown
     updateLanguageDropdown();
+    
+    // Start version checking
+    startVersionCheck();
 }
