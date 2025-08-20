@@ -78,8 +78,6 @@ type LoggingConfig struct {
 }
 
 type ValidationConfig struct {
-	StrictAnthropicFormat bool                    `yaml:"strict_anthropic_format"`
-	ValidateStreaming     bool                    `yaml:"validate_streaming"`
 	PythonJSONFixing      PythonJSONFixingConfig  `yaml:"python_json_fixing"`
 }
 

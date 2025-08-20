@@ -10,15 +10,11 @@ import (
 )
 
 type ResponseValidator struct {
-	strictMode      bool
-	validateStream  bool
+	// 注释：strict_mode 和 validate_stream 已永久启用
 }
 
-func NewResponseValidator(strictMode, validateStream bool) *ResponseValidator {
-	return &ResponseValidator{
-		strictMode:     strictMode,
-		validateStream: validateStream,
-	}
+func NewResponseValidator() *ResponseValidator {
+	return &ResponseValidator{}
 }
 
 func (v *ResponseValidator) ValidateAnthropicResponse(body []byte, isStreaming bool) error {
@@ -30,10 +26,7 @@ func (v *ResponseValidator) ValidateResponse(body []byte, isStreaming bool, endp
 }
 
 func (v *ResponseValidator) ValidateResponseWithPath(body []byte, isStreaming bool, endpointType, path string) error {
-	if isStreaming && !v.validateStream {
-		// 如果禁用了流式验证，直接返回成功
-		return nil
-	}
+	// 流式验证和严格模式已永久启用
 	
 	// 跳过 count_tokens 接口的 Anthropic 格式验证
 	if isCountTokensEndpoint(path) {
@@ -71,7 +64,8 @@ func (v *ResponseValidator) ValidateStandardResponse(body []byte, endpointType s
 		return fmt.Errorf("invalid JSON response: %v", err)
 	}
 
-	if v.strictMode && endpointType == "anthropic" {
+	// 严格模式已永久启用
+	if endpointType == "anthropic" {
 		requiredFields := []string{"id", "type", "content", "model"}
 		for _, field := range requiredFields {
 			if _, exists := response[field]; !exists {
@@ -88,7 +82,7 @@ func (v *ResponseValidator) ValidateStandardResponse(body []byte, endpointType s
 				return fmt.Errorf("invalid role: expected 'assistant', got '%v'", role)
 			}
 		}
-	} else if v.strictMode && endpointType == "openai" {
+	} else if endpointType == "openai" {
 		// OpenAI格式验证：检查基本结构
 		requiredFields := []string{"id", "model"}
 		for _, field := range requiredFields {
@@ -173,7 +167,8 @@ func (v *ResponseValidator) ValidateSSEChunk(chunk []byte, endpointType string) 
 				return fmt.Errorf("invalid JSON in SSE data: %v", err)
 			}
 
-			if v.strictMode && endpointType == "anthropic" {
+			// 严格模式已永久启用
+	if endpointType == "anthropic" {
 				if _, hasType := data["type"]; !hasType {
 					return fmt.Errorf("missing 'type' field in SSE data")
 				}
@@ -182,7 +177,7 @@ func (v *ResponseValidator) ValidateSSEChunk(chunk []byte, endpointType string) 
 				if err := v.ValidateMessageStartUsage(data); err != nil {
 					return err
 				}
-			} else if v.strictMode && endpointType == "openai" {
+			} else if endpointType == "openai" {
 				// OpenAI格式验证：检查基本字段
 				if _, hasId := data["id"]; !hasId {
 					return fmt.Errorf("missing 'id' field in OpenAI SSE data")

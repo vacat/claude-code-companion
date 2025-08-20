@@ -92,10 +92,7 @@ func generateDefaultConfig(filename string) error {
 			LogResponseBody: "truncated",
 			LogDirectory:    "./logs",
 		},
-		Validation: ValidationConfig{
-			StrictAnthropicFormat: false,
-			ValidateStreaming:     false,
-		},
+		Validation: ValidationConfig{},
 		Tagging: TaggingConfig{
 			PipelineTimeout: "5s",
 			Taggers:         []TaggerConfig{},

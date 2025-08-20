@@ -90,21 +90,8 @@
                         <div class="row mt-4">
                             <div class="col-12">
                                 <h6 data-t="validation_configuration">校验配置</h6>
-                                <div class="mb-3">
-                                    <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" id="strictAnthropicFormat" {{if .Config.Validation.StrictAnthropicFormat}}checked{{end}}>
-                                        <label class="form-check-label" for="strictAnthropicFormat" data-t="strict_anthropic_format_validation">
-                                            严格 Anthropic 格式校验
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" id="validateStreaming" {{if .Config.Validation.ValidateStreaming}}checked{{end}}>
-                                        <label class="form-check-label" for="validateStreaming" data-t="validate_streaming_response">
-                                            校验流式响应
-                                        </label>
-                                    </div>
+                                <div class="alert alert-info" role="alert">
+                                    <small data-t="validation_permanently_enabled">严格 Anthropic 格式校验和流式响应校验已永久启用</small>
                                 </div>
                             </div>
                         </div>

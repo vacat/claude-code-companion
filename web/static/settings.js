@@ -22,8 +22,6 @@ function collectFormData() {
             log_directory: document.getElementById('logDirectory').value
         },
         validation: {
-            strict_anthropic_format: document.getElementById('strictAnthropicFormat').checked,
-            validate_streaming: document.getElementById('validateStreaming').checked
         },
         timeouts: {
             proxy: {
@@ -93,8 +91,6 @@ function resetSettings() {
     document.getElementById('logRequestBody').value = originalConfig.logging.log_request_body;
     document.getElementById('logResponseBody').value = originalConfig.logging.log_response_body;
     document.getElementById('logDirectory').value = originalConfig.logging.log_directory;
-    document.getElementById('strictAnthropicFormat').checked = originalConfig.validation.strict_anthropic_format;
-    document.getElementById('validateStreaming').checked = originalConfig.validation.validate_streaming;
     document.getElementById('proxyTLSHandshake').value = originalConfig.timeouts.proxy.tls_handshake;
     document.getElementById('proxyResponseHeader').value = originalConfig.timeouts.proxy.response_header;
     document.getElementById('proxyIdleConnection').value = originalConfig.timeouts.proxy.idle_connection;

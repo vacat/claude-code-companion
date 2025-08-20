@@ -255,42 +255,41 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		}
 	}
 	
-	if s.config.Validation.StrictAnthropicFormat {
-		if err := s.validator.ValidateResponseWithPath(decompressedBody, isStreaming, ep.EndpointType, path); err != nil {
-			// 如果是usage统计验证失败，尝试下一个endpoint
-			if strings.Contains(err.Error(), "invalid usage stats") {
-				s.logger.Info(fmt.Sprintf("Usage validation failed for endpoint %s: %v", ep.Name, err))
-				duration := time.Since(endpointStartTime)
-				errorLog := fmt.Sprintf("Usage validation failed: %v", err)
-				s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
-				// 设置错误信息到context中
-				c.Set("last_error", fmt.Errorf(errorLog))
-				c.Set("last_status_code", resp.StatusCode)
-				return false, true // 验证失败，尝试下一个endpoint
-			}
-			
-			// 如果是SSE流不完整的验证失败，尝试下一个endpoint
-			if strings.Contains(err.Error(), "incomplete SSE stream") || strings.Contains(err.Error(), "missing message_stop") || strings.Contains(err.Error(), "missing [DONE]") || strings.Contains(err.Error(), "missing finish_reason") {
-				s.logger.Info(fmt.Sprintf("Incomplete SSE stream detected for endpoint %s: %v", ep.Name, err))
-				duration := time.Since(endpointStartTime)
-				errorLog := fmt.Sprintf("Incomplete SSE stream: %v", err)
-				s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
-				// 设置错误信息到context中
-				c.Set("last_error", fmt.Errorf(errorLog))
-				c.Set("last_status_code", resp.StatusCode)
-				return false, true // SSE流不完整，尝试下一个endpoint
-			}
-			
-			// 验证失败，尝试下一个端点
-			s.logger.Info(fmt.Sprintf("Response validation failed for endpoint %s, trying next endpoint: %v", ep.Name, err))
+	// 严格 Anthropic 格式验证已永久启用
+	if err := s.validator.ValidateResponseWithPath(decompressedBody, isStreaming, ep.EndpointType, path); err != nil {
+		// 如果是usage统计验证失败，尝试下一个endpoint
+		if strings.Contains(err.Error(), "invalid usage stats") {
+			s.logger.Info(fmt.Sprintf("Usage validation failed for endpoint %s: %v", ep.Name, err))
 			duration := time.Since(endpointStartTime)
-			validationError := fmt.Sprintf("Response validation failed: %v", err)
-			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags, "", originalModel, rewrittenModel, attemptNumber)
+			errorLog := fmt.Sprintf("Usage validation failed: %v", err)
+			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
 			// 设置错误信息到context中
-			c.Set("last_error", fmt.Errorf(validationError))
+			c.Set("last_error", fmt.Errorf(errorLog))
 			c.Set("last_status_code", resp.StatusCode)
 			return false, true // 验证失败，尝试下一个endpoint
 		}
+		
+		// 如果是SSE流不完整的验证失败，尝试下一个endpoint
+		if strings.Contains(err.Error(), "incomplete SSE stream") || strings.Contains(err.Error(), "missing message_stop") || strings.Contains(err.Error(), "missing [DONE]") || strings.Contains(err.Error(), "missing finish_reason") {
+			s.logger.Info(fmt.Sprintf("Incomplete SSE stream detected for endpoint %s: %v", ep.Name, err))
+			duration := time.Since(endpointStartTime)
+			errorLog := fmt.Sprintf("Incomplete SSE stream: %v", err)
+			s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, append(decompressedBody, []byte(errorLog)...), duration, fmt.Errorf(errorLog), s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
+			// 设置错误信息到context中
+			c.Set("last_error", fmt.Errorf(errorLog))
+			c.Set("last_status_code", resp.StatusCode)
+			return false, true // SSE流不完整，尝试下一个endpoint
+		}
+		
+		// 验证失败，尝试下一个端点
+		s.logger.Info(fmt.Sprintf("Response validation failed for endpoint %s, trying next endpoint: %v", ep.Name, err))
+		duration := time.Since(endpointStartTime)
+		validationError := fmt.Sprintf("Response validation failed: %v", err)
+		s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, fmt.Errorf(validationError), isStreaming, tags, "", originalModel, rewrittenModel, attemptNumber)
+		// 设置错误信息到context中
+		c.Set("last_error", fmt.Errorf(validationError))
+		c.Set("last_status_code", resp.StatusCode)
+		return false, true // 验证失败，尝试下一个endpoint
 	}
 
 	c.Status(resp.StatusCode)

@@ -48,7 +48,7 @@ logging:
   log_directory: "./logs"
 
 validation:
-  strict_anthropic_format: false
+  # 严格 Anthropic 格式校验和流式响应校验已永久启用
 ```
 
 ## 访问方式

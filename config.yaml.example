@@ -30,8 +30,7 @@ logging:
     log_directory: ./logs
 
 validation:
-    strict_anthropic_format: true  # Validate response format compatibility
-    validate_streaming: true       # Validate SSE streaming format
+    # 严格 Anthropic 格式校验和流式响应校验已永久启用
 
 web_admin:
     enabled: true                 # Admin interface runs on same host:port as proxy server
