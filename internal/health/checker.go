@@ -39,7 +39,7 @@ func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
 	// 构造健康检查请求
 	healthCheckRequest := map[string]interface{}{
 		"model":       requestInfo.Model,
-		"max_tokens":  512,
+		"max_tokens":  config.Default.HealthCheck.MaxTokens,
 		"messages": []map[string]interface{}{
 			{
 				"role":    "user",
@@ -52,11 +52,11 @@ func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
 				"text": "Analyze if this message indicates a new conversation topic. If it does, extract a 2-3 word title that captures the new topic. Format your response as a JSON object with two fields: 'isNewTopic' (boolean) and 'title' (string, or null if isNewTopic is false). Only include these fields, no other text.",
 			},
 		},
-		"temperature": 0,
+		"temperature": config.Default.HealthCheck.Temperature,
 		"metadata": map[string]interface{}{
 			"user_id": requestInfo.UserID,
 		},
-		"stream": true,
+		"stream": config.Default.HealthCheck.StreamMode,
 	}
 
 	// 将请求序列化为JSON

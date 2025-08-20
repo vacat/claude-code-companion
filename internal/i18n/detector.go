@@ -3,16 +3,15 @@ package i18n
 import (
 	"strings"
 
+	"claude-code-companion/internal/config"
 	"github.com/gin-gonic/gin"
 )
 
-const (
-	// LangQueryParam is the query parameter name for language
-	LangQueryParam = "lang"
-	// LangCookieName is the cookie name for storing user's language preference
-	LangCookieName = "claude_proxy_lang"
-	// LangHeaderName is the header name for language detection
-	LangHeaderName = "Accept-Language"
+var (
+	// 使用统一默认值常量
+	LangQueryParam = config.Default.I18n.QueryParam
+	LangCookieName = config.Default.I18n.CookieName  
+	LangHeaderName = config.Default.I18n.HeaderName
 )
 
 // Detector handles language detection from various sources

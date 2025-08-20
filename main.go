@@ -143,15 +143,15 @@ func initHTTPClientsFromConfig(cfg *config.Config) error {
 	proxyTimeouts := httpclient.TimeoutConfig{}
 	
 	var err error
-	if proxyTimeouts.TLSHandshake, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.TLSHandshake, "tls_handshake", 10*time.Second); err != nil {
+	if proxyTimeouts.TLSHandshake, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.TLSHandshake, "tls_handshake", config.GetTimeoutDuration(config.Default.Timeouts.TLSHandshake, 10*time.Second)); err != nil {
 		return err
 	}
 	
-	if proxyTimeouts.ResponseHeader, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.ResponseHeader, "response_header", 60*time.Second); err != nil {
+	if proxyTimeouts.ResponseHeader, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.ResponseHeader, "response_header", config.GetTimeoutDuration(config.Default.Timeouts.ResponseHeader, 60*time.Second)); err != nil {
 		return err
 	}
 	
-	if proxyTimeouts.IdleConnection, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.IdleConnection, "idle_connection", 90*time.Second); err != nil {
+	if proxyTimeouts.IdleConnection, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.IdleConnection, "idle_connection", config.GetTimeoutDuration(config.Default.Timeouts.IdleConnection, 90*time.Second)); err != nil {
 		return err
 	}
 	
@@ -163,19 +163,19 @@ func initHTTPClientsFromConfig(cfg *config.Config) error {
 	// Parse health check timeouts
 	healthTimeouts := httpclient.TimeoutConfig{}
 	
-	if healthTimeouts.TLSHandshake, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.TLSHandshake, "health_check.tls_handshake", 10*time.Second); err != nil {
+	if healthTimeouts.TLSHandshake, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.TLSHandshake, "health_check.tls_handshake", config.GetTimeoutDuration(config.Default.Timeouts.TLSHandshake, 10*time.Second)); err != nil {
 		return err
 	}
 	
-	if healthTimeouts.ResponseHeader, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.ResponseHeader, "health_check.response_header", 60*time.Second); err != nil {
+	if healthTimeouts.ResponseHeader, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.ResponseHeader, "health_check.response_header", config.GetTimeoutDuration(config.Default.Timeouts.ResponseHeader, 60*time.Second)); err != nil {
 		return err
 	}
 	
-	if healthTimeouts.IdleConnection, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.IdleConnection, "health_check.idle_connection", 90*time.Second); err != nil {
+	if healthTimeouts.IdleConnection, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.IdleConnection, "health_check.idle_connection", config.GetTimeoutDuration(config.Default.Timeouts.IdleConnection, 90*time.Second)); err != nil {
 		return err
 	}
 	
-	if healthTimeouts.OverallRequest, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.HealthCheckTimeout, "health_check.overall_request", 30*time.Second); err != nil {
+	if healthTimeouts.OverallRequest, err = httpclient.ParseTimeoutWithDefault(cfg.Timeouts.HealthCheckTimeout, "health_check.overall_request", config.GetTimeoutDuration(config.Default.Timeouts.HealthCheckTimeout, 30*time.Second)); err != nil {
 		return err
 	}
 	

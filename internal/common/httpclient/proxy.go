@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"time"
 
 	"claude-code-companion/internal/config"
 
@@ -46,8 +45,8 @@ func (f *Factory) createHTTPProxyDialer(proxyConfig *config.ProxyConfig) (ProxyD
 	return &httpProxyDialer{
 		proxyURL: proxyURL,
 		dialer: &net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
+			Timeout:   config.Default.ProxyDialer.Timeout,
+			KeepAlive: config.Default.ProxyDialer.KeepAlive,
 		},
 	}, nil
 }

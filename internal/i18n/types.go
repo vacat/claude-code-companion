@@ -1,5 +1,9 @@
 package i18n
 
+import (
+	"claude-code-companion/internal/config"
+)
+
 // Language represents a supported language
 type Language string
 
@@ -15,12 +19,12 @@ type Config struct {
 	Enabled         bool     `json:"enabled" yaml:"enabled"`
 }
 
-// DefaultConfig returns default i18n configuration
+// DefaultConfig returns default i18n configuration using unified defaults
 func DefaultConfig() *Config {
 	return &Config{
-		DefaultLanguage: LanguageZhCN,
-		LocalesPath:     "web/locales",
-		Enabled:         true,
+		DefaultLanguage: Language(config.Default.I18n.DefaultLanguage),
+		LocalesPath:     config.Default.I18n.LocalesPath,
+		Enabled:         config.Default.I18n.Enabled,
 	}
 }
 

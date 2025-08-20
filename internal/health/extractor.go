@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"claude-code-companion/internal/config"
 	"claude-code-companion/internal/utils"
 )
 
@@ -21,35 +22,11 @@ type RequestExtractor struct {
 }
 
 func NewRequestExtractor() *RequestExtractor {
-	// 默认请求头，不包含认证信息
-	defaultHeaders := map[string]string{
-		"Accept":                                      "application/json",
-		"Accept-Encoding":                             "gzip, deflate",
-		"Accept-Language":                             "*",
-		"Anthropic-Beta":                              "fine-grained-tool-streaming-2025-05-14",
-		"Anthropic-Dangerous-Direct-Browser-Access":   "true",
-		"Anthropic-Version":                           "2023-06-01",
-		"Connection":                                  "keep-alive",
-		"Content-Type":                                "application/json",
-		"Sec-Fetch-Mode":                              "cors",
-		"User-Agent":                                  "claude-cli/1.0.56 (external, cli)",
-		"X-App":                                       "cli",
-		"X-Stainless-Arch":                            "x64",
-		"X-Stainless-Helper-Method":                   "stream",
-		"X-Stainless-Lang":                            "js",
-		"X-Stainless-Os":                              "Windows",
-		"X-Stainless-Package-Version":                 "0.55.1",
-		"X-Stainless-Retry-Count":                     "0",
-		"X-Stainless-Runtime":                         "node",
-		"X-Stainless-Runtime-Version":                 "v22.17.0",
-		"X-Stainless-Timeout":                         "600",
-	}
-
 	return &RequestExtractor{
 		requestInfo: &RequestInfo{
-			Model:     "claude-3-5-haiku-20241022",
-			UserID:    "user_test_account__session_test",
-			Headers:   defaultHeaders,
+			Model:     config.Default.HealthCheck.Model,
+			UserID:    config.Default.HealthCheck.UserID,
+			Headers:   config.Default.HealthCheck.Headers,
 			Extracted: false, // false表示使用默认值，true表示已从实际请求中提取
 		},
 	}

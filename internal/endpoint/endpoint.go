@@ -48,28 +48,25 @@ type Endpoint struct {
 	mutex             sync.RWMutex
 }
 
-func NewEndpoint(config config.EndpointConfig) *Endpoint {
-	// 如果没有指定 endpoint_type，默认为 anthropic （向后兼容）
-	endpointType := config.EndpointType
-	if endpointType == "" {
-		endpointType = "anthropic"
-	}
+func NewEndpoint(cfg config.EndpointConfig) *Endpoint {
+	// 如果没有指定 endpoint_type，使用统一默认值
+	endpointType := config.GetStringWithDefault(cfg.EndpointType, config.Default.Endpoint.Type)
 	
 	return &Endpoint{
-		ID:                generateID(config.Name),
-		Name:              config.Name,
-		URL:               config.URL,
+		ID:                generateID(cfg.Name),
+		Name:              cfg.Name,
+		URL:               cfg.URL,
 		EndpointType:      endpointType,
-		PathPrefix:        config.PathPrefix,  // 新增：复制PathPrefix
-		AuthType:          config.AuthType,
-		AuthValue:         config.AuthValue,
-		Enabled:           config.Enabled,
-		Priority:          config.Priority,
-		Tags:              config.Tags,       // 新增：从配置中复制tags
-		ModelRewrite:      config.ModelRewrite, // 新增：从配置中复制模型重写配置
-		Proxy:             config.Proxy,      // 新增：从配置中复制代理配置
-		OAuthConfig:       config.OAuthConfig, // 新增：从配置中复制OAuth配置
-		OverrideMaxTokens: config.OverrideMaxTokens, // 新增：从配置中复制max_tokens覆盖配置
+		PathPrefix:        cfg.PathPrefix,  // 新增：复制PathPrefix
+		AuthType:          cfg.AuthType,
+		AuthValue:         cfg.AuthValue,
+		Enabled:           config.GetBoolWithDefault(cfg.Enabled, true, config.Default.Endpoint.Enabled),
+		Priority:          config.GetIntWithDefault(cfg.Priority, config.Default.Endpoint.Priority),
+		Tags:              cfg.Tags,       // 新增：从配置中复制tags
+		ModelRewrite:      cfg.ModelRewrite, // 新增：从配置中复制模型重写配置
+		Proxy:             cfg.Proxy,      // 新增：从配置中复制代理配置
+		OAuthConfig:       cfg.OAuthConfig, // 新增：从配置中复制OAuth配置
+		OverrideMaxTokens: cfg.OverrideMaxTokens, // 新增：从配置中复制max_tokens覆盖配置
 		Status:            StatusActive,
 		LastCheck:         time.Now(),
 		RequestHistory:    utils.NewCircularBuffer(100, 140*time.Second), // 100个记录，140秒窗口

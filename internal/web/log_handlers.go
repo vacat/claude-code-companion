@@ -5,23 +5,24 @@ import (
 	"net/http"
 	"strconv"
 
+	"claude-code-companion/internal/config"
 	"github.com/gin-gonic/gin"
 )
 
 func (s *AdminServer) handleLogsPage(c *gin.Context) {
 	// 获取参数
-	pageStr := c.DefaultQuery("page", "1")
+	pageStr := c.DefaultQuery("page", strconv.Itoa(config.Default.Pagination.DefaultPage))
 	failedOnlyStr := c.DefaultQuery("failed_only", "false")
 	
 	page, err := strconv.Atoi(pageStr)
-	if err != nil || page < 1 {
-		page = 1
+	if err != nil || page < config.Default.Pagination.DefaultPage {
+		page = config.Default.Pagination.DefaultPage
 	}
 	
 	failedOnly, _ := strconv.ParseBool(failedOnlyStr)
 	
-	// 每页100条记录
-	limit := 100
+	// 每页记录数使用统一默认值
+	limit := config.Default.Pagination.DefaultLimit
 	offset := (page - 1) * limit
 	
 	logs, total, _ := s.logger.GetLogs(limit, offset, failedOnly)
@@ -29,21 +30,21 @@ func (s *AdminServer) handleLogsPage(c *gin.Context) {
 	// 计算分页信息
 	totalPages := (total + limit - 1) / limit
 	if totalPages == 0 {
-		totalPages = 1
+		totalPages = config.Default.Pagination.MaxPages
 	}
 	
 	// 生成分页数组
 	var pages []int
 	startPage := page - 5
-	if startPage < 1 {
-		startPage = 1
+	if startPage < config.Default.Pagination.DefaultPage {
+		startPage = config.Default.Pagination.DefaultPage
 	}
 	endPage := startPage + 9
 	if endPage > totalPages {
 		endPage = totalPages
 		startPage = endPage - 9
-		if startPage < 1 {
-			startPage = 1
+		if startPage < config.Default.Pagination.DefaultPage {
+			startPage = config.Default.Pagination.DefaultPage
 		}
 	}
 	

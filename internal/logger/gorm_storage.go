@@ -10,6 +10,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	_ "modernc.org/sqlite"
+	
+	appconfig "claude-code-companion/internal/config"
 )
 
 // GORMStorage 基于GORM的日志存储实现
@@ -60,10 +62,10 @@ func NewGORMStorage(logDir string) (*GORMStorage, error) {
 	// 设置SQLite优化参数以减少锁定
 	optimizationPragmas := []string{
 		"PRAGMA synchronous = NORMAL",     // 平衡性能与安全
-		"PRAGMA cache_size = 10000",       // 增加缓存大小
+		fmt.Sprintf("PRAGMA cache_size = %d", appconfig.Default.Database.CacheSize), // 使用统一默认值
 		"PRAGMA temp_store = memory",      // 临时数据使用内存
-		"PRAGMA mmap_size = 268435456",    // 启用内存映射（256MB）
-		"PRAGMA busy_timeout = 5000",      // 设置忙等待超时
+		fmt.Sprintf("PRAGMA mmap_size = %d", appconfig.Default.Database.MmapSize),   // 使用统一默认值
+		fmt.Sprintf("PRAGMA busy_timeout = %d", appconfig.Default.Database.BusyTimeout), // 使用统一默认值
 	}
 	
 	for _, pragma := range optimizationPragmas {
@@ -103,7 +105,7 @@ func (g *GORMStorage) SaveLog(log *RequestLog) {
 	gormLog := ConvertToGormRequestLog(log)
 	
 	// 添加重试机制处理SQLite BUSY错误
-	maxRetries := 3
+	maxRetries := appconfig.Default.Database.MaxRetries
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		err := g.db.Create(gormLog).Error
 		if err == nil {

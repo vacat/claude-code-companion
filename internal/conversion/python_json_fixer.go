@@ -31,10 +31,10 @@ type PythonJSONFixer struct {
 func NewPythonJSONFixer(log *logger.Logger) *PythonJSONFixer {
 	// Default configuration
 	defaultConfig := config.PythonJSONFixingConfig{
-		Enabled:      true,
+		Enabled:      config.Default.Validation.PythonJSONFix.Enabled,
 		TargetTools:  []string{"TodoWrite"},
-		DebugLogging: false,
-		MaxAttempts:  3,
+		DebugLogging: config.Default.Validation.PythonJSONFix.DebugLogging,
+		MaxAttempts:  config.Default.Validation.PythonJSONFix.MaxAttempts,
 	}
 	
 	return &PythonJSONFixer{

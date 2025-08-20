@@ -24,12 +24,12 @@ type ProxyDialer interface {
 // CreateHTTPClient 创建支持代理的 HTTP 客户端
 func CreateHTTPClient(proxyConfig *config.ProxyConfig, timeoutConfig config.ProxyTimeoutConfig) (*http.Client, error) {
 	transport := &http.Transport{
-		TLSHandshakeTimeout:   parseDuration(timeoutConfig.TLSHandshake, 10*time.Second),
-		ResponseHeaderTimeout: parseDuration(timeoutConfig.ResponseHeader, 60*time.Second),
-		IdleConnTimeout:       parseDuration(timeoutConfig.IdleConnection, 90*time.Second),
+		TLSHandshakeTimeout:   parseDuration(timeoutConfig.TLSHandshake, config.GetTimeoutDuration(config.Default.Timeouts.TLSHandshake, 10*time.Second)),
+		ResponseHeaderTimeout: parseDuration(timeoutConfig.ResponseHeader, config.GetTimeoutDuration(config.Default.Timeouts.ResponseHeader, 60*time.Second)),
+		IdleConnTimeout:       parseDuration(timeoutConfig.IdleConnection, config.GetTimeoutDuration(config.Default.Timeouts.IdleConnection, 90*time.Second)),
 		DisableKeepAlives:     false,
-		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   10,
+		MaxIdleConns:          config.Default.HTTPClient.MaxIdleConns,
+		MaxIdleConnsPerHost:   config.Default.HTTPClient.MaxIdlePerHost,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: false,
 		},
@@ -86,8 +86,8 @@ func createHTTPProxyDialer(proxyConfig *config.ProxyConfig) (ProxyDialer, error)
 	return &httpProxyDialer{
 		proxyURL: proxyURL,
 		dialer: &net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
+			Timeout:   config.Default.ProxyDialer.Timeout,
+			KeepAlive: config.Default.ProxyDialer.KeepAlive,
 		},
 	}, nil
 }
