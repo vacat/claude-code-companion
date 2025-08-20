@@ -168,10 +168,7 @@ function loadProxyConfig(config) {
 function collectModelRewriteData() {
     const enabled = document.getElementById('model-rewrite-enabled').checked;
     if (!enabled) {
-        return {
-            enabled: false,
-            rules: []
-        };
+        return null;
     }
 
     const rules = [];
@@ -187,7 +184,7 @@ function collectModelRewriteData() {
         }
     });
 
-    return rules.length > 0 ? { enabled: true, rules: rules } : { enabled: true, rules: [] };
+    return rules.length > 0 ? { enabled: true, rules: rules } : null;
 }
 
 // Load model rewrite configuration to form

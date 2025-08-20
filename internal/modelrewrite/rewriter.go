@@ -27,11 +27,11 @@ func NewRewriter(logger logger.Logger) *Rewriter {
 
 // RewriteRequest 重写请求中的模型名称
 func (r *Rewriter) RewriteRequest(req *http.Request, modelRewriteConfig *config.ModelRewriteConfig) (string, string, error) {
-	return r.RewriteRequestWithTags(req, modelRewriteConfig, nil, "")
+	return r.RewriteRequestWithTags(req, modelRewriteConfig, nil)
 }
 
-// RewriteRequestWithTags 重写请求中的模型名称，支持通用端点的隐式重写规则和默认模型配置
-func (r *Rewriter) RewriteRequestWithTags(req *http.Request, modelRewriteConfig *config.ModelRewriteConfig, endpointTags []string, defaultModel string) (string, string, error) {
+// RewriteRequestWithTags 重写请求中的模型名称，支持通用端点的隐式重写规则
+func (r *Rewriter) RewriteRequestWithTags(req *http.Request, modelRewriteConfig *config.ModelRewriteConfig, endpointTags []string) (string, string, error) {
 	// 读取请求体
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -66,28 +66,12 @@ func (r *Rewriter) RewriteRequestWithTags(req *http.Request, modelRewriteConfig 
 	var rules []config.ModelRewriteRule
 	isGenericEndpoint := len(endpointTags) == 0
 	hasExplicitRules := modelRewriteConfig != nil && modelRewriteConfig.Enabled && len(modelRewriteConfig.Rules) > 0
-	hasDefaultModel := strings.TrimSpace(defaultModel) != ""
 
 	if hasExplicitRules {
-		// 使用显式配置的模型重写规则
+		// 使用显式配置的规则
 		rules = modelRewriteConfig.Rules
-		r.logger.Debug("Using explicit model rewrite rules", map[string]interface{}{
-			"rules_count": len(rules),
-		})
-	} else if hasDefaultModel {
-		// 使用默认模型配置（相当于 * → defaultModel 规则）
-		rules = []config.ModelRewriteRule{
-			{
-				SourcePattern: "*",
-				TargetModel:   defaultModel,
-			},
-		}
-		r.logger.Debug("Using default model configuration", map[string]interface{}{
-			"original_model": originalModel,
-			"default_model":  defaultModel,
-		})
 	} else if isGenericEndpoint && !strings.HasPrefix(originalModel, "claude") {
-		// 万用端点的隐式规则：非claude模型重写为claude-sonnet-4-20250514
+		// 通用端点的隐式规则：非claude模型重写为claude-sonnet-4-20250514
 		rules = []config.ModelRewriteRule{
 			{
 				SourcePattern: "*",

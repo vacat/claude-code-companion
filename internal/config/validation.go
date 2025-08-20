@@ -97,11 +97,6 @@ func validateConfig(config *Config) error {
 		return fmt.Errorf("model rewrite configuration error: %v", err)
 	}
 
-	// 验证默认模型与模型重写的互斥关系
-	if err := validateDefaultModelConfigs(config.Endpoints); err != nil {
-		return fmt.Errorf("default model configuration error: %v", err)
-	}
-
 	// 验证OpenAI端点配置
 	if err := validateOpenAIEndpoints(config.Endpoints); err != nil {
 		return fmt.Errorf("openai endpoint configuration error: %v", err)
@@ -494,34 +489,6 @@ func validateEndpoint(endpoint EndpointConfig, index int) error {
 	// OAuth 认证不需要 auth_value，其他认证类型需要
 	if endpoint.AuthType != "oauth" && endpoint.AuthValue == "" {
 		return fmt.Errorf("endpoint %d: auth_value cannot be empty for non-oauth authentication", index)
-	}
-	
-	return nil
-}
-
-// validateDefaultModelConfigs 验证端点的默认模型配置与模型重写的互斥关系
-func validateDefaultModelConfigs(endpoints []EndpointConfig) error {
-	for i, endpoint := range endpoints {
-		if err := validateDefaultModelConfig(&endpoint, fmt.Sprintf("endpoint[%d] '%s'", i, endpoint.Name)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ValidateDefaultModelConfig 验证单个端点的默认模型配置（导出函数）
-func ValidateDefaultModelConfig(endpoint *EndpointConfig, context string) error {
-	return validateDefaultModelConfig(endpoint, context)
-}
-
-// validateDefaultModelConfig 验证单个端点的默认模型配置
-func validateDefaultModelConfig(endpoint *EndpointConfig, context string) error {
-	hasDefaultModel := strings.TrimSpace(endpoint.DefaultModel) != ""
-	hasModelRewrite := endpoint.ModelRewrite != nil && endpoint.ModelRewrite.Enabled
-	
-	// 检查互斥关系
-	if hasDefaultModel && hasModelRewrite {
-		return fmt.Errorf("%s: default_model and model_rewrite cannot be enabled at the same time", context)
 	}
 	
 	return nil

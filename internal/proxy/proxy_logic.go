@@ -42,7 +42,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	}
 
 	// 应用模型重写（如果配置了）
-	originalModel, rewrittenModel, err := s.modelRewriter.RewriteRequestWithTags(tempReq, ep.ModelRewrite, ep.Tags, ep.DefaultModel)
+	originalModel, rewrittenModel, err := s.modelRewriter.RewriteRequestWithTags(tempReq, ep.ModelRewrite, ep.Tags)
 	if err != nil {
 		s.logger.Error("Model rewrite failed", err)
 		// 记录模型重写失败的日志

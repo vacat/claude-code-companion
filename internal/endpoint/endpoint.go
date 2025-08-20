@@ -34,7 +34,6 @@ type Endpoint struct {
 	Enabled           bool                     `json:"enabled"`
 	Priority          int                      `json:"priority"`
 	Tags              []string                 `json:"tags"`           // 新增：支持的tag列表
-	DefaultModel      string                   `json:"default_model,omitempty"` // 新增：默认模型配置
 	ModelRewrite      *config.ModelRewriteConfig `json:"model_rewrite,omitempty"` // 新增：模型重写配置
 	Proxy             *config.ProxyConfig      `json:"proxy,omitempty"` // 新增：代理配置
 	OAuthConfig       *config.OAuthConfig      `json:"oauth_config,omitempty"` // 新增：OAuth配置
@@ -67,7 +66,6 @@ func NewEndpoint(config config.EndpointConfig) *Endpoint {
 		Enabled:           config.Enabled,
 		Priority:          config.Priority,
 		Tags:              config.Tags,       // 新增：从配置中复制tags
-		DefaultModel:      config.DefaultModel, // 新增：从配置中复制默认模型配置
 		ModelRewrite:      config.ModelRewrite, // 新增：从配置中复制模型重写配置
 		Proxy:             config.Proxy,      // 新增：从配置中复制代理配置
 		OAuthConfig:       config.OAuthConfig, // 新增：从配置中复制OAuth配置
