@@ -23,6 +23,9 @@ function showAddEndpointModal() {
     // Clear model rewrite configuration
     loadModelRewriteConfig(null);
     
+    // Clear default model
+    document.getElementById('endpoint-default-model').value = '';
+    
     // Clear max_tokens override configuration
     loadMaxTokensOverrideConfig(null);
     
@@ -82,6 +85,9 @@ function showEditEndpointModal(endpointName) {
     
     // Load model rewrite configuration
     loadModelRewriteConfig(endpoint.model_rewrite);
+    
+    // Load default model after loading model rewrite config
+    loadDefaultModel(endpoint.model_rewrite);
     
     // Load max_tokens override configuration
     loadMaxTokensOverrideConfig(endpoint.override_max_tokens);

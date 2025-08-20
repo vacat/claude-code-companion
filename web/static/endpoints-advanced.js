@@ -12,6 +12,14 @@ document.getElementById('proxy-enabled').addEventListener('change', function() {
 document.getElementById('model-rewrite-enabled').addEventListener('change', function() {
     const rulesDiv = document.getElementById('model-rewrite-rules');
     rulesDiv.style.display = this.checked ? 'block' : 'none';
+    
+    // If disabling model rewrite, check if we should clear default model rules
+    if (!this.checked) {
+        clearDefaultModelRulesIfApplicable();
+    }
+    
+    // Update default model state when model rewrite toggle changes
+    updateDefaultModelState();
 });
 
 // Max tokens override enable/disable toggle
@@ -42,7 +50,8 @@ function addRewriteRule(sourcePattern = '', targetModel = '') {
         </div>
         <div class="col-5">
             <input type="text" class="form-control target-model-input" 
-                   placeholder="目标模型 (如: deepseek-chat)" value="${targetModel}">
+                   placeholder="目标模型 (如: deepseek-chat)" value="${targetModel}" 
+                   oninput="onRewriteRuleTargetChange()">
         </div>
         <div class="col-2">
             <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRewriteRule(this)">
@@ -55,6 +64,27 @@ function addRewriteRule(sourcePattern = '', targetModel = '') {
     `;
     
     rulesList.appendChild(ruleDiv);
+    
+    // Update default model state when rules change
+    updateDefaultModelState();
+}
+
+// Clear default model rules when disabling model rewrite
+function clearDefaultModelRulesIfApplicable() {
+    const rules = collectCurrentRewriteRules();
+    
+    // If there's exactly one rule with pattern "*", remove it
+    if (rules.length === 1 && rules[0].source_pattern === '*') {
+        document.getElementById('rewrite-rules-list').innerHTML = '';
+        // Clear default model value as well
+        document.getElementById('endpoint-default-model').value = '';
+    }
+}
+
+// Handle target model changes in rewrite rules
+function onRewriteRuleTargetChange() {
+    // Update default model state when target model changes
+    updateDefaultModelState();
 }
 
 // Update source pattern input
@@ -70,11 +100,16 @@ function updateSourcePattern(ruleIndex) {
         input.readOnly = true;
         input.value = select.value;
     }
+    
+    // Update default model state when pattern changes
+    updateDefaultModelState();
 }
 
 // Remove rewrite rule
 function removeRewriteRule(button) {
     button.closest('.rewrite-rule').remove();
+    // Update default model state when rules change
+    updateDefaultModelState();
 }
 
 // Test rewrite rule
@@ -207,6 +242,9 @@ function loadModelRewriteConfig(config) {
         checkbox.checked = false;
         rulesDiv.style.display = 'none';
     }
+    
+    // Update default model state after loading model rewrite config
+    updateDefaultModelState();
 }
 
 // Save model rewrite configuration
@@ -262,3 +300,112 @@ function loadMaxTokensOverrideConfig(value) {
         document.getElementById('max-tokens-value').value = '';
     }
 }
+
+// ===== Default Model Functions =====
+
+// Load default model from model rewrite configuration
+function loadDefaultModel(modelRewriteConfig) {
+    const defaultModelInput = document.getElementById('endpoint-default-model');
+    
+    if (modelRewriteConfig && modelRewriteConfig.enabled && modelRewriteConfig.rules) {
+        // Check if there's exactly one rule with pattern "*"
+        if (modelRewriteConfig.rules.length === 1 && modelRewriteConfig.rules[0].source_pattern === '*') {
+            defaultModelInput.value = modelRewriteConfig.rules[0].target_model;
+        } else {
+            defaultModelInput.value = '';
+        }
+    } else {
+        defaultModelInput.value = '';
+    }
+    
+    updateDefaultModelState();
+}
+
+// Update default model state based on model rewrite configuration
+function updateDefaultModelState() {
+    const defaultModelInput = document.getElementById('endpoint-default-model');
+    const defaultModelHint = document.getElementById('default-model-hint');
+    const modelRewriteEnabled = document.getElementById('model-rewrite-enabled').checked;
+    
+    if (!modelRewriteEnabled) {
+        // Model rewrite disabled - default model can be edited
+        defaultModelInput.disabled = false;
+        defaultModelInput.title = '';
+        defaultModelHint.style.display = 'none';
+    } else {
+        // Model rewrite enabled - check rules
+        const rules = collectCurrentRewriteRules();
+        
+        if (rules.length === 0) {
+            // No rules - default model can be edited
+            defaultModelInput.disabled = false;
+            defaultModelInput.title = '';
+            defaultModelHint.style.display = 'none';
+        } else if (rules.length === 1 && rules[0].source_pattern === '*') {
+            // Single "*" rule - sync with default model
+            defaultModelInput.disabled = false;
+            defaultModelInput.title = '';
+            defaultModelInput.value = rules[0].target_model;
+            defaultModelHint.style.display = 'none';
+        } else {
+            // Multiple rules or non-"*" rules - disable default model
+            defaultModelInput.disabled = true;
+            defaultModelInput.title = 'Model Rewrite中有和默认模型不兼容的设置';
+            defaultModelHint.style.display = 'block';
+        }
+    }
+}
+
+// Collect current rewrite rules from the form
+function collectCurrentRewriteRules() {
+    const rules = [];
+    document.querySelectorAll('.rewrite-rule').forEach(ruleDiv => {
+        const sourcePattern = ruleDiv.querySelector('.source-pattern-input').value.trim();
+        const targetModel = ruleDiv.querySelector('.target-model-input').value.trim();
+        
+        if (sourcePattern && targetModel) {
+            rules.push({
+                source_pattern: sourcePattern,
+                target_model: targetModel
+            });
+        }
+    });
+    return rules;
+}
+
+// Handle default model changes
+function onDefaultModelChange() {
+    const defaultModelInput = document.getElementById('endpoint-default-model');
+    const modelRewriteEnabled = document.getElementById('model-rewrite-enabled').checked;
+    const defaultModel = defaultModelInput.value.trim();
+    
+    if (!modelRewriteEnabled && defaultModel) {
+        // Enable model rewrite and set single "*" rule
+        document.getElementById('model-rewrite-enabled').checked = true;
+        document.getElementById('model-rewrite-rules').style.display = 'block';
+        
+        // Clear existing rules and add new "*" rule
+        document.getElementById('rewrite-rules-list').innerHTML = '';
+        addRewriteRule('*', defaultModel);
+    } else if (modelRewriteEnabled) {
+        const rules = collectCurrentRewriteRules();
+        if (rules.length === 1 && rules[0].source_pattern === '*') {
+            // Update the single "*" rule
+            const targetInput = document.querySelector('.rewrite-rule .target-model-input');
+            if (targetInput) {
+                targetInput.value = defaultModel;
+            }
+        }
+    }
+    
+    updateDefaultModelState();
+}
+
+// Add event listener for default model input
+document.addEventListener('DOMContentLoaded', function() {
+    const defaultModelInput = document.getElementById('endpoint-default-model');
+    if (defaultModelInput) {
+        defaultModelInput.addEventListener('input', onDefaultModelChange);
+        defaultModelInput.addEventListener('blur', onDefaultModelChange);
+    }
+});

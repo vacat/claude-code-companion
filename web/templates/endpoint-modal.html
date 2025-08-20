@@ -30,23 +30,33 @@
                     <div class="tab-content" id="endpointModalTabContent">
                         <!-- Basic Configuration Tab -->
                         <div class="tab-pane fade show active" id="basic-tab-pane" role="tabpanel" aria-labelledby="basic-tab">
-                            <!-- 第一行：名称和启用状态 -->
+                            <!-- 第一行：名称、默认模型和启用状态 -->
                             <div class="row mb-3">
-                                <div class="col-9">
+                                <div class="col-4">
                                     <label for="endpoint-name" class="form-label">
                                         <i class="fas fa-tag form-label-icon"></i><span data-t="name">名称</span> <span class="text-danger">*</span>
                                     </label>
                                     <input type="text" class="form-control" id="endpoint-name" required>
                                 </div>
-                                <div class="col-3">
-                                    <h6 class="mb-2">
-                                        <i class="fas fa-power-off form-label-icon"></i> <span data-t="enable">启用</span>
-                                    </h6>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="endpoint-enabled" checked>
-                                        <label class="form-check-label" for="endpoint-enabled" data-t="enable_this_endpoint">
-                                            启用此端点
-                                        </label>
+                                <div class="col-4">
+                                    <label for="endpoint-default-model" class="form-label">
+                                        <i class="fas fa-robot form-label-icon"></i><span data-t="default_model">默认模型</span>
+                                        <i class="fas fa-question-circle text-muted ms-1" title="可以快捷设置此端点支持的唯一模型名，例如 openai/gpt-5" data-bs-toggle="tooltip"></i>
+                                    </label>
+                                    <input type="text" class="form-control" id="endpoint-default-model" 
+                                           placeholder="如: claude-3-5-haiku-20241022">
+                                    <small class="form-text text-muted" id="default-model-hint" style="display: none;">
+                                        Model Rewrite中有不兼容的设置
+                                    </small>
+                                </div>
+                                <div class="col-4 d-flex align-items-center">
+                                    <div class="w-100 d-flex justify-content-end">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="endpoint-enabled" checked>
+                                            <label class="form-check-label" for="endpoint-enabled" data-t="enable_this_endpoint">
+                                                启用此端点
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
