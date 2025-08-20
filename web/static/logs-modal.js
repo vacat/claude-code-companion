@@ -31,9 +31,8 @@ function displayMultipleLogDetails(logs) {
         </div>
     </div>`;
     
-    logs.forEach((log, index) => {
-        html += generateLogAttemptHtml(log, index + 1);
-    });
+    // Generate tabs for multiple attempts
+    html += generateAttemptsTabsHtml(logs);
     
     modalBody.innerHTML = html;
     
@@ -45,4 +44,56 @@ function displayMultipleLogDetails(logs) {
     
     const modal = new bootstrap.Modal(document.getElementById('logModal'));
     modal.show();
+}
+
+// Generate tabs HTML for multiple attempts
+function generateAttemptsTabsHtml(logs) {
+    // Generate tab navigation
+    let tabsHtml = `<ul class="nav nav-tabs attempts-tabs" id="attemptsTabs" role="tablist">`;
+    
+    logs.forEach((log, index) => {
+        const domain = extractDomain(log.endpoint);
+        const isSuccess = log.status_code >= 200 && log.status_code < 300;
+        const badgeClass = isSuccess ? 'bg-success' : 'bg-danger';
+        const isActive = index === 0 ? ' active' : '';
+        
+        tabsHtml += `
+            <li class="nav-item" role="presentation">
+                <button class="nav-link${isActive}" id="attempt-tab-${index}" data-bs-toggle="tab" 
+                        data-bs-target="#attempt-${index}" type="button" role="tab">
+                    ${domain} <span class="badge ${badgeClass}">${log.status_code}</span> <span class="text-muted">${log.duration_ms}ms</span>
+                </button>
+            </li>`;
+    });
+    
+    tabsHtml += `</ul>`;
+    
+    // Generate tab content
+    let contentHtml = `<div class="tab-content mt-3" id="attemptsTabsContent">`;
+    
+    logs.forEach((log, index) => {
+        const isActive = index === 0 ? ' show active' : '';
+        const displayAttemptNum = log.attempt_number || (index + 1);
+        
+        contentHtml += `
+            <div class="tab-pane fade${isActive}" id="attempt-${index}" role="tabpanel">
+                ${generateLogAttemptContentHtml(log, displayAttemptNum)}
+            </div>`;
+    });
+    
+    contentHtml += `</div>`;
+    
+    return tabsHtml + contentHtml;
+}
+
+// Extract domain from endpoint URL
+function extractDomain(endpoint) {
+    try {
+        const url = new URL(endpoint);
+        return url.hostname;
+    } catch (e) {
+        // If it's not a full URL, try to extract domain-like part
+        const parts = endpoint.split('/');
+        return parts[0] || endpoint;
+    }
 }
