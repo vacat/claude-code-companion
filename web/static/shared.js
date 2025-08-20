@@ -414,22 +414,42 @@ function shouldShowUpdate(currentVersion, latestVersion) {
 
 async function checkForUpdates() {
     try {
-        // Use fetch with CORS handling
+        // Use fetch with timeout and enhanced error handling
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
         const response = await fetch('https://api.github.com/repos/kxn/claude-code-companion/releases/latest', {
             method: 'GET',
             headers: {
                 'Accept': 'application/vnd.github.v3+json',
                 'User-Agent': 'Claude-Code-Companion-Version-Check'
             },
-            mode: 'cors'
+            mode: 'cors',
+            signal: controller.signal
         });
         
+        clearTimeout(timeoutId);
+        
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            // Log different types of HTTP errors but don't throw to user
+            if (response.status === 403) {
+                console.info('GitHub API rate limit reached, skipping version check');
+            } else if (response.status >= 500) {
+                console.info('GitHub API server error, skipping version check');
+            } else {
+                console.info(`GitHub API returned ${response.status}, skipping version check`);
+            }
+            return; // Silent return without affecting other functionality
         }
         
         const data = await response.json();
-        const latestVersion = data.tag_name;
+        const latestVersion = data?.tag_name;
+        
+        // Validate response data
+        if (!latestVersion || typeof latestVersion !== 'string') {
+            console.info('Invalid version data from GitHub API, skipping update check');
+            return;
+        }
         
         // Get current version from the server
         const currentVersionElement = document.getElementById('currentVersion');
@@ -443,54 +463,104 @@ async function checkForUpdates() {
             hideUpdateBadge();
         }
     } catch (error) {
-        console.warn('Failed to check for updates:', error);
-        // Don't show error to user, just log it
-        // Could be CORS, network issue, or API rate limiting
+        // Enhanced silent error handling with categorization
+        if (error.name === 'AbortError') {
+            console.info('GitHub API request timeout, skipping version check');
+        } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            console.info('Network connectivity issue, skipping version check');
+        } else if (error.message.includes('CORS')) {
+            console.info('CORS restriction encountered, skipping version check');
+        } else if (error instanceof SyntaxError) {
+            console.info('Invalid JSON response from GitHub API, skipping version check');
+        } else {
+            console.info('Version check failed silently:', error.name || 'Unknown error');
+        }
+        
+        // Ensure update badge is hidden if there was an error
+        try {
+            hideUpdateBadge();
+        } catch (badgeError) {
+            // Even if hiding badge fails, don't let it break anything
+            console.debug('Failed to hide update badge after error, ignoring');
+        }
+        
+        // Silent return - no user notification, no interruption to other functionality
+        return;
     }
 }
 
 function showUpdateBadge(latestVersion) {
-    const githubLink = document.querySelector('a[href*="github.com/kxn/claude-code-companion"]');
-    if (!githubLink) return;
-    
-    // Remove existing badge if any
-    const existingBadge = githubLink.querySelector('.update-badge');
-    if (existingBadge) existingBadge.remove();
-    
-    // Create update badge
-    const badge = document.createElement('span');
-    badge.className = 'update-badge';
-    badge.innerHTML = '<i class="fas fa-arrow-up"></i>';
-    badge.title = `发现新版本: ${latestVersion}`;
-    
-    // Position the badge
-    githubLink.style.position = 'relative';
-    githubLink.appendChild(badge);
-    
-    // Update tooltip
-    githubLink.title = `发现新版本: ${latestVersion} - 点击查看GitHub`;
+    try {
+        const githubLink = document.querySelector('a[href*="github.com/kxn/claude-code-companion"]');
+        if (!githubLink) {
+            console.debug('GitHub link not found, skipping update badge display');
+            return;
+        }
+        
+        // Remove existing badge if any
+        const existingBadge = githubLink.querySelector('.update-badge');
+        if (existingBadge) {
+            existingBadge.remove();
+        }
+        
+        // Create update badge
+        const badge = document.createElement('span');
+        badge.className = 'update-badge';
+        badge.innerHTML = '<i class="fas fa-arrow-up"></i>';
+        badge.title = `发现新版本: ${latestVersion}`;
+        
+        // Position the badge
+        githubLink.style.position = 'relative';
+        githubLink.appendChild(badge);
+        
+        // Update tooltip
+        githubLink.title = `发现新版本: ${latestVersion} - 点击查看GitHub`;
+    } catch (error) {
+        console.debug('Failed to show update badge, ignoring:', error.name || 'Unknown error');
+    }
 }
 
 function hideUpdateBadge() {
-    const githubLink = document.querySelector('a[href*="github.com/kxn/claude-code-companion"]');
-    if (!githubLink) return;
-    
-    const badge = githubLink.querySelector('.update-badge');
-    if (badge) badge.remove();
-    
-    // Reset tooltip
-    githubLink.title = 'GitHub 仓库';
+    try {
+        const githubLink = document.querySelector('a[href*="github.com/kxn/claude-code-companion"]');
+        if (!githubLink) {
+            console.debug('GitHub link not found, nothing to hide');
+            return;
+        }
+        
+        const badge = githubLink.querySelector('.update-badge');
+        if (badge) {
+            badge.remove();
+        }
+        
+        // Reset tooltip
+        githubLink.title = 'GitHub 仓库';
+    } catch (error) {
+        console.debug('Failed to hide update badge, ignoring:', error.name || 'Unknown error');
+    }
 }
 
 function startVersionCheck() {
-    // Check immediately
-    checkForUpdates();
+    // Check immediately with error protection
+    try {
+        checkForUpdates();
+    } catch (error) {
+        console.info('Initial version check failed, continuing with interval checks');
+    }
     
     // Set up interval to check every 30 minutes (30 * 60 * 1000 ms)
     if (versionCheckInterval) {
         clearInterval(versionCheckInterval);
     }
-    versionCheckInterval = setInterval(checkForUpdates, 30 * 60 * 1000);
+    
+    // Wrap interval callback to prevent any uncaught errors from stopping the timer
+    versionCheckInterval = setInterval(() => {
+        try {
+            checkForUpdates();
+        } catch (error) {
+            console.info('Scheduled version check failed silently, will retry next interval');
+        }
+    }, 30 * 60 * 1000);
 }
 
 function stopVersionCheck() {
