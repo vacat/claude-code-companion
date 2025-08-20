@@ -42,6 +42,11 @@ Claude Code 伴侣是一个为 Claude Code 提供的本地 API 代理工具。�
    - 还需要设置 API_TIMEOUT_MS=600000 ，这样才能在号池超时的时候，客户端自己不超时
    - 建议设置 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ，可以避免 claude code 往他们公司报东西
 
+## 一些文档
+
+[常见端点提供商的参数参考](https://ucn0s6hcz1w1.feishu.cn/sheets/RNPHswfIThqQ1itf1m4cb0mKnrc)
+
+
 ## 常见使用场景
 
 - 多个号池自动切换：
