@@ -358,6 +358,60 @@ function updateLanguageDropdown() {
 // Version update check functionality
 let versionCheckInterval = null;
 
+// Parse version string and extract date
+function parseVersionDate(version) {
+    if (!version) return null;
+    
+    // Version format: 日期-shorthash-release or just 日期-shorthash
+    // Example: 20250816-39e4794-dirty or v0.1.0-test
+    
+    // Remove 'v' prefix if present
+    const cleanVersion = version.startsWith('v') ? version.substring(1) : version;
+    
+    // Split by '-' and get the first part (should be the date)
+    const parts = cleanVersion.split('-');
+    if (parts.length === 0) return null;
+    
+    const datePart = parts[0];
+    
+    // Check if it's a date format (YYYYMMDD)
+    if (!/^\d{8}$/.test(datePart)) {
+        return null; // Not a date format, skip comparison
+    }
+    
+    try {
+        // Parse YYYYMMDD format
+        const year = parseInt(datePart.substring(0, 4));
+        const month = parseInt(datePart.substring(4, 6)) - 1; // Month is 0-based
+        const day = parseInt(datePart.substring(6, 8));
+        
+        return new Date(year, month, day);
+    } catch (error) {
+        console.warn('Failed to parse version date:', datePart, error);
+        return null;
+    }
+}
+
+// Determine if update should be shown based on version comparison
+function shouldShowUpdate(currentVersion, latestVersion) {
+    // If versions are identical, no update needed
+    if (currentVersion === latestVersion) {
+        return false;
+    }
+    
+    // Try to parse dates from both versions
+    const currentDate = parseVersionDate(currentVersion);
+    const latestDate = parseVersionDate(latestVersion);
+    
+    // If either version doesn't have a valid date, fall back to string comparison
+    if (!currentDate || !latestDate) {
+        return currentVersion !== latestVersion;
+    }
+    
+    // Only show update if latest version date is newer than current version date
+    return latestDate > currentDate;
+}
+
 async function checkForUpdates() {
     try {
         // Use fetch with CORS handling
@@ -383,7 +437,7 @@ async function checkForUpdates() {
         
         console.log('Version check:', { current: currentVersion, latest: latestVersion });
         
-        if (latestVersion && currentVersion && latestVersion !== currentVersion) {
+        if (latestVersion && currentVersion && shouldShowUpdate(currentVersion, latestVersion)) {
             showUpdateBadge(latestVersion);
         } else {
             hideUpdateBadge();
