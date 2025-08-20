@@ -30,6 +30,7 @@ function generateLogAttemptHtml(log, attemptNum) {
                 </h6>
             </div>
             <div class="card-body">
+                ${log.error ? `<div class="alert alert-danger mb-3"><strong>错误:</strong> ${escapeHtml(log.error)}</div>` : ''}
                 <!-- Request/Response Tabs -->
                 <ul class="nav nav-tabs before-after-tabs" id="logTabs${attemptNum}" role="tablist">
                     <li class="nav-item" role="presentation">
@@ -55,8 +56,6 @@ function generateLogAttemptHtml(log, attemptNum) {
                         ${generateResponseComparisonHtml(log, attemptNum)}
                     </div>
                 </div>
-                
-                ${log.error ? `<div class="alert alert-danger mt-3"><strong>错误:</strong> ${escapeHtml(log.error)}</div>` : ''}
             </div>
         </div>`;
 }
