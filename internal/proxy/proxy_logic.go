@@ -151,6 +151,17 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		req.Header.Set("Authorization", authHeader)
 	}
 
+	// Special OAuth header hack for api.anthropic.com with OAuth tokens
+	if strings.Contains(ep.URL, "api.anthropic.com") && ep.AuthType == "auth_token" && strings.HasPrefix(ep.AuthValue, "sk-ant-oat01") {
+		if existingBeta := req.Header.Get("Anthropic-Beta"); existingBeta != "" {
+			// Prepend oauth-2025-04-20 to existing Anthropic-Beta header
+			req.Header.Set("Anthropic-Beta", "oauth-2025-04-20,"+existingBeta)
+		} else {
+			// Set oauth-2025-04-20 as the only value if no existing header
+			req.Header.Set("Anthropic-Beta", "oauth-2025-04-20")
+		}
+	}
+
 	if c.Request.URL.RawQuery != "" {
 		req.URL.RawQuery = c.Request.URL.RawQuery
 	}
