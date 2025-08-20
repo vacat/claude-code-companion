@@ -5,7 +5,7 @@ import (
 )
 
 func TestValidateMessageStartUsage(t *testing.T) {
-	validator := NewResponseValidator(true, true)
+	validator := NewResponseValidator()
 	
 	// 测试用例1: 正常的message_start事件，包含非零usage统计
 	validEvent := map[string]interface{}{
@@ -60,7 +60,7 @@ func TestValidateMessageStartUsage(t *testing.T) {
 }
 
 func TestValidateSSEChunkWithUsage(t *testing.T) {
-	validator := NewResponseValidator(true, true)
+	validator := NewResponseValidator()
 	
 	// 测试用例1: 包含有效usage的流式响应
 	validSSEData := []byte(`event: message_start
@@ -92,7 +92,7 @@ data: {"type":"message_start","message":{"id":"msg_123","usage":{"prompt_tokens"
 }
 
 func TestDetectJSONContent(t *testing.T) {
-	validator := NewResponseValidator(true, true)
+	validator := NewResponseValidator()
 	
 	// 测试用例1: 纯JSON内容（非SSE格式）
 	jsonContent := []byte(`{"id":"msg_123","type":"message","content":[{"type":"text","text":"Hello"}],"model":"claude-3"}`)
@@ -138,7 +138,7 @@ data: {"type":"content_block_start","index":0}
 }
 
 func TestValidateCompleteSSEStream(t *testing.T) {
-	validator := NewResponseValidator(true, true)
+	validator := NewResponseValidator()
 	
 	// 测试用例1: 完整的Anthropic SSE流
 	completeAnthropicSSE := []byte(`event: message_start
@@ -229,7 +229,7 @@ data: [DONE]
 }
 
 func TestValidateAnthropicSSECompleteness(t *testing.T) {
-	validator := NewResponseValidator(true, true)
+	validator := NewResponseValidator()
 	
 	// 测试用例1: 完整的Anthropic流（有message_start和message_stop）
 	completeSSE := []byte(`event: message_start
@@ -295,7 +295,7 @@ data: {"type":"message_stop"}
 }
 
 func TestValidateOpenAISSECompleteness(t *testing.T) {
-	validator := NewResponseValidator(true, true)
+	validator := NewResponseValidator()
 	
 	// 测试用例1: 完整的OpenAI流（有[DONE]和finish_reason）
 	completeSSE := []byte(`data: {"id":"chatcmpl-123","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
@@ -355,7 +355,7 @@ data: [DONE]
 }
 
 func TestValidateResponseWithPathStreamingIntegration(t *testing.T) {
-	validator := NewResponseValidator(true, true)
+	validator := NewResponseValidator()
 	
 	// 测试用例1: 完整的Anthropic SSE流应该通过集成验证
 	completeAnthropicSSE := []byte(`event: message_start

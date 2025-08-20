@@ -112,11 +112,42 @@ type AnthropicMessageStart struct {
 	Message *AnthropicResponse `json:"message"`
 }
 
+// AnthropicContentBlockForStart 专门用于 content_block_start 事件的结构体
+// 确保 text 字段始终被序列化，即使为空
+type AnthropicContentBlockForStart struct {
+	Type string `json:"type"` // "text" | "tool_use"
+	Text string `json:"-"`    // 使用自定义序列化
+
+	// tool_use 字段（当 Type 为 "tool_use" 时使用）
+	ID    string          `json:"id,omitempty"`
+	Name  string          `json:"name,omitempty"`
+	Input json.RawMessage `json:"input,omitempty"`
+}
+
+// MarshalJSON 自定义 JSON 序列化
+// 对于 "text" 类型，始终包含 text 字段；对于 "tool_use" 类型，省略 text 字段
+func (c AnthropicContentBlockForStart) MarshalJSON() ([]byte, error) {
+	type Alias AnthropicContentBlockForStart
+	aux := &struct {
+		Text *string `json:"text,omitempty"`
+		*Alias
+	}{
+		Alias: (*Alias)(&c),
+	}
+	
+	// 只有当 Type 为 "text" 时才包含 text 字段
+	if c.Type == "text" {
+		aux.Text = &c.Text
+	}
+	
+	return json.Marshal(aux)
+}
+
 // AnthropicContentBlockStart 内容块开始事件
 type AnthropicContentBlockStart struct {
-	Type         string                 `json:"type"`
-	Index        int                    `json:"index"`
-	ContentBlock *AnthropicContentBlock `json:"content_block"`
+	Type         string                         `json:"type"`
+	Index        int                            `json:"index"`
+	ContentBlock *AnthropicContentBlockForStart `json:"content_block"`  // 使用专门的结构体
 }
 
 // AnthropicContentBlockDelta 内容块增量事件

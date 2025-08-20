@@ -46,8 +46,9 @@ func (c *RequestConverter) Convert(anthropicReq []byte) ([]byte, *ConversionCont
 	// 温控映射
 	out.Temperature = anthReq.Temperature
 	out.TopP = anthReq.TopP
-	// Anthropic 的 max_tokens -> OpenAI 的 max_tokens（使用兼容字段）
+	// Anthropic 的 max_tokens -> OpenAI 的 max_tokens（使用兼容字段和新字段）
 	out.MaxTokens = anthReq.MaxTokens
+	out.MaxCompletionTokens = anthReq.MaxTokens  // 设置新推荐字段
 	out.Stream = anthReq.Stream
 	out.Stop = anthReq.StopSequences
 

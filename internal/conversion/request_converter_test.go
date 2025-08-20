@@ -8,6 +8,10 @@ import (
 func TestConvertAnthropicRequestToOpenAI_SimpleText(t *testing.T) {
 	converter := NewRequestConverter(getTestLogger())
 
+	if converter == nil {
+		t.Fatal("Converter should not be nil")
+	}
+
 	anthReq := AnthropicRequest{
 		Model: "claude-3-sonnet-20240229",
 		Messages: []AnthropicMessage{
@@ -38,6 +42,9 @@ func TestConvertAnthropicRequestToOpenAI_SimpleText(t *testing.T) {
 		t.Errorf("Expected model 'claude-3-sonnet-20240229', got '%s'", oaReq.Model)
 	}
 
+	if oaReq.MaxCompletionTokens == nil {
+		t.Fatal("MaxCompletionTokens should not be nil")
+	}
 	if *oaReq.MaxCompletionTokens != 1024 {
 		t.Errorf("Expected max_completion_tokens 1024, got %d", *oaReq.MaxCompletionTokens)
 	}

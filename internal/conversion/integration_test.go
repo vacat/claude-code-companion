@@ -13,7 +13,13 @@ func intPtr(i int) *int {
 }
 
 func getTestLogger() *logger.Logger {
-	return (*logger.Logger)(nil) // 使用nil logger用于测试
+	// Create a simple test logger
+	testLogger, _ := logger.NewLogger(logger.LogConfig{
+		Level:           "debug",
+		LogRequestTypes: "all",
+		LogDirectory:    "", // Empty to avoid file operations in tests
+	})
+	return testLogger
 }
 
 // 集成测试：完整的请求-响应循环

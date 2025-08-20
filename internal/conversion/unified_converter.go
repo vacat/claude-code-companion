@@ -128,9 +128,9 @@ func (c *UnifiedConverter) generateTextEvents(textContent string, blockIndex *in
 	currentIndex := *blockIndex
 
 	// Content block start (text should start with empty text field)
-	contentBlock := &AnthropicContentBlock{
+	contentBlock := &AnthropicContentBlockForStart{
 		Type: "text",
-		Text: "",
+		Text: "",  // 这个字段现在会被序列化，即使为空
 	}
 
 	startEvent := &AnthropicContentBlockStart{
@@ -180,12 +180,12 @@ func (c *UnifiedConverter) generateToolUseEvents(toolCall AggregatedToolCall, bl
 	currentIndex := *blockIndex
 
 	// Content block start for tool use - with empty input (streaming approach)
-	contentBlock := &AnthropicContentBlock{
+	contentBlock := &AnthropicContentBlockForStart{
 		Type:  "tool_use",
 		ID:    toolCall.ID,
 		Name:  toolCall.Name,
 		Input: json.RawMessage("{}"), // Empty input for streaming
-		// Note: No Text field for tool_use type
+		// Note: No Text field for tool_use type - Text field will be omitted
 	}
 
 	startEvent := &AnthropicContentBlockStart{
