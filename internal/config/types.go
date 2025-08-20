@@ -91,27 +91,51 @@ type PythonJSONFixingConfig struct {
 
 // 新增：超时配置结构
 type TimeoutConfig struct {
-	// 代理客户端超时设置
-	Proxy ProxyTimeoutConfig `yaml:"proxy"`
-	// 健康检查超时设置
-	HealthCheck HealthCheckTimeoutConfig `yaml:"health_check"`
+	// 网络超时设置（代理和健康检查共用）
+	TLSHandshake     string `yaml:"tls_handshake" json:"tls_handshake"`           // TLS握手超时，默认10s
+	ResponseHeader   string `yaml:"response_header" json:"response_header"`       // 响应头超时，默认60s  
+	IdleConnection   string `yaml:"idle_connection" json:"idle_connection"`       // 空闲连接超时，默认90s
+	// 健康检查特有配置
+	HealthCheckTimeout string `yaml:"health_check_timeout" json:"health_check_timeout"` // 健康检查整体响应超时，默认30s
+	CheckInterval      string `yaml:"check_interval" json:"check_interval"`             // 健康检查间隔，默认30s
 }
 
-// 代理客户端超时配置
+// 代理客户端超时配置（内部使用，从TimeoutConfig转换）
 type ProxyTimeoutConfig struct {
-	TLSHandshake     string `yaml:"tls_handshake"`      // TLS握手超时，默认10s
-	ResponseHeader   string `yaml:"response_header"`    // 响应头超时，默认60s  
-	IdleConnection   string `yaml:"idle_connection"`    // 空闲连接超时，默认90s
-	OverallRequest   string `yaml:"overall_request"`    // 整体请求超时，默认无限制(支持流式)
+	TLSHandshake     string `yaml:"tls_handshake" json:"tls_handshake"`           
+	ResponseHeader   string `yaml:"response_header" json:"response_header"`       
+	IdleConnection   string `yaml:"idle_connection" json:"idle_connection"`       
+	OverallRequest   string `yaml:"overall_request" json:"overall_request"`       // 保持为空，无限制
 }
 
-// 健康检查超时配置
+// 健康检查超时配置（内部使用，从TimeoutConfig转换）
 type HealthCheckTimeoutConfig struct {
-	TLSHandshake     string `yaml:"tls_handshake"`      // TLS握手超时，默认5s
-	ResponseHeader   string `yaml:"response_header"`    // 响应头超时，默认30s
-	IdleConnection   string `yaml:"idle_connection"`    // 空闲连接超时，默认60s
-	OverallRequest   string `yaml:"overall_request"`    // 整体请求超时，默认30s
-	CheckInterval    string `yaml:"check_interval"`     // 健康检查间隔，默认30s
+	TLSHandshake     string `yaml:"tls_handshake" json:"tls_handshake"`           
+	ResponseHeader   string `yaml:"response_header" json:"response_header"`       
+	IdleConnection   string `yaml:"idle_connection" json:"idle_connection"`       
+	OverallRequest   string `yaml:"overall_request" json:"overall_request"`       
+	CheckInterval    string `yaml:"check_interval" json:"check_interval"`         
+}
+
+// ToProxyTimeoutConfig 将TimeoutConfig转换为ProxyTimeoutConfig
+func (tc *TimeoutConfig) ToProxyTimeoutConfig() ProxyTimeoutConfig {
+	return ProxyTimeoutConfig{
+		TLSHandshake:   tc.TLSHandshake,
+		ResponseHeader: tc.ResponseHeader,
+		IdleConnection: tc.IdleConnection,
+		OverallRequest: "", // 代理不设置整体超时，支持流式响应
+	}
+}
+
+// ToHealthCheckTimeoutConfig 将TimeoutConfig转换为HealthCheckTimeoutConfig
+func (tc *TimeoutConfig) ToHealthCheckTimeoutConfig() HealthCheckTimeoutConfig {
+	return HealthCheckTimeoutConfig{
+		TLSHandshake:   tc.TLSHandshake,
+		ResponseHeader: tc.ResponseHeader,
+		IdleConnection: tc.IdleConnection,
+		OverallRequest: tc.HealthCheckTimeout,
+		CheckInterval:  tc.CheckInterval,
+	}
 }
 
 // Tag系统配置结构 (永远启用)

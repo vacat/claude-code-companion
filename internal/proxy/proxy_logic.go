@@ -139,7 +139,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	if ep.AuthType == "api_key" {
 		req.Header.Set("x-api-key", ep.AuthValue)
 	} else {
-		authHeader, err := ep.GetAuthHeaderWithRefreshCallback(s.config.Timeouts.Proxy, s.createOAuthTokenRefreshCallback())
+		authHeader, err := ep.GetAuthHeaderWithRefreshCallback(s.config.Timeouts.ToProxyTimeoutConfig(), s.createOAuthTokenRefreshCallback())
 		if err != nil {
 			s.logger.Error(fmt.Sprintf("Failed to get auth header: %v", err), err)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
@@ -156,7 +156,7 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	}
 
 	// 为这个端点创建支持代理的HTTP客户端
-	client, err := ep.CreateProxyClient(s.config.Timeouts.Proxy)
+	client, err := ep.CreateProxyClient(s.config.Timeouts.ToProxyTimeoutConfig())
 	if err != nil {
 		s.logger.Error("Failed to create proxy client for endpoint", err)
 		duration := time.Since(endpointStartTime)

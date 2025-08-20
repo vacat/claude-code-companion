@@ -102,8 +102,8 @@ func (m *Manager) startHealthChecks() {
 
 	// 获取健康检查间隔配置，默认30秒
 	interval := 30 * time.Second
-	if m.config.Timeouts.HealthCheck.CheckInterval != "" {
-		if d, err := time.ParseDuration(m.config.Timeouts.HealthCheck.CheckInterval); err == nil {
+	if m.config.Timeouts.CheckInterval != "" {
+		if d, err := time.ParseDuration(m.config.Timeouts.CheckInterval); err == nil {
 			interval = d
 		}
 	}

@@ -98,19 +98,11 @@ func generateDefaultConfig(filename string) error {
 			Taggers:         []TaggerConfig{},
 		},
 		Timeouts: TimeoutConfig{
-			Proxy: ProxyTimeoutConfig{
-				TLSHandshake:   "10s",
-				ResponseHeader: "60s",
-				IdleConnection: "90s",
-				OverallRequest: "", // 默认无限制，支持流式响应
-			},
-			HealthCheck: HealthCheckTimeoutConfig{
-				TLSHandshake:   "5s",
-				ResponseHeader: "30s",
-				IdleConnection: "60s",
-				OverallRequest: "30s",
-				CheckInterval:  "30s",
-			},
+			TLSHandshake:       "10s",
+			ResponseHeader:     "60s", 
+			IdleConnection:     "90s",
+			HealthCheckTimeout: "30s",
+			CheckInterval:      "30s",
 		},
 	}
 

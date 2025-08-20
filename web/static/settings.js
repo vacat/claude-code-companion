@@ -24,19 +24,11 @@ function collectFormData() {
         validation: {
         },
         timeouts: {
-            proxy: {
-                tls_handshake: document.getElementById('proxyTLSHandshake').value,
-                response_header: document.getElementById('proxyResponseHeader').value,
-                idle_connection: document.getElementById('proxyIdleConnection').value,
-                overall_request: document.getElementById('proxyOverallRequest').value
-            },
-            health_check: {
-                tls_handshake: document.getElementById('healthCheckTLSHandshake').value,
-                response_header: document.getElementById('healthCheckResponseHeader').value,
-                idle_connection: document.getElementById('healthCheckIdleConnection').value,
-                overall_request: document.getElementById('healthCheckOverallRequest').value,
-                check_interval: document.getElementById('healthCheckInterval').value
-            }
+            tls_handshake: document.getElementById('tlsHandshake').value,
+            response_header: document.getElementById('responseHeader').value,
+            idle_connection: document.getElementById('idleConnection').value,
+            health_check_timeout: document.getElementById('healthCheckTimeout').value,
+            check_interval: document.getElementById('checkInterval').value
         }
     };
 }
@@ -91,13 +83,9 @@ function resetSettings() {
     document.getElementById('logRequestBody').value = originalConfig.logging.log_request_body;
     document.getElementById('logResponseBody').value = originalConfig.logging.log_response_body;
     document.getElementById('logDirectory').value = originalConfig.logging.log_directory;
-    document.getElementById('proxyTLSHandshake').value = originalConfig.timeouts.proxy.tls_handshake;
-    document.getElementById('proxyResponseHeader').value = originalConfig.timeouts.proxy.response_header;
-    document.getElementById('proxyIdleConnection').value = originalConfig.timeouts.proxy.idle_connection;
-    document.getElementById('proxyOverallRequest').value = originalConfig.timeouts.proxy.overall_request;
-    document.getElementById('healthCheckTLSHandshake').value = originalConfig.timeouts.health_check.tls_handshake;
-    document.getElementById('healthCheckResponseHeader').value = originalConfig.timeouts.health_check.response_header;
-    document.getElementById('healthCheckIdleConnection').value = originalConfig.timeouts.health_check.idle_connection;
-    document.getElementById('healthCheckOverallRequest').value = originalConfig.timeouts.health_check.overall_request;
-    document.getElementById('healthCheckInterval').value = originalConfig.timeouts.health_check.check_interval;
+    document.getElementById('tlsHandshake').value = originalConfig.timeouts.tls_handshake;
+    document.getElementById('responseHeader').value = originalConfig.timeouts.response_header;
+    document.getElementById('idleConnection').value = originalConfig.timeouts.idle_connection;
+    document.getElementById('healthCheckTimeout').value = originalConfig.timeouts.health_check_timeout;
+    document.getElementById('checkInterval').value = originalConfig.timeouts.check_interval;
 }

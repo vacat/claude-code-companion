@@ -63,7 +63,7 @@ func NewServer(cfg *config.Config, configFilePath string, version string) (*Serv
 	converter := conversion.NewConverter(log)
 
 	// 初始化健康检查器（需要在模型重写器和转换器之后）
-	healthChecker := health.NewChecker(cfg.Timeouts.HealthCheck, modelRewriter, converter)
+	healthChecker := health.NewChecker(cfg.Timeouts.ToHealthCheckTimeoutConfig(), modelRewriter, converter)
 
 	// 初始化国际化管理器
 	i18nConfig := &i18n.Config{

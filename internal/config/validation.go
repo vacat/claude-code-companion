@@ -182,50 +182,32 @@ func validateTaggingConfig(config *TaggingConfig) error {
 }
 
 func validateTimeoutConfig(config *TimeoutConfig) error {
-	// 设置代理超时默认值
-	if config.Proxy.TLSHandshake == "" {
-		config.Proxy.TLSHandshake = "10s"
+	// 设置基础超时默认值
+	if config.TLSHandshake == "" {
+		config.TLSHandshake = "10s"
 	}
-	if config.Proxy.ResponseHeader == "" {
-		config.Proxy.ResponseHeader = "60s"
+	if config.ResponseHeader == "" {
+		config.ResponseHeader = "60s"
 	}
-	if config.Proxy.IdleConnection == "" {
-		config.Proxy.IdleConnection = "90s"
+	if config.IdleConnection == "" {
+		config.IdleConnection = "90s"
 	}
-	// OverallRequest 默认为空，表示无限制（支持流式响应）
 	
-	// 设置健康检查超时默认值
-	if config.HealthCheck.TLSHandshake == "" {
-		config.HealthCheck.TLSHandshake = "5s"
+	// 设置健康检查特有配置默认值
+	if config.HealthCheckTimeout == "" {
+		config.HealthCheckTimeout = "30s"
 	}
-	if config.HealthCheck.ResponseHeader == "" {
-		config.HealthCheck.ResponseHeader = "30s"
-	}
-	if config.HealthCheck.IdleConnection == "" {
-		config.HealthCheck.IdleConnection = "60s"
-	}
-	if config.HealthCheck.OverallRequest == "" {
-		config.HealthCheck.OverallRequest = "30s"
-	}
-	if config.HealthCheck.CheckInterval == "" {
-		config.HealthCheck.CheckInterval = "30s"
+	if config.CheckInterval == "" {
+		config.CheckInterval = "30s"
 	}
 
 	// 验证所有非空超时时间格式
 	timeoutFields := map[string]string{
-		"proxy.tls_handshake":          config.Proxy.TLSHandshake,
-		"proxy.response_header":        config.Proxy.ResponseHeader,
-		"proxy.idle_connection":        config.Proxy.IdleConnection,
-		"health_check.tls_handshake":   config.HealthCheck.TLSHandshake,
-		"health_check.response_header": config.HealthCheck.ResponseHeader,
-		"health_check.idle_connection": config.HealthCheck.IdleConnection,
-		"health_check.overall_request": config.HealthCheck.OverallRequest,
-		"health_check.check_interval":  config.HealthCheck.CheckInterval,
-	}
-
-	// 如果配置了proxy overall_request，也验证它
-	if config.Proxy.OverallRequest != "" {
-		timeoutFields["proxy.overall_request"] = config.Proxy.OverallRequest
+		"tls_handshake":          config.TLSHandshake,
+		"response_header":        config.ResponseHeader,
+		"idle_connection":        config.IdleConnection,
+		"health_check_timeout":   config.HealthCheckTimeout,
+		"check_interval":         config.CheckInterval,
 	}
 
 	for fieldName, value := range timeoutFields {
