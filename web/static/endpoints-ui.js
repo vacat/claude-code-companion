@@ -32,7 +32,7 @@ function rebuildTable(endpoints) {
     function createEndpointRow(endpoint, index) {
         const row = document.createElement('tr');
         row.className = 'endpoint-row';
-        row.setAttribute('data-endpoint-name', endpoint.name);
+        row.setAttribute('data-endpoint-name', escapeHtml(endpoint.name));
         
         // Build status badge
         let statusBadge = '';
@@ -91,7 +91,7 @@ function rebuildTable(endpoints) {
         // Build tags display
         let tagsDisplay = '';
         if (endpoint.tags && endpoint.tags.length > 0) {
-            tagsDisplay = endpoint.tags.map(tag => `<span class="badge bg-info me-1 mb-1">${tag}</span>`).join('');
+            tagsDisplay = endpoint.tags.map(tag => `<span class="badge bg-info me-1 mb-1">${escapeHtml(tag)}</span>`).join('');
         } else {
             tagsDisplay = '<span class="text-muted">通用</span>';
         }
@@ -103,7 +103,7 @@ function rebuildTable(endpoints) {
             <td>
                 <span class="badge bg-info priority-badge">${endpoint.priority}</span>
             </td>
-            <td><strong>${endpoint.name}</strong></td>
+            <td><strong>${escapeHtml(endpoint.name)}</strong></td>
             <td>${urlDisplay}</td>
             <td>${endpointTypeBadge}</td>
             <td>${pathDisplay}</td>
@@ -115,22 +115,22 @@ function rebuildTable(endpoints) {
             <td class="action-buttons">
                 <div class="btn-group btn-group-sm" role="group">
                     <button class="btn ${endpoint.enabled ? 'btn-success' : 'btn-secondary'} btn-sm" 
-                            onclick="event.stopPropagation(); toggleEndpointEnabled('${endpoint.name}', ${endpoint.enabled})"
+                            onclick="event.stopPropagation(); toggleEndpointEnabled('${escapeHtml(endpoint.name)}', ${endpoint.enabled})"
                             title="${endpoint.enabled ? '点击禁用' : '点击启用'}">
                         <i class="fas ${endpoint.enabled ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
                     </button>
                     <button class="btn btn-outline-primary btn-sm" 
-                            onclick="event.stopPropagation(); showEditEndpointModal('${endpoint.name}')"
+                            onclick="event.stopPropagation(); showEditEndpointModal('${escapeHtml(endpoint.name)}')"
                             title="编辑">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button class="btn btn-outline-info btn-sm" 
-                            onclick="event.stopPropagation(); copyEndpoint('${endpoint.name}')"
+                            onclick="event.stopPropagation(); copyEndpoint('${escapeHtml(endpoint.name)}')"
                             title="复制">
                         <i class="fas fa-copy"></i>
                     </button>
                     <button class="btn btn-outline-danger btn-sm" 
-                            onclick="event.stopPropagation(); deleteEndpoint('${endpoint.name}')"
+                            onclick="event.stopPropagation(); deleteEndpoint('${escapeHtml(endpoint.name)}')"
                             title="删除">
                         <i class="fas fa-trash"></i>
                     </button>

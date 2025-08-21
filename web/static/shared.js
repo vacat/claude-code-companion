@@ -1,5 +1,74 @@
 /* Claude Code Companion Web Admin - Shared JavaScript Functions */
 
+// CSRF token management
+let csrfToken = null;
+
+// Get CSRF token from server
+async function getCSRFToken() {
+    if (csrfToken) {
+        return csrfToken;
+    }
+    
+    try {
+        const response = await fetch('/admin/api/csrf-token');
+        if (response.ok) {
+            const data = await response.json();
+            csrfToken = data.csrf_token;
+            return csrfToken;
+        }
+    } catch (error) {
+        console.error('Failed to get CSRF token:', error);
+    }
+    
+    return null;
+}
+
+// Enhanced API request function with CSRF protection
+async function apiRequest(url, options = {}) {
+    const token = await getCSRFToken();
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    // Add CSRF token for non-GET requests
+    if (options.method && options.method !== 'GET') {
+        if (token) {
+            headers['X-CSRF-Token'] = token;
+        }
+    }
+    
+    const requestOptions = {
+        ...options,
+        headers
+    };
+    
+    try {
+        const response = await fetch(url, requestOptions);
+        
+        // If CSRF token is invalid, clear it and retry once
+        if (response.status === 403) {
+            const errorData = await response.json().catch(() => ({}));
+            if (errorData.code === 'CSRF_INVALID') {
+                csrfToken = null; // Clear cached token
+                
+                // Retry with new token
+                const newToken = await getCSRFToken();
+                if (newToken && options.method && options.method !== 'GET') {
+                    headers['X-CSRF-Token'] = newToken;
+                    return fetch(url, { ...options, headers });
+                }
+            }
+        }
+        
+        return response;
+    } catch (error) {
+        console.error('API request failed:', error);
+        throw error;
+    }
+}
+
 // Shared utility functions
 function showAlert(message, type = 'info') {
     const alertDiv = document.createElement('div');

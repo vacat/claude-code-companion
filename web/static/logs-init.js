@@ -10,10 +10,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const fullEndpoint = cell.getAttribute('data-endpoint');
         if (fullEndpoint && fullEndpoint !== 'failed') {
             const urlFormatted = formatUrlDisplay(fullEndpoint);
-            cell.innerHTML = `<small><code title="${urlFormatted.title}">${urlFormatted.display}</code></small>`;
+            cell.innerHTML = `<small><code title="${escapeHtml(urlFormatted.title)}">${escapeHtml(urlFormatted.display)}</code></small>`;
         } else {
             // For 'failed' or other non-URL values, keep as is
-            cell.innerHTML = `<small>${fullEndpoint}</small>`;
+            cell.innerHTML = `<small>${escapeHtml(fullEndpoint)}</small>`;
         }
     });
 });

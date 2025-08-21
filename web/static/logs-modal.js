@@ -1,7 +1,7 @@
 // Logs Page Modal Functions
 
 function showLogDetails(requestId) {
-    fetch(`/admin/api/logs?request_id=${requestId}`)
+    apiRequest(`/admin/api/logs?request_id=${requestId}`)
         .then(response => response.json())
         .then(data => {
             if (data.logs && data.logs.length > 0) {

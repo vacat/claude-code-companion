@@ -9,6 +9,7 @@ import (
 	"claude-code-companion/internal/endpoint"
 	"claude-code-companion/internal/i18n"
 	"claude-code-companion/internal/logger"
+	"claude-code-companion/internal/security"
 	"claude-code-companion/internal/tagging"
 	"claude-code-companion/internal/webres"
 
@@ -29,6 +30,7 @@ type AdminServer struct {
 	hotUpdateHandler  HotUpdateHandler
 	version           string
 	i18nManager       *i18n.Manager
+	csrfManager       *security.CSRFManager
 }
 
 func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, taggingManager *tagging.Manager, log *logger.Logger, configFilePath string, version string, i18nManager *i18n.Manager) *AdminServer {
@@ -40,6 +42,7 @@ func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, taggi
 		configFilePath:  configFilePath,
 		version:         version,
 		i18nManager:     i18nManager,
+		csrfManager:     security.NewCSRFManager(),
 	}
 }
 
@@ -210,10 +213,14 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 	router.GET("/admin/logs", s.handleLogsPage)
 	router.GET("/admin/settings", s.handleSettingsPage)
 
-	// 注册 API 路由，添加UTF-8字符集中间件
+	// 注册 API 路由，添加UTF-8字符集中间件和CSRF防护
 	api := router.Group("/admin/api")
 	api.Use(s.utf8JsonMiddleware()) // 添加UTF-8中间件
+	api.Use(s.csrfManager.Middleware()) // 添加CSRF防护
 	{
+		// CSRF token端点（GET请求，不需要CSRF验证）
+		api.GET("/csrf-token", s.handleGetCSRFToken)
+		
 		api.GET("/endpoints", s.handleGetEndpoints)
 		api.PUT("/endpoints", s.handleUpdateEndpoints)
 		api.POST("/endpoints", s.handleCreateEndpoint)
@@ -300,5 +307,20 @@ func (w *translatingResponseWriter) Write(data []byte) (int, error) {
 	}
 
 	return w.ResponseWriter.Write(data)
+}
+
+// handleGetCSRFToken generates and returns a new CSRF token
+func (s *AdminServer) handleGetCSRFToken(c *gin.Context) {
+	token := s.csrfManager.GenerateToken()
+	if token == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to generate CSRF token",
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"csrf_token": token,
+	})
 }
 

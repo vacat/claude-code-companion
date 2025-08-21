@@ -46,11 +46,11 @@ function addRewriteRule(sourcePattern = '', targetModel = '') {
                 <option value="custom">自定义通配符</option>
             </select>
             <input type="text" class="form-control mt-1 source-pattern-input" 
-                   placeholder="通配符模式" value="${sourcePattern}" readonly>
+                   placeholder="通配符模式" value="${escapeHtml(sourcePattern)}" readonly>
         </div>
         <div class="col-5">
             <input type="text" class="form-control target-model-input" 
-                   placeholder="目标模型 (如: deepseek-chat)" value="${targetModel}" 
+                   placeholder="目标模型 (如: deepseek-chat)" value="${escapeHtml(targetModel)}" 
                    oninput="onRewriteRuleTargetChange()">
         </div>
         <div class="col-2">
@@ -122,7 +122,7 @@ function testRewriteRule(ruleIndex) {
         return;
     }
 
-    fetch(`/admin/api/endpoints/${encodeURIComponent(editingEndpointName)}/test-model-rewrite`, {
+    apiRequest(`/admin/api/endpoints/${encodeURIComponent(editingEndpointName)}/test-model-rewrite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ test_model: testModel })
@@ -251,7 +251,7 @@ function loadModelRewriteConfig(config) {
 function saveModelRewriteConfig(endpointName, config) {
     if (!config) return Promise.resolve();
 
-    return fetch(`/admin/api/endpoints/${encodeURIComponent(endpointName)}/model-rewrite`, {
+    return apiRequest(`/admin/api/endpoints/${encodeURIComponent(endpointName)}/model-rewrite`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)

@@ -69,7 +69,7 @@ function initializeSortable() {
 }
 
 function loadEndpoints() {
-    fetch('/admin/api/endpoints')
+    apiRequest('/admin/api/endpoints')
         .then(response => response.json())
         .then(data => {
             currentEndpoints = data.endpoints;
@@ -82,7 +82,7 @@ function loadEndpoints() {
 }
 
 function refreshEndpointStatus() {
-    fetch('/admin/api/endpoints')
+    apiRequest('/admin/api/endpoints')
         .then(response => response.json())
         .then(data => {
             // Only update status and statistics, not the full table

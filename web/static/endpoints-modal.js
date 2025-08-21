@@ -230,7 +230,7 @@ function deleteEndpoint(endpointName) {
         return;
     }
 
-    fetch(`/admin/api/endpoints/${encodeURIComponent(endpointName)}`, {
+    apiRequest(`/admin/api/endpoints/${encodeURIComponent(endpointName)}`, {
         method: 'DELETE'
     })
     .then(response => response.json())
@@ -253,7 +253,7 @@ function copyEndpoint(endpointName) {
         return;
     }
 
-    fetch(`/admin/api/endpoints/${encodeURIComponent(endpointName)}/copy`, {
+    apiRequest(`/admin/api/endpoints/${encodeURIComponent(endpointName)}/copy`, {
         method: 'POST'
     })
     .then(response => response.json())
@@ -275,7 +275,7 @@ function toggleEndpointEnabled(endpointName, currentEnabled) {
     const newEnabled = !currentEnabled;
     const actionText = newEnabled ? '启用' : '禁用';
     
-    fetch(`/admin/api/endpoints/${encodeURIComponent(endpointName)}/toggle`, {
+    apiRequest(`/admin/api/endpoints/${encodeURIComponent(endpointName)}/toggle`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -314,7 +314,7 @@ function reorderEndpoints() {
     // Merge order: special endpoints first, general endpoints later
     const orderedNames = [...specialOrderedNames, ...generalOrderedNames];
     
-    fetch('/admin/api/endpoints/reorder', {
+    apiRequest('/admin/api/endpoints/reorder', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'

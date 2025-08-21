@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"claude-code-companion/internal/config"
+	"claude-code-companion/internal/security"
 	"github.com/gin-gonic/gin"
 )
 
@@ -113,6 +114,12 @@ func (s *AdminServer) handleCleanupLogs(c *gin.Context) {
 	}
 
 	days := *request.Days
+
+	// 添加安全验证
+	if err := security.ValidateLogDays(days); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "日志保留天数验证失败: " + err.Error()})
+		return
+	}
 
 	// 验证days参数 - 支持0表示清除全部，1, 7, 30表示清除指定天数之前的
 	if days < 0 {

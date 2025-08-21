@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Load taggers from API
 async function loadTaggers() {
     try {
-        const response = await fetch('/admin/api/taggers');
+        const response = await apiRequest('/admin/api/taggers');
         const data = await response.json();
         
         if (data.enabled) {
@@ -47,7 +47,7 @@ async function loadTaggers() {
 // Load tags from API
 async function loadTags() {
     try {
-        const response = await fetch('/admin/api/tags');
+        const response = await apiRequest('/admin/api/tags');
         const data = await response.json();
         
         if (data.enabled) {
@@ -165,7 +165,7 @@ async function deleteTagger(name) {
     }
     
     try {
-        const response = await fetch(`/admin/api/taggers/${encodeURIComponent(name)}`, {
+        const response = await apiRequest(`/admin/api/taggers/${encodeURIComponent(name)}`, {
             method: 'DELETE'
         });
         

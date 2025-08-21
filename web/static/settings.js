@@ -42,7 +42,7 @@ function saveSettings() {
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
     saveBtn.disabled = true;
     
-    fetch('/admin/api/settings', {
+    apiRequest('/admin/api/settings', {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json'

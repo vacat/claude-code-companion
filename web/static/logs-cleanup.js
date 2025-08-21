@@ -34,7 +34,7 @@ function confirmCleanup() {
     confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 清理中...';
 
     // 发送清理请求
-    fetch('/admin/api/logs/cleanup', {
+    apiRequest('/admin/api/logs/cleanup', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'

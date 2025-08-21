@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const fullUrl = cell.getAttribute('data-url');
         if (fullUrl) {
             const urlFormatted = formatUrlDisplay(fullUrl);
-            cell.innerHTML = `<code title="${urlFormatted.title}">${urlFormatted.display}</code>`;
+            cell.innerHTML = `<code title="${escapeHtml(urlFormatted.title)}">${escapeHtml(urlFormatted.display)}</code>`;
         }
     });
     
