@@ -27,7 +27,7 @@ Claude Code 伴侣是一个为 Claude Code 提供的本地 API 代理工具。�
 
 3. 打开管理界面
 
-   - 在浏览器访问： http://localhost:8080
+   - 在浏览器访问： http://localhost:8080/admin
    - 管理界面提供端点配置、标签规则、日志查看和系统设置。
 
 4. 添加上游端点
