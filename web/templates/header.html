@@ -1,11 +1,11 @@
 <!-- Language data stored in data attributes -->
-<div id="languageData" style="display: none;" 
+<div id="languageData" class="d-none-custom" 
      data-available-languages='{{range $i, $lang := .AvailableLanguages}}{{if $i}},{{end}}"{{$lang.code}}":{"flag":"{{$lang.flag}}","name":"{{$lang.name}}"}{{end}}'
      data-current-language="{{.CurrentLanguage}}">
 </div>
 
 <!-- Current version data for update checking -->
-<div id="currentVersion" style="display: none;">{{.Version}}</div>
+<div id="currentVersion" class="d-none-custom">{{.Version}}</div>
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
@@ -25,7 +25,7 @@
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
                     {{range .AvailableLanguages}}
-                    <li><a class="dropdown-item" href="#" onclick="switchLanguage('{{.code}}')"><span class="flag-text">{{.flag}}</span> {{.name}}</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="switch-language" data-lang-code="{{.code}}"><span class="flag-text">{{.flag}}</span> {{.name}}</a></li>
                     {{end}}
                 </ul>
             </div>

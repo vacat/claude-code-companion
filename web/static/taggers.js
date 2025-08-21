@@ -251,13 +251,13 @@ function onTypeChange() {
     const builtinGroup = document.getElementById('builtinTypeGroup');
     
     if (type === 'builtin') {
-        builtinGroup.style.display = 'block';
+        StyleUtils.show(builtinGroup);
         onBuiltinTypeChange();
     } else if (type === 'starlark') {
-        builtinGroup.style.display = 'none';
+        StyleUtils.hide(builtinGroup);
         showStarlarkConfig();
     } else {
-        builtinGroup.style.display = 'none';
+        StyleUtils.hide(builtinGroup);
         clearConfigFields();
     }
 }

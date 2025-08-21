@@ -82,13 +82,13 @@ function togglePathPrefixField() {
     const pathPrefixInput = document.getElementById('endpoint-path-prefix');
     
     if (endpointType === 'openai') {
-        pathPrefixGroup.style.display = 'block';
+        StyleUtils.show(pathPrefixGroup);
         pathPrefixInput.required = true;
         if (!pathPrefixInput.value) {
             pathPrefixInput.value = '/v1/chat/completions'; // Default value
         }
     } else {
-        pathPrefixGroup.style.display = 'none';
+        StyleUtils.hide(pathPrefixGroup);
         pathPrefixInput.required = false;
         pathPrefixInput.value = ''; // Clear value
     }
@@ -145,8 +145,8 @@ function onAuthTypeChange() {
     
     if (authType === 'oauth') {
         // 显示 OAuth 配置，隐藏认证值输入
-        authValueGroup.style.display = 'none';
-        oauthConfigGroup.style.display = 'block';
+        StyleUtils.hide(authValueGroup);
+        StyleUtils.show(oauthConfigGroup);
         authValueInput.required = false;
         
         // OAuth 必填字段设置为必填
@@ -156,8 +156,8 @@ function onAuthTypeChange() {
         document.getElementById('oauth-token-url').required = true;
     } else {
         // 显示认证值输入，隐藏 OAuth 配置
-        authValueGroup.style.display = 'block';
-        oauthConfigGroup.style.display = 'none';
+        StyleUtils.show(authValueGroup);
+        StyleUtils.hide(oauthConfigGroup);
         authValueInput.required = true;
         
         // OAuth 字段不再必填

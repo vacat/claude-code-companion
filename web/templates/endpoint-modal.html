@@ -35,7 +35,7 @@
                                 <div class="col-4">
                                     <label for="endpoint-name" class="form-label">
                                         <i class="fas fa-tag form-label-icon"></i><span data-t="name">名称</span> <span class="text-danger">*</span>
-                                        <a href="https://ucn0s6hcz1w1.feishu.cn/sheets/RNPHswfIThqQ1itf1m4cb0mKnrc" target="_blank" class="ms-2 text-primary" style="font-size: 0.8em;">
+                                        <a href="https://ucn0s6hcz1w1.feishu.cn/sheets/RNPHswfIThqQ1itf1m4cb0mKnrc" target="_blank" class="ms-2 text-primary text-sm">
                                             (常见端点提供商参数)
                                         </a>
                                     </label>
@@ -48,7 +48,7 @@
                                     </label>
                                     <input type="text" class="form-control" id="endpoint-default-model" 
                                            placeholder="如: claude-3-5-haiku-20241022">
-                                    <small class="form-text text-muted" id="default-model-hint" style="display: none;">
+                                    <small class="form-text text-muted d-none-custom" id="default-model-hint">
                                         Model Rewrite中有不兼容的设置
                                     </small>
                                 </div>
@@ -95,7 +95,7 @@
                                     </select>
                                     <small class="form-text text-muted" data-t="select_api_compatible_type">选择端点的API兼容类型</small>
                                 </div>
-                                <div class="col-6" id="path-prefix-group" style="display: none;">
+                                <div class="col-6 d-none-custom" id="path-prefix-group">
                                     <label for="endpoint-path-prefix" class="form-label">
                                         <i class="fas fa-route form-label-icon"></i><span data-t="path_prefix">路径前缀</span> <span class="text-danger">*</span>
                                     </label>
@@ -132,7 +132,7 @@
                                     </div>
                                     
                                     <!-- OAuth 配置区域 -->
-                                    <div id="oauth-config-group" style="display: none;">
+                                    <div id="oauth-config-group" class="d-none-custom">
                                         <label class="form-label">
                                             <i class="fas fa-shield-alt form-label-icon"></i><span data-t="oauth_configuration">OAuth 配置</span> <span class="text-danger">*</span>
                                         </label>
@@ -230,7 +230,7 @@
                                     </div>
                                 </div>
                                 
-                                <div id="proxy-config" style="display: none;">
+                                <div id="proxy-config" class="d-none-custom">
                                     <small class="form-text text-muted mb-3 d-block" data-t="configure_proxy_description">配置HTTP或SOCKS5代理以访问上游端点</small>
                                     
                                     <!-- 代理类型和地址 -->
@@ -287,7 +287,7 @@
                                     </div>
                                 </div>
                                 
-                                <div id="model-rewrite-rules" style="display: none;">
+                                <div id="model-rewrite-rules" class="d-none-custom">
                                     <small class="form-text text-muted mb-3 d-block" data-t="configure_rewrite_rules_description">配置规则将匹配的Claude模型重写为其他模型</small>
                                     
                                     <div id="rewrite-rules-list">
@@ -322,7 +322,7 @@
                                     </div>
                                 </div>
                                 
-                                <div id="max-tokens-override-config" style="display: none;">
+                                <div id="max-tokens-override-config" class="d-none-custom">
                                     <small class="form-text text-muted mb-3 d-block" data-t="override_max_tokens_description">强制覆盖请求中的 max_tokens 参数为指定值</small>
                                     
                                     <div class="row mb-3">

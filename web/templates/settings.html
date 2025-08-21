@@ -7,6 +7,7 @@
     <link href="/static/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/static/vendor/font-awesome/all.min.css" rel="stylesheet">
     <link href="/static/shared.css" rel="stylesheet">
+    <link href="/static/utils.css" rel="stylesheet">
 </head>
 <body>
     {{template "header.html" .}}
@@ -21,10 +22,10 @@
                             <small class="text-muted" data-t="edit_and_save_config">编辑配置并保存</small>
                         </div>
                         <div>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="resetSettings()">
+                            <button type="button" class="btn btn-secondary btn-sm" data-action="reset-settings">
                                 <i class="fas fa-undo"></i> <span data-t="reset">重置</span>
                             </button>
-                            <button type="button" class="btn btn-primary btn-sm ms-2" onclick="saveSettings()">
+                            <button type="button" class="btn btn-primary btn-sm ms-2" data-action="save-settings">
                                 <i class="fas fa-save"></i> <span data-t="save_configuration">保存配置</span>
                             </button>
                         </div>

@@ -7,6 +7,7 @@
     <link href="/static/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/static/vendor/font-awesome/all.min.css" rel="stylesheet">
     <link href="/static/shared.css" rel="stylesheet">
+    <link href="/static/utils.css" rel="stylesheet">
     <link href="/static/inspector.css" rel="stylesheet">
     <link href="/static/response-inspector.css" rel="stylesheet">
 </head>
@@ -161,7 +162,7 @@
                                                        data-bs-toggle="tooltip" 
                                                        data-bs-placement="top" 
                                                        title="Content-Type 覆盖: 原始类型 → {{.ContentTypeOverride}}"
-                                                       style="color: #28a745; font-size: 0.7em;"></i>
+                                                       class="icon-success"></i>
                                                 {{end}}
                                             {{else}}
                                                 <span class="badge bg-secondary">JSON</span>
@@ -170,7 +171,7 @@
                                                        data-bs-toggle="tooltip" 
                                                        data-bs-placement="top" 
                                                        title="Content-Type 覆盖: 原始类型 → {{.ContentTypeOverride}}"
-                                                       style="color: #28a745; font-size: 0.7em;"></i>
+                                                       class="icon-success"></i>
                                                 {{end}}
                                             {{end}}
                                         </td>

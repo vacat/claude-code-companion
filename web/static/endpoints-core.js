@@ -16,6 +16,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Auto-refresh every 30 seconds (only status updates)
     setInterval(refreshEndpointStatus, 30000);
+    
+    // Add event listeners for action buttons
+    document.addEventListener('click', function(e) {
+        const action = e.target.dataset.action;
+        if (action === 'show-add-endpoint-modal') {
+            showAddEndpointModal();
+        }
+    });
 });
 
 function initializeSortable() {
@@ -39,10 +47,10 @@ function initializeSortable() {
             dragClass: 'sortable-drag',
             group: 'special-endpoints', // Restrict to special endpoint group
             onStart: function(evt) {
-                document.body.style.cursor = 'grabbing';
+                StyleUtils.setCursorGrabbing(true);
             },
             onEnd: function (evt) {
-                document.body.style.cursor = '';
+                StyleUtils.setCursorGrabbing(false);
                 reorderEndpoints();
             }
         });
@@ -58,10 +66,10 @@ function initializeSortable() {
             dragClass: 'sortable-drag',
             group: 'general-endpoints', // Restrict to general endpoint group
             onStart: function(evt) {
-                document.body.style.cursor = 'grabbing';
+                StyleUtils.setCursorGrabbing(true);
             },
             onEnd: function (evt) {
-                document.body.style.cursor = '';
+                StyleUtils.setCursorGrabbing(false);
                 reorderEndpoints();
             }
         });

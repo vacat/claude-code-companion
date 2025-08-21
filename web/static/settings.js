@@ -6,6 +6,16 @@ let originalConfig = null;
 document.addEventListener('DOMContentLoaded', function() {
     initializeCommonFeatures();
     originalConfig = collectFormData();
+    
+    // Add event listeners for action buttons
+    document.addEventListener('click', function(e) {
+        const action = e.target.dataset.action;
+        if (action === 'reset-settings') {
+            resetSettings();
+        } else if (action === 'save-settings') {
+            saveSettings();
+        }
+    });
 });
 
 function collectFormData() {

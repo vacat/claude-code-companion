@@ -1,5 +1,82 @@
 /* Claude Code Companion Web Admin - Shared JavaScript Functions */
 
+// Style utility functions for refactored code
+window.StyleUtils = {
+    // Display control utilities
+    show: function(element) {
+        if (element) {
+            element.classList.remove('d-none-custom', 'hidden');
+            element.classList.add('d-block-custom');
+        }
+    },
+    
+    hide: function(element) {
+        if (element) {
+            element.classList.remove('d-block-custom');
+            element.classList.add('d-none-custom');
+        }
+    },
+    
+    toggle: function(element) {
+        if (element) {
+            if (element.classList.contains('d-none-custom')) {
+                this.show(element);
+            } else {
+                this.hide(element);
+            }
+        }
+    },
+    
+    // Check if element is hidden
+    isHidden: function(element) {
+        if (!element) return true;
+        return element.classList.contains('d-none-custom') || 
+               element.classList.contains('hidden') ||
+               window.getComputedStyle(element).display === 'none';
+    },
+    
+    // Cursor utilities
+    setCursorGrabbing: function(enabled) {
+        if (enabled) {
+            document.body.classList.add('cursor-grabbing');
+        } else {
+            document.body.classList.remove('cursor-grabbing');
+        }
+    },
+    
+    // Flag styling utilities
+    setFlagStyle: function(element, region) {
+        if (!element) return;
+        
+        // Remove all existing flag classes
+        element.classList.remove('bg-flag-us', 'bg-flag-cn', 'bg-flag-jp', 'bg-flag-unknown');
+        
+        // Add appropriate class based on region
+        const regionClass = 'bg-flag-' + (region || 'unknown').toLowerCase();
+        element.classList.add(regionClass);
+    },
+    
+    // Position utilities
+    hideOffscreen: function(element) {
+        if (element) {
+            element.classList.add('position-hidden');
+        }
+    },
+    
+    showOnscreen: function(element) {
+        if (element) {
+            element.classList.remove('position-hidden');
+        }
+    },
+    
+    // Toast positioning utility
+    positionToast: function(element) {
+        if (element) {
+            element.classList.add('toast-position');
+        }
+    }
+};
+
 // CSRF token management
 let csrfToken = null;
 
@@ -208,7 +285,7 @@ function saveAsFileFromButton(button) {
         const downloadLink = document.createElement('a');
         downloadLink.href = url;
         downloadLink.download = filename;
-        downloadLink.style.display = 'none';
+        StyleUtils.hide(downloadLink);
         
         document.body.appendChild(downloadLink);
         downloadLink.click();
@@ -282,9 +359,7 @@ function fallbackCopyToClipboard(content) {
         // Create a temporary textarea element
         const textarea = document.createElement('textarea');
         textarea.value = content;
-        textarea.style.position = 'fixed';
-        textarea.style.left = '-9999px';
-        textarea.style.top = '-9999px';
+        StyleUtils.hideOffscreen(textarea);
         document.body.appendChild(textarea);
         
         // Select and copy
@@ -402,24 +477,24 @@ function updateLanguageDropdown() {
         if (langInfo) {
             flagElement.textContent = langInfo.flag;
             textElement.textContent = langInfo.name;
-            flagElement.style.display = 'inline-block';
+            flagElement.classList.add('d-inline-block-custom');
             
             // Set flag color based on language
             switch (currentLang) {
                 case 'en':
-                    flagElement.style.backgroundColor = '#007bff'; // Blue for US
+                    StyleUtils.setFlagStyle(flagElement, 'us');
                     break;
                 case 'zh-cn':
                 default:
-                    flagElement.style.backgroundColor = '#dc3545'; // Red for CN
+                    StyleUtils.setFlagStyle(flagElement, 'cn');
                     break;
             }
         } else {
             // Fallback for unknown language
             flagElement.textContent = '??';
             textElement.textContent = currentLang;
-            flagElement.style.backgroundColor = '#6c757d'; // Gray for unknown
-            flagElement.style.display = 'inline-block';
+            StyleUtils.setFlagStyle(flagElement, 'unknown');
+            flagElement.classList.add('d-inline-block-custom');
         }
     }
 }
@@ -579,7 +654,7 @@ function showUpdateBadge(latestVersion) {
         badge.title = `发现新版本: ${latestVersion}`;
         
         // Position the badge
-        githubLink.style.position = 'relative';
+        githubLink.classList.add('position-relative');
         githubLink.appendChild(badge);
         
         // Update tooltip
@@ -665,4 +740,14 @@ function initializeCommonFeatures() {
     
     // Start version checking
     startVersionCheck();
+    
+    // Add global event listeners for data-action attributes
+    document.addEventListener('click', function(e) {
+        const action = e.target.dataset.action;
+        const langCode = e.target.dataset.langCode;
+        
+        if (action === 'switch-language' && langCode) {
+            switchLanguage(langCode);
+        }
+    });
 }

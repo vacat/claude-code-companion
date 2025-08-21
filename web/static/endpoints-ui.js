@@ -23,9 +23,9 @@ function rebuildTable(endpoints) {
     
     // Show/hide special endpoint section
     if (specialEndpoints.length > 0) {
-        specialSection.style.display = 'block';
+        StyleUtils.show(specialSection);
     } else {
-        specialSection.style.display = 'none';
+        StyleUtils.hide(specialSection);
     }
     
     // Function to create endpoint row

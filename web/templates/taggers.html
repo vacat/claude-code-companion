@@ -7,6 +7,7 @@
     <link href="/static/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/static/vendor/font-awesome/all.min.css" rel="stylesheet">
     <link href="/static/shared.css" rel="stylesheet">
+    <link href="/static/utils.css" rel="stylesheet">
 </head>
 <body>
     {{template "header.html" .}}
@@ -138,7 +139,7 @@
                         </div>
                         
                         <!-- Built-in Type Selection -->
-                        <div id="builtinTypeGroup" class="mb-3" style="display: none;">
+                        <div id="builtinTypeGroup" class="mb-3 d-none-custom">
                             <label class="form-label" data-t="builtin_type">内置类型</label>
                             <select class="form-select" id="builtinType">
                                 <option value="" data-t="select_builtin_type">选择内置类型</option>

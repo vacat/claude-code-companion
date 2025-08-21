@@ -8,6 +8,7 @@
     <link href="/static/vendor/font-awesome/all.min.css" rel="stylesheet">
     <link href="/static/vendor/sortablejs/Sortable.min.css" rel="stylesheet">
     <link href="/static/shared.css" rel="stylesheet">
+    <link href="/static/utils.css" rel="stylesheet">
     <link href="/static/endpoints.css" rel="stylesheet">
 </head>
 <body>
@@ -22,13 +23,13 @@
                             <h5 class="mb-1" data-t="endpoint_configuration">端点配置</h5>
                             <small class="text-muted" data-t="config_changes_auto_save">配置变更自动保存，实时生效</small>
                         </div>
-                        <button class="btn btn-primary" onclick="showAddEndpointModal()">
+                        <button class="btn btn-primary" data-action="show-add-endpoint-modal">
                             <i class="fas fa-plus"></i> <span data-t="add_endpoint">添加端点</span>
                         </button>
                     </div>
                     <div class="card-body">
                         <!-- 特殊端点列表 -->
-                        <div id="special-endpoints-section" class="mb-4" style="display: none;">
+                        <div id="special-endpoints-section" class="mb-4 d-none-custom">
                             <h6 class="mb-3">
                                 <i class="fas fa-star text-warning"></i> <span data-t="special_endpoints">特殊端点</span>
                                 <small class="text-muted ms-2" data-t="endpoints_with_specific_tags">有特定标签的端点</small>
