@@ -45,7 +45,7 @@ func (m *CSRFManager) GenerateToken() string {
 	token := base64.URLEncoding.EncodeToString(tokenBytes)
 
 	m.mutex.Lock()
-	m.tokens[token] = time.Now().Add(time.Hour) // Token expires in 1 hour
+	m.tokens[token] = time.Now().Add(24 * time.Hour) // Token expires in 24 hours
 	m.mutex.Unlock()
 
 	return token
@@ -102,7 +102,7 @@ func (m *CSRFManager) ConsumeToken(token string) bool {
 
 // cleanupExpiredTokens periodically removes expired tokens
 func (m *CSRFManager) cleanupExpiredTokens() {
-	ticker := time.NewTicker(30 * time.Minute)
+	ticker := time.NewTicker(6 * time.Hour)
 	defer ticker.Stop()
 
 	for range ticker.C {
@@ -139,8 +139,8 @@ func (m *CSRFManager) Middleware() gin.HandlerFunc {
 			token = c.PostForm("_csrf_token")
 		}
 
-		// Validate token
-		if !m.ConsumeToken(token) {
+		// Validate token (reusable)
+		if !m.ValidateToken(token) {
 			c.JSON(403, gin.H{
 				"error": "CSRF token invalid or missing",
 				"code":  "CSRF_INVALID",

@@ -124,18 +124,11 @@ async function apiRequest(url, options = {}) {
     try {
         const response = await fetch(url, requestOptions);
         
-        // If CSRF token is invalid, clear it and retry once
+        // If CSRF token is invalid, clear cached token for next time
         if (response.status === 403) {
             const errorData = await response.json().catch(() => ({}));
             if (errorData.code === 'CSRF_INVALID') {
-                csrfToken = null; // Clear cached token
-                
-                // Retry with new token
-                const newToken = await getCSRFToken();
-                if (newToken && options.method && options.method !== 'GET') {
-                    headers['X-CSRF-Token'] = newToken;
-                    return fetch(url, { ...options, headers });
-                }
+                csrfToken = null; // Clear cached token for future requests
             }
         }
         
