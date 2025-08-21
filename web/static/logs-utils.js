@@ -9,6 +9,16 @@ function displayLogDetails(log) {
 
     modalBody.innerHTML = `
         <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6>请求详情</h6>
+                <button class="btn btn-sm btn-outline-success" onclick="exportDebugInfo('${escapeHtml(log.request_id)}')" 
+                        data-t="export_debug_info" title="导出调试信息为ZIP文件">
+                    <i class="fas fa-download"></i> 导出调试信息
+                </button>
+            </div>
+        </div>
+        
+        <div class="mb-3">
             <div class="collapsible-header" onclick="toggleCollapsible('basicInfo')">
                 <span class="collapsible-toggle collapsed">▼</span>
                 <h6 class="mb-0">基本信息</h6>
@@ -144,4 +154,66 @@ function hasSSEFormatError(log) {
     return sseErrorPatterns.some(pattern => 
         log.error.includes(pattern)
     );
+}
+
+// 导出调试信息
+function exportDebugInfo(requestId) {
+    if (!requestId) {
+        console.error('Request ID is required for export');
+        return;
+    }
+
+    // 显示加载状态
+    const exportButton = document.querySelector(`button[onclick="exportDebugInfo('${requestId}')"]`);
+    if (exportButton) {
+        const originalText = exportButton.innerHTML;
+        exportButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 导出中...';
+        exportButton.disabled = true;
+
+        // 导出完成后恢复按钮状态
+        const restoreButton = () => {
+            exportButton.innerHTML = originalText;
+            exportButton.disabled = false;
+        };
+
+        // 创建下载链接
+        const downloadUrl = `/admin/api/logs/${encodeURIComponent(requestId)}/export`;
+        
+        // 创建一个隐藏的链接来触发下载
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `debug_${requestId}_${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // 短暂延迟后恢复按钮状态
+        setTimeout(restoreButton, 2000);
+        
+        // 显示成功提示
+        showToast('导出调试信息成功，文件将开始下载', 'success');
+    }
+}
+
+// 显示提示消息的辅助函数
+function showToast(message, type = 'info') {
+    // 创建 toast 元素
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 300px;';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // 3秒后自动移除
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 3000);
 }
