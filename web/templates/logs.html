@@ -21,18 +21,18 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
                             <h5 class="mb-0 me-3" data-t="request_logs_with_count">请求日志 (共 {{.Total}} 条){{if .FailedOnly}} - <span data-t="failed_requests_only">仅失败请求</span>{{end}}</h5>
-                            <button class="btn btn-sm btn-outline-danger" onclick="showCleanupModal()">
+                            <button class="btn btn-sm btn-outline-danger" data-action="show-cleanup-modal">
                                 <i class="fas fa-trash"></i> <span data-t="cleanup_logs">清理日志</span>
                             </button>
                         </div>
                         <div>
-                            <button class="btn btn-sm {{if .FailedOnly}}btn-warning{{else}}btn-outline-primary{{end}}" onclick="toggleFailedOnly({{if .FailedOnly}}true{{else}}false{{end}}, {{.Page}})">
+                            <button class="btn btn-sm {{if .FailedOnly}}btn-warning{{else}}btn-outline-primary{{end}}" data-action="toggle-failed-only" data-current-failed-only="{{if .FailedOnly}}true{{else}}false{{end}}" data-page="{{.Page}}">
                                 <i class="fas fa-filter"></i> <span data-t="{{if .FailedOnly}}show_all{{else}}show_failed_only{{end}}">{{if .FailedOnly}}显示全部{{else}}仅显示失败{{end}}</span>
                             </button>
-                            <button class="btn btn-sm btn-outline-info" id="autoRefreshToggle" onclick="toggleAutoRefresh()">
+                            <button class="btn btn-sm btn-outline-info" id="autoRefreshToggle" data-action="toggle-auto-refresh">
                                 <i class="fas fa-sync" id="autoRefreshIcon"></i> <span data-t="auto_refresh" id="autoRefreshText">自动刷新</span>
                             </button>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="refreshLogs({{.Page}}, {{if .FailedOnly}}true{{else}}false{{end}})">
+                            <button class="btn btn-sm btn-outline-secondary" data-action="refresh-logs" data-page="{{.Page}}" data-failed-only="{{if .FailedOnly}}true{{else}}false{{end}}">
                                 <i class="fas fa-refresh"></i> <span data-t="refresh">刷新</span>
                             </button>
                         </div>
@@ -68,7 +68,7 @@
                                         <td>{{.Timestamp.Format "15:04:05"}}</td>
                                         <td class="request-id-cell" data-request-id="{{.RequestID}}">
                                             <small>{{.RequestID}}</small>
-                                            <button class="copy-request-id-btn" onclick="copyRequestId('{{.RequestID}}')" title="复制请求ID到剪贴板">
+                                            <button class="copy-request-id-btn" data-action="copy-request-id" data-request-id="{{.RequestID}}" title="复制请求ID到剪贴板">
                                                 <i class="fas fa-copy"></i>
                                             </button>
                                         </td>

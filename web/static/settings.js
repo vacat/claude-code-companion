@@ -9,10 +9,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add event listeners for action buttons
     document.addEventListener('click', function(e) {
-        const action = e.target.dataset.action;
+        const target = e.target.closest('button');
+        if (!target) return;
+        
+        const action = target.dataset.action;
+        console.log('Settings button clicked with action:', action); // Debug log
+        
         if (action === 'reset-settings') {
+            console.log('Calling resetSettings'); // Debug log
             resetSettings();
         } else if (action === 'save-settings') {
+            console.log('Calling saveSettings'); // Debug log
             saveSettings();
         }
     });
@@ -44,13 +51,23 @@ function collectFormData() {
 }
 
 function saveSettings() {
+    console.log('saveSettings called'); // Debug log
+    
     const config = collectFormData();
+    console.log('Collected config:', config); // Debug log
     
     // Show loading status
-    const saveBtn = document.querySelector('button[onclick="saveSettings()"]');
+    const saveBtn = document.querySelector('[data-action="save-settings"]');
+    if (!saveBtn) {
+        console.error('Save button not found!');
+        return;
+    }
+    
     const originalText = saveBtn.innerHTML;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
     saveBtn.disabled = true;
+    
+    console.log('Sending API request to /admin/api/settings'); // Debug log
     
     apiRequest('/admin/api/settings', {
         method: 'PUT',
@@ -61,6 +78,8 @@ function saveSettings() {
     })
     .then(response => response.json())
     .then(data => {
+        console.log('API response:', data); // Debug log
+        
         if (data.error) {
             throw new Error(data.error);
         }
@@ -83,7 +102,13 @@ function saveSettings() {
 }
 
 function resetSettings() {
-    if (!originalConfig) return;
+    console.log('resetSettings called, originalConfig:', originalConfig); // Debug log
+    
+    if (!originalConfig) {
+        console.warn('No original config found'); // Debug log
+        showAlert('没有原始配置可恢复', 'warning');
+        return;
+    }
     
     // Restore form values
     document.getElementById('serverHost').value = originalConfig.server.host;
@@ -98,4 +123,6 @@ function resetSettings() {
     document.getElementById('idleConnection').value = originalConfig.timeouts.idle_connection;
     document.getElementById('healthCheckTimeout').value = originalConfig.timeouts.health_check_timeout;
     document.getElementById('checkInterval').value = originalConfig.timeouts.check_interval;
+    
+    showAlert('配置已重置为初始值', 'info');
 }

@@ -221,7 +221,7 @@ async function saveTagger() {
             '/admin/api/taggers';
         const method = editingTagger ? 'PUT' : 'POST';
         
-        const response = await fetch(url, {
+        const response = await apiRequest(url, {
             method,
             headers: {
                 'Content-Type': 'application/json'

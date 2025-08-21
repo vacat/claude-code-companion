@@ -17,7 +17,7 @@ function openRequestInspectorFromFloating(button) {
         if (!tempBtn) {
             tempBtn = document.createElement('button');
             tempBtn.id = 'tempInspectRequestBtn';
-            tempBtn.style.display = 'none';
+            StyleUtils.hide(tempBtn);
             document.body.appendChild(tempBtn);
         }
         tempBtn.setAttribute('data-request-body', requestBody);
@@ -47,7 +47,7 @@ function openRequestInspectorFromMain(button) {
         if (!tempBtn) {
             tempBtn = document.createElement('button');
             tempBtn.id = 'tempInspectRequestBtn';
-            tempBtn.style.display = 'none';
+            StyleUtils.hide(tempBtn);
             document.body.appendChild(tempBtn);
         }
         tempBtn.setAttribute('data-request-body', requestBody);

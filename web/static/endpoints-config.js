@@ -167,3 +167,40 @@ function onAuthTypeChange() {
         document.getElementById('oauth-token-url').required = false;
     }
 }
+
+// Add event delegation for endpoint modal
+document.addEventListener('click', function(e) {
+    const action = e.target.dataset.action || e.target.closest('[data-action]')?.dataset.action;
+    
+    switch (action) {
+        case 'toggle-auth-visibility':
+            toggleAuthVisibility();
+            break;
+        case 'toggle-oauth-visibility':
+            const button = e.target.closest('[data-action="toggle-oauth-visibility"]');
+            const tokenId = button.dataset.tokenId;
+            const eyeId = button.dataset.eyeId;
+            toggleOAuthVisibility(tokenId, eyeId);
+            break;
+        case 'add-rewrite-rule':
+            addRewriteRule();
+            break;
+        case 'save-endpoint':
+            saveEndpoint();
+            break;
+    }
+});
+
+// Add event delegation for change events
+document.addEventListener('change', function(e) {
+    const changeType = e.target.dataset.change;
+    
+    switch (changeType) {
+        case 'endpoint-type':
+            onEndpointTypeChange();
+            break;
+        case 'auth-type':
+            onAuthTypeChange();
+            break;
+    }
+});

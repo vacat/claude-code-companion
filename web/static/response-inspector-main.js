@@ -39,11 +39,11 @@ function toggleResponseCollapse(elementId) {
     
     if (!element) return;
     
-    if (element.style.display === 'none') {
-        element.style.display = 'block';
+    if (element.classList.contains('d-none-custom')) {
+        StyleUtils.show(element);
         if (icon) icon.textContent = '▼';
     } else {
-        element.style.display = 'none';
+        StyleUtils.hide(element);
         if (icon) icon.textContent = '▶';
     }
 }

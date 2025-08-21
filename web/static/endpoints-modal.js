@@ -185,7 +185,7 @@ function saveEndpoint() {
         : '/admin/api/endpoints';
     const method = isEditing ? 'PUT' : 'POST';
 
-    fetch(url, {
+    apiRequest(url, {
         method: method,
         headers: {
             'Content-Type': 'application/json'

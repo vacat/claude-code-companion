@@ -74,15 +74,15 @@ window.inspectorToggleCollapse = function(elementId) {
     
     // 获取当前显示状态
     const currentDisplay = window.getComputedStyle(element).display;
-    const isHidden = currentDisplay === 'none' || element.style.display === 'none';
+    const isHidden = currentDisplay === 'none' || element.classList.contains('d-none-custom');
     
     if (isHidden) {
         // 展开
-        element.style.display = 'block';
+        StyleUtils.show(element);
         if (icon) icon.textContent = '▼';
     } else {
         // 折叠
-        element.style.display = 'none';
+        StyleUtils.hide(element);
         if (icon) icon.textContent = '▶';
     }
 };
@@ -142,10 +142,10 @@ function updateInspectorButton(requestBody) {
     if (!inspectBtn) return;
     
     if (isAnthropicRequest(requestBody)) {
-        inspectBtn.style.display = 'inline-block';
+        StyleUtils.show(inspectBtn);
         inspectBtn.setAttribute('data-request-body', requestBody);
     } else {
-        inspectBtn.style.display = 'none';
+        StyleUtils.hide(inspectBtn);
         inspectBtn.removeAttribute('data-request-body');
     }
 }
@@ -209,7 +209,7 @@ function searchInInspector(query) {
 document.addEventListener('keydown', function(e) {
     // Ctrl/Cmd + F 在检查器中搜索
     if ((e.ctrlKey || e.metaKey) && e.key === 'f' && 
-        document.getElementById('requestInspectorModal')?.style.display !== 'none') {
+        !document.getElementById('requestInspectorModal')?.classList.contains('d-none-custom')) {
         e.preventDefault();
         const query = prompt('搜索内容:');
         if (query) {

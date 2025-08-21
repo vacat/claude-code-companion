@@ -183,7 +183,7 @@ function exportDebugInfo(requestId) {
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.download = `debug_${requestId}_${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
-        link.style.display = 'none';
+        StyleUtils.hide(link);
         
         document.body.appendChild(link);
         link.click();
@@ -202,7 +202,7 @@ function showToast(message, type = 'info') {
     // 创建 toast 元素
     const toast = document.createElement('div');
     toast.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 300px;';
+    StyleUtils.positionToast(toast);
     toast.innerHTML = `
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>

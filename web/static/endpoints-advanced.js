@@ -5,13 +5,13 @@
 // Proxy configuration enable/disable toggle
 document.getElementById('proxy-enabled').addEventListener('change', function() {
     const proxyConfigDiv = document.getElementById('proxy-config');
-    proxyConfigDiv.style.display = this.checked ? 'block' : 'none';
+    this.checked ? StyleUtils.show(proxyConfigDiv) : StyleUtils.hide(proxyConfigDiv);
 });
 
 // Model rewrite enable/disable toggle
 document.getElementById('model-rewrite-enabled').addEventListener('change', function() {
     const rulesDiv = document.getElementById('model-rewrite-rules');
-    rulesDiv.style.display = this.checked ? 'block' : 'none';
+    this.checked ? StyleUtils.show(rulesDiv) : StyleUtils.hide(rulesDiv);
     
     // If disabling model rewrite, check if we should clear default model rules
     if (!this.checked) {
@@ -25,7 +25,7 @@ document.getElementById('model-rewrite-enabled').addEventListener('change', func
 // Max tokens override enable/disable toggle
 document.getElementById('max-tokens-override-enabled').addEventListener('change', function() {
     const configDiv = document.getElementById('max-tokens-override-config');
-    configDiv.style.display = this.checked ? 'block' : 'none';
+    this.checked ? StyleUtils.show(configDiv) : StyleUtils.hide(configDiv);
 });
 
 // Add rewrite rule
@@ -181,7 +181,7 @@ function loadProxyConfig(config) {
     
     if (config) {
         checkbox.checked = true;
-        configDiv.style.display = 'block';
+        StyleUtils.show(configDiv);
         
         document.getElementById('proxy-type').value = config.type || 'http';
         document.getElementById('proxy-address').value = config.address || '';
@@ -189,7 +189,7 @@ function loadProxyConfig(config) {
         document.getElementById('proxy-password').value = config.password || '';
     } else {
         checkbox.checked = false;
-        configDiv.style.display = 'none';
+        StyleUtils.hide(configDiv);
         
         // Reset form fields
         document.getElementById('proxy-type').value = 'http';
@@ -233,14 +233,14 @@ function loadModelRewriteConfig(config) {
     
     if (config && config.enabled && config.rules) {
         checkbox.checked = true;
-        rulesDiv.style.display = 'block';
+        StyleUtils.show(rulesDiv);
         
         config.rules.forEach(rule => {
             addRewriteRule(rule.source_pattern, rule.target_model);
         });
     } else {
         checkbox.checked = false;
-        rulesDiv.style.display = 'none';
+        StyleUtils.hide(rulesDiv);
     }
     
     // Update default model state after loading model rewrite config
@@ -289,12 +289,12 @@ function loadMaxTokensOverrideConfig(value) {
     
     if (value && value > 0) {
         checkbox.checked = true;
-        configDiv.style.display = 'block';
+        StyleUtils.show(configDiv);
         
         document.getElementById('max-tokens-value').value = value;
     } else {
         checkbox.checked = false;
-        configDiv.style.display = 'none';
+        StyleUtils.hide(configDiv);
         
         // Reset form field
         document.getElementById('max-tokens-value').value = '';
@@ -331,7 +331,7 @@ function updateDefaultModelState() {
         // Model rewrite disabled - default model can be edited
         defaultModelInput.disabled = false;
         defaultModelInput.title = '';
-        defaultModelHint.style.display = 'none';
+        StyleUtils.hide(defaultModelHint);
     } else {
         // Model rewrite enabled - check rules
         const rules = collectCurrentRewriteRules();
@@ -340,18 +340,18 @@ function updateDefaultModelState() {
             // No rules - default model can be edited
             defaultModelInput.disabled = false;
             defaultModelInput.title = '';
-            defaultModelHint.style.display = 'none';
+            StyleUtils.hide(defaultModelHint);
         } else if (rules.length === 1 && rules[0].source_pattern === '*') {
             // Single "*" rule - sync with default model
             defaultModelInput.disabled = false;
             defaultModelInput.title = '';
             defaultModelInput.value = rules[0].target_model;
-            defaultModelHint.style.display = 'none';
+            StyleUtils.hide(defaultModelHint);
         } else {
             // Multiple rules or non-"*" rules - disable default model
             defaultModelInput.disabled = true;
             defaultModelInput.title = 'Model Rewrite中有和默认模型不兼容的设置';
-            defaultModelHint.style.display = 'block';
+            StyleUtils.show(defaultModelHint);
         }
     }
 }
@@ -382,7 +382,7 @@ function onDefaultModelChange() {
     if (!modelRewriteEnabled && defaultModel) {
         // Enable model rewrite and set single "*" rule
         document.getElementById('model-rewrite-enabled').checked = true;
-        document.getElementById('model-rewrite-rules').style.display = 'block';
+        StyleUtils.show(document.getElementById('model-rewrite-rules'));
         
         // Clear existing rules and add new "*" rule
         document.getElementById('rewrite-rules-list').innerHTML = '';

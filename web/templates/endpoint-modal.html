@@ -89,7 +89,7 @@
                                     <label for="endpoint-type" class="form-label">
                                         <i class="fas fa-cogs form-label-icon"></i><span data-t="endpoint_type">端点类型</span> <span class="text-danger">*</span>
                                     </label>
-                                    <select class="form-select" id="endpoint-type" required onchange="onEndpointTypeChange()">
+                                    <select class="form-select" id="endpoint-type" required data-change="endpoint-type">
                                         <option value="anthropic">Anthropic (Claude)</option>
                                         <option value="openai">OpenAI Compatible</option>
                                     </select>
@@ -111,7 +111,7 @@
                                     <label for="endpoint-auth-type" class="form-label">
                                         <i class="fas fa-key form-label-icon"></i><span data-t="authentication_method">认证方式</span> <span class="text-danger">*</span>
                                     </label>
-                                    <select class="form-select" id="endpoint-auth-type" required onchange="onAuthTypeChange()">
+                                    <select class="form-select" id="endpoint-auth-type" required data-change="auth-type">
                                         <option value="api_key">API Key (x-api-key)</option>
                                         <option value="auth_token" selected>Auth Token (Authorization Bearer)</option>
                                         <option value="oauth">OAuth 2.0</option>
@@ -125,7 +125,7 @@
                                         <div class="input-group">
                                             <input type="password" class="form-control" id="endpoint-auth-value" required
                                                    placeholder="输入您的 API Key 或 Token">
-                                            <button class="btn btn-outline-secondary" type="button" id="toggle-auth-visibility" onclick="toggleAuthVisibility()">
+                                            <button class="btn btn-outline-secondary" type="button" id="toggle-auth-visibility" data-action="toggle-auth-visibility">
                                                 <i class="fas fa-eye" id="auth-eye-icon"></i>
                                             </button>
                                         </div>
@@ -144,7 +144,7 @@
                                                     <div class="input-group">
                                                         <input type="password" class="form-control" id="oauth-access-token" 
                                                                placeholder="访问令牌（如：sk-ant-oat01-... 或其他格式）">
-                                                        <button class="btn btn-outline-secondary" type="button" onclick="toggleOAuthVisibility('oauth-access-token', 'oauth-access-eye')">
+                                                        <button class="btn btn-outline-secondary" type="button" data-action="toggle-oauth-visibility" data-token-id="oauth-access-token" data-eye-id="oauth-access-eye">
                                                             <i class="fas fa-eye" id="oauth-access-eye"></i>
                                                         </button>
                                                     </div>
@@ -156,7 +156,7 @@
                                                     <div class="input-group">
                                                         <input type="password" class="form-control" id="oauth-refresh-token" 
                                                                placeholder="刷新令牌（如：sk-ant-ort01-... 或其他格式）">
-                                                        <button class="btn btn-outline-secondary" type="button" onclick="toggleOAuthVisibility('oauth-refresh-token', 'oauth-refresh-eye')">
+                                                        <button class="btn btn-outline-secondary" type="button" data-action="toggle-oauth-visibility" data-token-id="oauth-refresh-token" data-eye-id="oauth-refresh-eye">
                                                             <i class="fas fa-eye" id="oauth-refresh-eye"></i>
                                                         </button>
                                                     </div>
@@ -294,7 +294,7 @@
                                         <!-- 动态生成的规则列表 -->
                                     </div>
                                     
-                                    <button type="button" class="btn btn-outline-primary btn-sm mb-3" onclick="addRewriteRule()">
+                                    <button type="button" class="btn btn-outline-primary btn-sm mb-3" data-action="add-rewrite-rule">
                                         <i class="fas fa-plus"></i> <span data-t="add_rule">添加规则</span>
                                     </button>
                                     
@@ -350,7 +350,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="cancel">取消</button>
-                <button type="button" class="btn btn-primary" onclick="saveEndpoint()" data-t="save">保存</button>
+                <button type="button" class="btn btn-primary" data-action="save-endpoint" data-t="save">保存</button>
             </div>
         </div>
     </div>

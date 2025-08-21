@@ -30,22 +30,9 @@ InspectorUI.prototype.renderToolCallDetails = function(call) {
                             <pre class="inspector-text">${this.escapeHtml(resultPreview)}</pre>
                         </div>
                         <div class="mt-2">
-                            <button class="btn btn-sm btn-outline-info w-100 mb-2" onclick="
-                                const preview = this.parentElement.parentElement.querySelector('.result-preview');
-                                const fullResult = this.parentElement.parentElement.querySelector('.full-result-container');
-                                const isShowingFull = fullResult.style.display === 'block';
-                                if (isShowingFull) {
-                                    preview.style.display = 'block';
-                                    fullResult.style.display = 'none';
-                                    this.textContent = '显示完整结果';
-                                } else {
-                                    preview.style.display = 'none';
-                                    fullResult.style.display = 'block';
-                                    this.textContent = '隐藏完整结果';
-                                }
-                            ">显示完整结果</button>
+                            <button class="btn btn-sm btn-outline-info w-100 mb-2" data-action="toggle-full-result">显示完整结果</button>
                         </div>
-                        <div class="full-result-container" style="display: none;">
+                        <div class="full-result-container d-none-custom">
                             <pre class="inspector-text">${this.escapeHtml(resultStr)}</pre>
                         </div>
                     ` : `
@@ -138,3 +125,23 @@ InspectorUI.prototype.formatParametersPreview = function(input) {
     // 返回带样式的HTML
     return `<span class="inspector-tool-params-preview">${result}</span>`;
 };
+
+// Add event delegation for toggle full result buttons
+document.addEventListener('click', function(e) {
+    if (e.target.matches('[data-action="toggle-full-result"]')) {
+        const button = e.target;
+        const preview = button.closest('.inspector-content-box').querySelector('.result-preview');
+        const fullResult = button.closest('.inspector-content-box').querySelector('.full-result-container');
+        const isShowingFull = !fullResult.classList.contains('d-none-custom');
+        
+        if (isShowingFull) {
+            StyleUtils.show(preview);
+            StyleUtils.hide(fullResult);
+            button.textContent = '显示完整结果';
+        } else {
+            StyleUtils.hide(preview);
+            StyleUtils.show(fullResult);
+            button.textContent = '隐藏完整结果';
+        }
+    }
+});
