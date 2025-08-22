@@ -38,14 +38,15 @@ type Endpoint struct {
 	Proxy             *config.ProxyConfig      `json:"proxy,omitempty"` // 新增：代理配置
 	OAuthConfig       *config.OAuthConfig      `json:"oauth_config,omitempty"` // 新增：OAuth配置
 	OverrideMaxTokens *int                     `json:"override_max_tokens,omitempty"` // 新增：覆盖max_tokens配置
-	Status            Status                   `json:"status"`
-	LastCheck         time.Time                `json:"last_check"`
-	FailureCount      int                      `json:"failure_count"`
-	TotalRequests     int                      `json:"total_requests"`
-	SuccessRequests   int                      `json:"success_requests"`
-	LastFailure       time.Time                `json:"last_failure"`
-	RequestHistory    *utils.CircularBuffer    `json:"-"` // 使用环形缓冲区，不导出到JSON
-	mutex             sync.RWMutex
+	Status              Status                   `json:"status"`
+	LastCheck           time.Time                `json:"last_check"`
+	FailureCount        int                      `json:"failure_count"`
+	TotalRequests       int                      `json:"total_requests"`
+	SuccessRequests     int                      `json:"success_requests"`
+	LastFailure         time.Time                `json:"last_failure"`
+	SuccessiveSuccesses int                      `json:"successive_successes"` // 连续成功次数
+	RequestHistory      *utils.CircularBuffer    `json:"-"` // 使用环形缓冲区，不导出到JSON
+	mutex               sync.RWMutex
 }
 
 func NewEndpoint(cfg config.EndpointConfig) *Endpoint {
@@ -186,6 +187,7 @@ func (e *Endpoint) RecordRequest(success bool) {
 	if success {
 		e.SuccessRequests++
 		e.FailureCount = 0 // 重置失败计数
+		e.SuccessiveSuccesses++ // 增加连续成功次数
 		// 如果成功且之前是不可用状态，恢复为可用
 		if e.Status == StatusInactive {
 			e.Status = StatusActive
@@ -193,6 +195,7 @@ func (e *Endpoint) RecordRequest(success bool) {
 	} else {
 		e.FailureCount++
 		e.LastFailure = now
+		e.SuccessiveSuccesses = 0 // 重置连续成功次数
 		
 		// 使用环形缓冲区检查是否应该标记为不可用
 		if e.Status == StatusActive && e.RequestHistory.ShouldMarkInactive(now) {
@@ -212,8 +215,15 @@ func (e *Endpoint) MarkActive() {
 	defer e.mutex.Unlock()
 	e.Status = StatusActive
 	e.FailureCount = 0
+	e.SuccessiveSuccesses = 0 // 重置连续成功次数
 	// 可选：清理历史记录
 	e.RequestHistory.Clear()
+}
+
+func (e *Endpoint) GetSuccessiveSuccesses() int {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	return e.SuccessiveSuccesses
 }
 
 

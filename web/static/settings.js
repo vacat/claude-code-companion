@@ -45,7 +45,8 @@ function collectFormData() {
             response_header: document.getElementById('responseHeader').value,
             idle_connection: document.getElementById('idleConnection').value,
             health_check_timeout: document.getElementById('healthCheckTimeout').value,
-            check_interval: document.getElementById('checkInterval').value
+            check_interval: document.getElementById('checkInterval').value,
+            recovery_threshold: parseInt(document.getElementById('recoveryThreshold').value)
         }
     };
 }
@@ -123,6 +124,7 @@ function resetSettings() {
     document.getElementById('idleConnection').value = originalConfig.timeouts.idle_connection;
     document.getElementById('healthCheckTimeout').value = originalConfig.timeouts.health_check_timeout;
     document.getElementById('checkInterval').value = originalConfig.timeouts.check_interval;
+    document.getElementById('recoveryThreshold').value = originalConfig.timeouts.recovery_threshold;
     
     showAlert('配置已重置为初始值', 'info');
 }

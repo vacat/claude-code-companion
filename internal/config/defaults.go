@@ -19,6 +19,7 @@ type DefaultValues struct {
 		IdleConnection     string
 		HealthCheckTimeout string
 		CheckInterval      string
+		RecoveryThreshold  int
 	}
 
 	// HTTP客户端配置默认值（统一配置）
@@ -120,12 +121,14 @@ var Default = DefaultValues{
 		IdleConnection     string  
 		HealthCheckTimeout string
 		CheckInterval      string
+		RecoveryThreshold  int
 	}{
 		TLSHandshake:       "10s",
 		ResponseHeader:     "60s",
 		IdleConnection:     "90s", 
 		HealthCheckTimeout: "30s",
 		CheckInterval:      "30s",
+		RecoveryThreshold:  1,
 	},
 
 	HTTPClient: struct {

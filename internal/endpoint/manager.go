@@ -121,6 +121,9 @@ func (m *Manager) stopHealthChecks() {
 }
 
 func (m *Manager) runHealthCheck(endpoint *Endpoint, ticker *time.Ticker) {
+	// 获取恢复阈值配置，使用统一默认值
+	recoveryThreshold := config.GetIntWithDefault(m.config.Timeouts.RecoveryThreshold, config.Default.Timeouts.RecoveryThreshold)
+	
 	for range ticker.C {
 		// 只对不可用的端点进行健康检查
 		if endpoint.Status != StatusInactive {
@@ -128,10 +131,15 @@ func (m *Manager) runHealthCheck(endpoint *Endpoint, ticker *time.Ticker) {
 		}
 		
 		if err := m.healthChecker.CheckEndpoint(endpoint); err != nil {
-			// 健康检查失败，保持不可用状态
+			// 健康检查失败，重置连续成功次数
+			endpoint.RecordRequest(false)
 		} else {
-			// 健康检查成功，恢复为可用状态
-			endpoint.MarkActive()
+			// 健康检查成功，记录成功并检查是否达到恢复阈值
+			endpoint.RecordRequest(true)
+			if endpoint.GetSuccessiveSuccesses() >= recoveryThreshold {
+				// 达到恢复阈值，恢复为可用状态
+				endpoint.MarkActive()
+			}
 		}
 	}
 }

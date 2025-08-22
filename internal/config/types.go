@@ -98,6 +98,7 @@ type TimeoutConfig struct {
 	// 健康检查特有配置
 	HealthCheckTimeout string `yaml:"health_check_timeout" json:"health_check_timeout"` // 健康检查整体响应超时，默认30s
 	CheckInterval      string `yaml:"check_interval" json:"check_interval"`             // 健康检查间隔，默认30s
+	RecoveryThreshold  int    `yaml:"recovery_threshold" json:"recovery_threshold"`     // 连续成功多少次后恢复端点，默认1
 }
 
 // 代理客户端超时配置（内部使用，从TimeoutConfig转换）
@@ -110,11 +111,12 @@ type ProxyTimeoutConfig struct {
 
 // 健康检查超时配置（内部使用，从TimeoutConfig转换）
 type HealthCheckTimeoutConfig struct {
-	TLSHandshake     string `yaml:"tls_handshake" json:"tls_handshake"`           
-	ResponseHeader   string `yaml:"response_header" json:"response_header"`       
-	IdleConnection   string `yaml:"idle_connection" json:"idle_connection"`       
-	OverallRequest   string `yaml:"overall_request" json:"overall_request"`       
-	CheckInterval    string `yaml:"check_interval" json:"check_interval"`         
+	TLSHandshake      string `yaml:"tls_handshake" json:"tls_handshake"`           
+	ResponseHeader    string `yaml:"response_header" json:"response_header"`       
+	IdleConnection    string `yaml:"idle_connection" json:"idle_connection"`       
+	OverallRequest    string `yaml:"overall_request" json:"overall_request"`       
+	CheckInterval     string `yaml:"check_interval" json:"check_interval"`         
+	RecoveryThreshold int    `yaml:"recovery_threshold" json:"recovery_threshold"`
 }
 
 // ToProxyTimeoutConfig 将TimeoutConfig转换为ProxyTimeoutConfig
@@ -130,11 +132,12 @@ func (tc *TimeoutConfig) ToProxyTimeoutConfig() ProxyTimeoutConfig {
 // ToHealthCheckTimeoutConfig 将TimeoutConfig转换为HealthCheckTimeoutConfig
 func (tc *TimeoutConfig) ToHealthCheckTimeoutConfig() HealthCheckTimeoutConfig {
 	return HealthCheckTimeoutConfig{
-		TLSHandshake:   tc.TLSHandshake,
-		ResponseHeader: tc.ResponseHeader,
-		IdleConnection: tc.IdleConnection,
-		OverallRequest: tc.HealthCheckTimeout,
-		CheckInterval:  tc.CheckInterval,
+		TLSHandshake:      tc.TLSHandshake,
+		ResponseHeader:    tc.ResponseHeader,
+		IdleConnection:    tc.IdleConnection,
+		OverallRequest:    tc.HealthCheckTimeout,
+		CheckInterval:     tc.CheckInterval,
+		RecoveryThreshold: tc.RecoveryThreshold,
 	}
 }
 

@@ -35,22 +35,14 @@ validation:
 web_admin:
     enabled: true                 # Admin interface runs on same host:port as proxy server
 
-# Timeout configurations for HTTP clients
+# Timeout configurations for HTTP clients (统一配置)
 timeouts:
-    # Proxy client timeouts (for forwarding requests to upstream APIs)
-    proxy:
-        tls_handshake: 10s        # TLS handshake timeout (default: 10s)
-        response_header: 60s      # Response header timeout (default: 60s)
-        idle_connection: 90s      # Idle connection timeout (default: 90s)
-        overall_request: ""       # Overall request timeout (empty = no limit for streaming)
-    
-    # Health check client timeouts
-    health_check:
-        tls_handshake: 5s         # TLS handshake timeout (default: 5s)
-        response_header: 30s      # Response header timeout (default: 30s)
-        idle_connection: 60s      # Idle connection timeout (default: 60s)
-        overall_request: 30s      # Overall request timeout (default: 30s)
-        check_interval: 30s       # Health check interval (default: 30s)
+    tls_handshake: 10s            # TLS handshake timeout (default: 10s)
+    response_header: 60s          # Response header timeout (default: 60s)
+    idle_connection: 90s          # Idle connection timeout (default: 90s)
+    health_check_timeout: 30s     # Health check overall timeout (default: 30s)
+    check_interval: 30s           # Health check interval (default: 30s)
+    recovery_threshold: 1         # 连续成功多少次健康检查后恢复端点 (default: 1)
 
 # Tagging system - 根据请求特征为endpoint分配标签进行路由
 tagging:

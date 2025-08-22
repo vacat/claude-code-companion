@@ -123,6 +123,11 @@
                                     <label for="checkInterval" class="form-label" data-t="check_interval">健康检查间隔</label>
                                     <input type="text" class="form-control" id="checkInterval" value="{{.Config.Timeouts.CheckInterval}}" placeholder="30s (Go duration格式)">
                                 </div>
+                                <div class="mb-3">
+                                    <label for="recoveryThreshold" class="form-label" data-t="recovery_threshold">恢复阈值</label>
+                                    <input type="number" class="form-control" id="recoveryThreshold" value="{{.Config.Timeouts.RecoveryThreshold}}" min="1" max="10" placeholder="1">
+                                    <small class="form-text text-muted" data-t="recovery_threshold_help">连续成功多少次健康检查后恢复端点</small>
+                                </div>
                             </div>
                         </div>
 
