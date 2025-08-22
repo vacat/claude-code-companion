@@ -116,7 +116,9 @@ func (c *RequestConverter) Convert(anthropicReq []byte) ([]byte, *ConversionCont
 			// 用户消息可以包含 text / image / tool_result
 			// 其中 tool_result 需转成 role:"tool"
 			// 其他（text/image）转为 role:"user"
-			// 我们先拆分两个桶：普通块 & tool_result 块
+			// 
+			// 重要：为了确保相同 ID 的 assistant 和 tool 消息紧挨着，
+			// 我们需要先输出所有 tool_result，然后再输出 user 消息
 			// 使用新的 GetContentBlocks 方法获取内容块
 			contentBlocks := m.GetContentBlocks()
 			var userBlocks []AnthropicContentBlock
@@ -128,46 +130,9 @@ func (c *RequestConverter) Convert(anthropicReq []byte) ([]byte, *ConversionCont
 					userBlocks = append(userBlocks, bl)
 				}
 			}
-			if len(userBlocks) > 0 {
-				om := OpenAIMessage{Role: "user"}
-				var oaParts []OpenAIMessageContent
-				var sb strings.Builder // 拼接纯文本（当没有图片时可直接用字符串）
-				hasImage := false
-				for _, bl := range userBlocks {
-					switch bl.Type {
-					case "text":
-						sb.WriteString(bl.Text)
-					case "image":
-						if bl.Source != nil && strings.EqualFold(bl.Source.Type, "base64") {
-							// 有图片必须走数组 content
-							hasImage = true
-							oaParts = append(oaParts, OpenAIMessageContent{
-								Type: "image_url",
-								ImageURL: &OpenAIImageURL{
-									URL: c.makeDataURL(bl.Source.MediaType, bl.Source.Data),
-								},
-							})
-						}
-					}
-				}
-				if hasImage {
-					// 将已有文本（若有）也塞进 parts
-					txt := strings.TrimSpace(sb.String())
-					if txt != "" {
-						oaParts = append(oaParts, OpenAIMessageContent{
-							Type: "text",
-							Text: txt,
-						})
-					}
-					om.Content = oaParts
-				} else {
-					om.Content = strings.TrimSpace(sb.String())
-				}
-				if om.Content != "" {
-					out.Messages = append(out.Messages, om)
-				}
-			}
-			// 处理 tool_result -> role:"tool"
+			
+			// 先处理 tool_result -> role:"tool"
+			// 这样确保 assistant 和 tool 消息紧挨着
 			for _, tr := range toolResults {
 				if tr.ToolUseID == "" {
 					// 如果没有 tool_use_id，尝试退化策略：用工具名匹配最新 id
@@ -213,6 +178,47 @@ func (c *RequestConverter) Convert(anthropicReq []byte) ([]byte, *ConversionCont
 					ToolCallID: tr.ToolUseID,
 					Content:    strings.TrimSpace(content),
 				})
+			}
+			
+			// 然后处理 user 内容（text/image）
+			if len(userBlocks) > 0 {
+				om := OpenAIMessage{Role: "user"}
+				var oaParts []OpenAIMessageContent
+				var sb strings.Builder // 拼接纯文本（当没有图片时可直接用字符串）
+				hasImage := false
+				for _, bl := range userBlocks {
+					switch bl.Type {
+					case "text":
+						sb.WriteString(bl.Text)
+					case "image":
+						if bl.Source != nil && strings.EqualFold(bl.Source.Type, "base64") {
+							// 有图片必须走数组 content
+							hasImage = true
+							oaParts = append(oaParts, OpenAIMessageContent{
+								Type: "image_url",
+								ImageURL: &OpenAIImageURL{
+									URL: c.makeDataURL(bl.Source.MediaType, bl.Source.Data),
+								},
+							})
+						}
+					}
+				}
+				if hasImage {
+					// 将已有文本（若有）也塞进 parts
+					txt := strings.TrimSpace(sb.String())
+					if txt != "" {
+						oaParts = append(oaParts, OpenAIMessageContent{
+							Type: "text",
+							Text: txt,
+						})
+					}
+					om.Content = oaParts
+				} else {
+					om.Content = strings.TrimSpace(sb.String())
+				}
+				if om.Content != "" {
+					out.Messages = append(out.Messages, om)
+				}
 			}
 
 		case "assistant":
