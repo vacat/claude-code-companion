@@ -379,7 +379,8 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 		}
 		
 		// 所有endpoint都失败了，发送错误响应但不记录额外日志（每个endpoint的失败已经记录过了）
-		s.sendProxyError(c, http.StatusBadGateway, "all_endpoints_failed", fmt.Sprintf("All %d endpoints failed for tagged request (tags: %v)", totalAttempted, requestTags), requestID)
+		errorMsg := s.generateDetailedEndpointUnavailableMessage(requestID, requestTags)
+		s.sendProxyError(c, http.StatusBadGateway, "all_endpoints_failed", errorMsg, requestID)
 		
 	} else {
 		// 无标签请求：只尝试万用端点
@@ -391,7 +392,8 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 		
 		if len(universalEndpoints) == 0 {
 			s.logger.Error("No universal endpoints available for untagged request", nil)
-			s.sendProxyError(c, http.StatusBadGateway, "no_universal_endpoints", "No universal endpoints available", requestID)
+			errorMsg := s.generateDetailedEndpointUnavailableMessage(requestID, requestTags)
+			s.sendProxyError(c, http.StatusBadGateway, "no_universal_endpoints", errorMsg, requestID)
 			return
 		}
 		
@@ -403,6 +405,7 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 		totalAttempted += attemptedCount
 		
 		// 所有universal endpoint都失败了，发送错误响应但不记录额外日志（每个endpoint的失败已经记录过了）
-		s.sendProxyError(c, http.StatusBadGateway, "all_universal_endpoints_failed", fmt.Sprintf("All %d universal endpoints failed for untagged request", totalAttempted), requestID)
+		errorMsg := s.generateDetailedEndpointUnavailableMessage(requestID, requestTags)
+		s.sendProxyError(c, http.StatusBadGateway, "all_universal_endpoints_failed", errorMsg, requestID)
 	}
 }

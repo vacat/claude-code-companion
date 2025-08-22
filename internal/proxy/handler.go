@@ -1,10 +1,12 @@
 package proxy
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"claude-code-companion/internal/endpoint"
 	"claude-code-companion/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -57,7 +59,9 @@ func (s *Server) handleProxy(c *gin.Context) {
 		if taggedRequest != nil {
 			tags = taggedRequest.Tags
 		}
-		s.sendFailureResponse(c, requestID, startTime, requestBody, tags, 0, "All endpoints are currently unavailable", "no_available_endpoints")
+		// 生成详细的错误消息
+		errorMsg := s.generateDetailedEndpointUnavailableMessage(requestID, tags)
+		s.sendFailureResponse(c, requestID, startTime, requestBody, tags, 0, errorMsg, "no_available_endpoints")
 		return
 	}
 
@@ -71,5 +75,90 @@ func (s *Server) handleProxy(c *gin.Context) {
 		// 使用回退逻辑
 		s.fallbackToOtherEndpoints(c, path, requestBody, requestID, startTime, selectedEndpoint, taggedRequest)
 	}
+}
+
+// generateDetailedEndpointUnavailableMessage 生成详细的端点不可用错误消息
+func (s *Server) generateDetailedEndpointUnavailableMessage(requestID string, requestTags []string) string {
+	allEndpoints := s.endpointManager.GetAllEndpoints()
+	
+	if len(requestTags) > 0 {
+		// 有tag的请求
+		taggedActiveCount := 0
+		taggedTotalCount := 0
+		universalActiveCount := 0
+		universalTotalCount := 0
+		
+		for _, ep := range allEndpoints {
+			if !ep.Enabled {
+				continue
+			}
+			
+			if len(ep.Tags) == 0 {
+				// 通用端点
+				universalTotalCount++
+				if ep.IsAvailable() {
+					universalActiveCount++
+				}
+			} else {
+				// 检查是否符合tag条件
+				if s.endpointMatchesTags(ep, requestTags) {
+					taggedTotalCount++
+					if ep.IsAvailable() {
+						taggedActiveCount++
+					}
+				}
+			}
+		}
+		
+		return fmt.Sprintf("request %s with tag (%s) had failed on %d active out of %d (with tags) and %d active of %d (universal) endpoints", 
+			requestID, strings.Join(requestTags, ", "), taggedActiveCount, taggedTotalCount, universalActiveCount, universalTotalCount)
+	} else {
+		// 无tag的请求
+		universalActiveCount := 0
+		universalTotalCount := 0
+		allEndpointsAreTagged := true
+		
+		for _, ep := range allEndpoints {
+			if !ep.Enabled {
+				continue
+			}
+			
+			if len(ep.Tags) == 0 {
+				universalTotalCount++
+				allEndpointsAreTagged = false
+				if ep.IsAvailable() {
+					universalActiveCount++
+				}
+			}
+		}
+		
+		message := fmt.Sprintf("request %s without tag had failed on %d active of %d (universal) endpoints", 
+			requestID, universalActiveCount, universalTotalCount)
+		
+		if allEndpointsAreTagged && universalTotalCount == 0 {
+			message += ". All endpoints are tagged but request is not tagged, make sure you understand how tags works"
+		}
+		
+		return message
+	}
+}
+
+// endpointMatchesTags 检查端点是否匹配所有请求的tags
+func (s *Server) endpointMatchesTags(ep *endpoint.Endpoint, requestTags []string) bool {
+	if len(requestTags) == 0 {
+		return len(ep.Tags) == 0
+	}
+	
+	epTagSet := make(map[string]bool)
+	for _, tag := range ep.Tags {
+		epTagSet[tag] = true
+	}
+	
+	for _, required := range requestTags {
+		if !epTagSet[required] {
+			return false
+		}
+	}
+	return true
 }
 
