@@ -114,13 +114,19 @@ function refreshEndpointStatus() {
 function updateEndpointRowStatus(row, endpoint) {
     const statusCell = row.children[9]; // Adjust index: added proxy column, was 8, now 9
     
-    // Update status
+    // Update status - 三种状态：禁用（灰色）、正常（绿色）、不可用（红色）
     let statusBadge = '';
-    if (endpoint.status === 'active') {
-        statusBadge = '<span class="badge bg-success"><i class="fas fa-check-circle"></i> 活跃</span>';
+    if (!endpoint.enabled) {
+        // 如果端点被禁用，显示灰色的"禁用"状态
+        statusBadge = '<span class="badge bg-secondary"><i class="fas fa-ban"></i> 禁用</span>';
+    } else if (endpoint.status === 'active') {
+        // 如果端点已启用且状态为活跃，显示绿色的"正常"状态
+        statusBadge = '<span class="badge bg-success"><i class="fas fa-check-circle"></i> 正常</span>';
     } else if (endpoint.status === 'inactive') {
+        // 如果端点已启用但状态为不活跃，显示红色的"不可用"状态
         statusBadge = '<span class="badge bg-danger"><i class="fas fa-times-circle"></i> 不可用</span>';
     } else {
+        // 其他状态（如检测中）
         statusBadge = '<span class="badge bg-warning"><i class="fas fa-clock"></i> 检测中</span>';
     }
     statusCell.innerHTML = statusBadge;

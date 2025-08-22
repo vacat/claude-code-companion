@@ -275,6 +275,10 @@ function toggleEndpointEnabled(endpointName, currentEnabled) {
     const newEnabled = !currentEnabled;
     const actionText = newEnabled ? '启用' : '禁用';
     
+    // 获取当前端点的状态信息
+    const currentEndpoint = currentEndpoints.find(ep => ep.name === endpointName);
+    const currentStatus = currentEndpoint ? currentEndpoint.status : 'unknown';
+    
     apiRequest(`/admin/api/endpoints/${encodeURIComponent(endpointName)}/toggle`, {
         method: 'POST',
         headers: {
@@ -294,6 +298,8 @@ function toggleEndpointEnabled(endpointName, currentEnabled) {
             updateEndpointToggleButton(endpointName, newEnabled);
             // 更新启用状态显示
             updateEndpointEnabledBadge(endpointName, newEnabled);
+            // 更新状态badge显示
+            updateEndpointStatusBadge(endpointName, newEnabled, currentStatus);
         }
     })
     .catch(error => {
