@@ -88,9 +88,9 @@
                                 <div class="mb-3">
                                     <label for="logResponseBody" class="form-label" data-t="record_response_body">记录响应体</label>
                                     <select class="form-select" id="logResponseBody">
-                                        <option value="none" {{if eq .Config.Logging.LogResponseBody "none"}}selected{{end}}>不记录</option>
-                                        <option value="truncated" {{if eq .Config.Logging.LogResponseBody "truncated"}}selected{{end}}>截断</option>
-                                        <option value="full" {{if eq .Config.Logging.LogResponseBody "full"}}selected{{end}}>完整</option>
+                                        <option value="none" {{if eq .Config.Logging.LogResponseBody "none"}}selected{{end}} data-t="do_not_record">不记录</option>
+                                        <option value="truncated" {{if eq .Config.Logging.LogResponseBody "truncated"}}selected{{end}} data-t="truncated">截断</option>
+                                        <option value="full" {{if eq .Config.Logging.LogResponseBody "full"}}selected{{end}} data-t="full">完整</option>
                                     </select>
                                 </div>
                             </div>

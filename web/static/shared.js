@@ -139,12 +139,21 @@ async function apiRequest(url, options = {}) {
     }
 }
 
-// Shared utility functions
+// Shared utility functions - Enhanced with translation support
 function showAlert(message, type = 'info') {
+    // Try to translate the message if T function is available
+    let translatedMessage = message;
+    if (window.T && typeof message === 'string') {
+        // Check if message looks like a translation key (no spaces, underscore separated)
+        if (!message.includes(' ') && message.includes('_')) {
+            translatedMessage = window.T(message, message);
+        }
+    }
+    
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type} alert-dismissible fade show alert-positioned`;
     alertDiv.innerHTML = `
-        ${message}
+        ${translatedMessage}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
     
@@ -397,9 +406,9 @@ function initializeTooltips(container = document) {
     });
 }
 
-// Language switching functionality
+// Language switching functionality - Simple page reload approach
 function switchLanguage(lang) {
-    // Set language cookie for 1 year
+    // Set language cookie
     const expiryDate = new Date();
     expiryDate.setFullYear(expiryDate.getFullYear() + 1);
     document.cookie = `claude_proxy_lang=${lang}; expires=${expiryDate.toUTCString()}; path=/`;
@@ -431,6 +440,11 @@ function updateLanguageDropdown() {
     // Fallback to global variable if data attributes are not available
     if (Object.keys(availableLanguages).length === 0 && window.availableLanguages) {
         availableLanguages = window.availableLanguages;
+    }
+    
+    // Get current language from I18n system if available
+    if (window.I18n && window.I18n.getLanguage && !currentLang) {
+        currentLang = window.I18n.getLanguage();
     }
     
     // Get current language from dropdown data attribute first, then fallback to other methods
@@ -651,7 +665,7 @@ function showUpdateBadge(latestVersion) {
         githubLink.appendChild(badge);
         
         // Update tooltip
-        githubLink.title = `发现新版本: ${latestVersion} - 点击查看GitHub`;
+        githubLink.title = `${t('version_found')}: ${latestVersion} - ${t('click_to_view_github')}`;
     } catch (error) {
         console.debug('Failed to show update badge, ignoring:', error.name || 'Unknown error');
     }
@@ -707,8 +721,32 @@ function stopVersionCheck() {
     }
 }
 
-// Common DOM ready initialization
+// Common DOM ready initialization - Enhanced with I18n support
 function initializeCommonFeatures() {
+    // Initialize I18n system if available
+    if (window.I18n && !window.I18n.isInitialized) {
+        try {
+            // Get initial language from various sources
+            const urlLang = new URLSearchParams(window.location.search).get('lang');
+            const cookieLang = getCookieValue('claude_proxy_lang');
+            const defaultLang = 'zh-cn';
+            
+            const initialLang = urlLang || cookieLang || defaultLang;
+            
+            console.log('[I18n] Initializing with language:', initialLang);
+            
+            window.I18n.init({
+                currentLanguage: initialLang,
+                debug: true // Enable debug for troubleshooting
+            });
+            
+            // Load any server-provided translations
+            loadServerTranslations();
+        } catch (error) {
+            console.warn('Failed to initialize I18n system:', error);
+        }
+    }
+    
     // Format duration cells
     document.querySelectorAll('.duration-cell').forEach(function(cell) {
         const ms = parseInt(cell.getAttribute('data-ms'));
@@ -740,7 +778,47 @@ function initializeCommonFeatures() {
         const langCode = e.target.dataset.langCode;
         
         if (action === 'switch-language' && langCode) {
+            e.preventDefault(); // Prevent default link behavior
             switchLanguage(langCode);
         }
     });
+}
+
+// Helper function to get cookie value
+function getCookieValue(name) {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const [cookieName, cookieValue] = cookie.trim().split('=');
+        if (cookieName === name) {
+            return cookieValue;
+        }
+    }
+    return null;
+}
+
+// Load server-provided translations (called during initialization)
+async function loadServerTranslations() {
+    try {
+        const response = await fetch('/admin/api/translations', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const translations = await response.json();
+            
+            // Add translations to I18n system
+            Object.entries(translations).forEach(([lang, langTranslations]) => {
+                if (window.I18n && window.I18n.addTranslations) {
+                    window.I18n.addTranslations(lang, langTranslations);
+                }
+            });
+            
+            console.log('Server translations loaded successfully');
+        }
+    } catch (error) {
+        console.info('Server translations not available, using client-side fallbacks:', error.message);
+    }
 }

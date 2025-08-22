@@ -6,17 +6,45 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"claude-code-companion/internal/webres"
 )
 
+// TranslationCache implements caching for processed content
+type TranslationCache struct {
+	// Cache for processed HTML templates
+	templateCache map[string]map[Language]string
+	
+	// Cache for individual translations
+	translationCache map[string]map[Language]string
+	
+	// Cache TTL and cleanup
+	ttl         time.Duration
+	lastCleanup time.Time
+	
+	mu sync.RWMutex
+}
+
+// NewTranslationCache creates a new translation cache
+func NewTranslationCache(ttl time.Duration) *TranslationCache {
+	return &TranslationCache{
+		templateCache:    make(map[string]map[Language]string),
+		translationCache: make(map[string]map[Language]string),
+		ttl:              ttl,
+		lastCleanup:      time.Now(),
+	}
+}
+
 // Manager manages internationalization functionality
 type Manager struct {
-	config      *Config
-	detector    *Detector
-	translator  *Translator
-	translations map[Language]map[string]string
-	mu          sync.RWMutex
+	config         *Config
+	detector       *Detector
+	translator     *Translator
+	processorChain *ProcessorChain
+	cache          *TranslationCache
+	translations   map[Language]map[string]string
+	mu             sync.RWMutex
 }
 
 // NewManager creates a new i18n manager
@@ -29,13 +57,20 @@ func NewManager(config *Config) (*Manager, error) {
 		config:       config,
 		detector:     NewDetector(config.DefaultLanguage),
 		translator:   NewTranslator(),
+		cache:        NewTranslationCache(30 * time.Minute), // 30 minute cache TTL
 		translations: make(map[Language]map[string]string),
 	}
+	
+	// Initialize processor chain after manager is created
+	manager.processorChain = NewProcessorChain(manager)
 	
 	// Load translation files
 	if err := manager.loadTranslations(); err != nil {
 		return nil, fmt.Errorf("failed to load translations: %w", err)
 	}
+	
+	// Set as global manager
+	SetGlobalManager(manager)
 	
 	return manager, nil
 }
@@ -46,7 +81,7 @@ func (m *Manager) loadTranslations() error {
 		return nil
 	}
 	
-	supportedLangs := []Language{LanguageEn}
+	supportedLangs := []Language{LanguageEn, LanguageZhCN}
 	
 	for _, lang := range supportedLangs {
 		filename := filepath.Join(m.config.LocalesPath, string(lang)+".json")
@@ -78,12 +113,22 @@ func (m *Manager) loadTranslationFile(filename string) (map[string]string, error
 		}
 	}
 	
-	var translations map[string]string
-	if err := json.Unmarshal(data, &translations); err != nil {
+	// Parse the JSON structure that includes meta and translations
+	var fileContent struct {
+		Meta struct {
+			Version     string `json:"version"`
+			Language    string `json:"language"`
+			LastUpdated string `json:"last_updated"`
+			TotalKeys   int    `json:"total_keys"`
+		} `json:"meta"`
+		Translations map[string]string `json:"translations"`
+	}
+	
+	if err := json.Unmarshal(data, &fileContent); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON: %w", err)
 	}
 	
-	return translations, nil
+	return fileContent.Translations, nil
 }
 
 // GetDetector returns the language detector
@@ -186,4 +231,127 @@ func (m *Manager) GetAllTranslations() map[Language]map[string]string {
 	}
 	
 	return result
+}
+
+// Enhanced methods for new processor architecture
+
+// GetProcessorChain returns the processor chain
+func (m *Manager) GetProcessorChain() *ProcessorChain {
+	return m.processorChain
+}
+
+// ProcessContent processes content through the processor chain
+func (m *Manager) ProcessContent(content string, lang Language, ctx Context) (string, error) {
+	if !m.config.Enabled {
+		return content, nil
+	}
+	
+	// Check cache first
+	if cached := m.getCachedContent(content, lang); cached != "" {
+		return cached, nil
+	}
+	
+	// Process through chain
+	result, err := m.processorChain.Process(content, lang, ctx)
+	if err != nil {
+		return content, err
+	}
+	
+	// Cache the result
+	m.setCachedContent(content, lang, result)
+	
+	return result, nil
+}
+
+// ExtractTranslations extracts all translations from content
+func (m *Manager) ExtractTranslations(content string) (map[string]string, error) {
+	return m.processorChain.ExtractAll(content)
+}
+
+// ValidateContent validates translation markers in content
+func (m *Manager) ValidateContent(content string) []ProcessorValidationError {
+	return m.processorChain.ValidateAll(content)
+}
+
+// Cache management methods
+
+// getCachedContent gets cached processed content
+func (m *Manager) getCachedContent(content string, lang Language) string {
+	m.cache.mu.RLock()
+	defer m.cache.mu.RUnlock()
+	
+	if langCache, exists := m.cache.templateCache[content]; exists {
+		if result, found := langCache[lang]; found {
+			return result
+		}
+	}
+	
+	return ""
+}
+
+// setCachedContent sets cached processed content
+func (m *Manager) setCachedContent(content string, lang Language, result string) {
+	m.cache.mu.Lock()
+	defer m.cache.mu.Unlock()
+	
+	if m.cache.templateCache[content] == nil {
+		m.cache.templateCache[content] = make(map[Language]string)
+	}
+	
+	m.cache.templateCache[content][lang] = result
+	
+	// Perform periodic cleanup
+	if time.Since(m.cache.lastCleanup) > m.cache.ttl {
+		go m.cleanupCache()
+	}
+}
+
+// cleanupCache performs cache cleanup
+func (m *Manager) cleanupCache() {
+	m.cache.mu.Lock()
+	defer m.cache.mu.Unlock()
+	
+	// Simple cleanup: clear all cache periodically
+	// In production, implement proper LRU or TTL-based cleanup
+	if time.Since(m.cache.lastCleanup) > m.cache.ttl*2 {
+		m.cache.templateCache = make(map[string]map[Language]string)
+		m.cache.translationCache = make(map[string]map[Language]string)
+		m.cache.lastCleanup = time.Now()
+	}
+}
+
+// ClearCache clears all caches
+func (m *Manager) ClearCache() {
+	m.cache.mu.Lock()
+	defer m.cache.mu.Unlock()
+	
+	m.cache.templateCache = make(map[string]map[Language]string)
+	m.cache.translationCache = make(map[string]map[Language]string)
+	m.cache.lastCleanup = time.Now()
+}
+
+// Advanced translation methods
+
+// GetTranslationWithKey gets translation by specific key (for new translation system)
+func (m *Manager) GetTranslationWithKey(key string, lang Language) string {
+	if !m.config.Enabled {
+		return key
+	}
+	
+	// If it's the default language, return key as-is for lookup
+	if lang == m.config.DefaultLanguage {
+		return key
+	}
+	
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	if langTranslations, exists := m.translations[lang]; exists {
+		if translation, found := langTranslations[key]; found {
+			return translation
+		}
+	}
+	
+	// Return key if no translation found
+	return key
 }

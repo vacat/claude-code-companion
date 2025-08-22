@@ -20,7 +20,7 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
-                            <h5 class="mb-0 me-3" data-t="request_logs_with_count">请求日志 (共 {{.Total}} 条){{if .FailedOnly}} - <span data-t="failed_requests_only">仅失败请求</span>{{end}}</h5>
+                            <h5 class="mb-0 me-3"><!--T:request_logs_with_count-->请求日志 (共 {{.Total}} 条){{if .FailedOnly}} - <span data-t="failed_requests_only">仅失败请求</span>{{end}}<!--/T--></h5>
                             <button class="btn btn-sm btn-outline-danger" data-action="show-cleanup-modal">
                                 <i class="fas fa-trash"></i> <span data-t="cleanup_logs">清理日志</span>
                             </button>
@@ -68,7 +68,7 @@
                                         <td>{{.Timestamp.Format "15:04:05"}}</td>
                                         <td class="request-id-cell" data-request-id="{{.RequestID}}">
                                             <small>{{.RequestID}}</small>
-                                            <button class="copy-request-id-btn" data-action="copy-request-id" data-request-id="{{.RequestID}}" title="复制请求ID到剪贴板">
+                                            <button class="copy-request-id-btn" data-action="copy-request-id" data-request-id="{{.RequestID}}" data-t-title="copy_request_id_tooltip">
                                                 <i class="fas fa-copy"></i>
                                             </button>
                                         </td>
@@ -242,7 +242,7 @@
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="responseInspectorModalLabel">
+                    <h5 class="modal-title" id="responseInspectorModalLabel" data-t="anthropic_response_inspector_title">
                         🔍 Anthropic 响应检查器
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -251,10 +251,10 @@
                     <!-- 动态内容 -->
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" onclick="exportResponseAnalysis()">
+                    <button type="button" class="btn btn-outline-secondary" onclick="exportResponseAnalysis()" data-t="export_analysis">
                         📄 导出分析
                     </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="close">
                         关闭
                     </button>
                 </div>
@@ -268,7 +268,7 @@
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="requestInspectorModalLabel">
+                    <h5 class="modal-title" id="requestInspectorModalLabel" data-t="anthropic_request_inspector_title">
                         🔍 Anthropic 请求检查器
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -277,10 +277,10 @@
                     <!-- 动态内容 -->
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" onclick="exportAnalysis()">
+                    <button type="button" class="btn btn-outline-secondary" onclick="exportAnalysis()" data-t="export_analysis">
                         📄 导出分析
                     </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="close">
                         关闭
                     </button>
                 </div>
@@ -331,6 +331,7 @@
     </div>
 
     <script src="/static/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="/static/i18n.js"></script>
     <script src="/static/shared.js"></script>
     <script src="/static/logs-init.js"></script>
     <script src="/static/logs-navigation.js"></script>

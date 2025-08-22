@@ -2,7 +2,7 @@
 InspectorUI.prototype.renderSystem = function(system, tools) {
     let systemHtml = `
         <div class="inspector-section">
-            <h6 class="inspector-title">🔧 系统配置</h6>
+            <h6 class="inspector-title">${T('inspector_system_config', '🔧 系统配置')}</h6>
     `;
 
     // System Prompt
@@ -12,7 +12,7 @@ InspectorUI.prototype.renderSystem = function(system, tools) {
             <div class="inspector-subsection">
                 <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${systemId}')">
                     <span class="inspector-collapse-icon" id="${systemId}-icon">▶</span>
-                    📝 System Prompt (${system.characterCount} 字符, ${system.wordCount} 词)
+                    📝 ${T('inspector_system_prompt', 'System Prompt')} (${system.characterCount} ${T('inspector_characters', '字符')}, ${system.wordCount} ${T('inspector_words', '词')})
                 </div>
                 <div class="inspector-collapse-content" id="${systemId}" style="display: none;">
                     <div class="inspector-content-box">
@@ -30,7 +30,7 @@ InspectorUI.prototype.renderSystem = function(system, tools) {
             <div class="inspector-subsection">
                 <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${toolsId}')">
                     <span class="inspector-collapse-icon" id="${toolsId}-icon">▶</span>
-                    🛠️ 可用工具 (${tools.length}个)
+                    🛠️ ${T('inspector_available_tools', '可用工具')} (${tools.length}${T('inspector_count_suffix', '个')})
                 </div>
                 <div class="inspector-collapse-content" id="${toolsId}" style="display: none;">
                     ${this.renderToolsList(tools)}
@@ -70,7 +70,7 @@ InspectorUI.prototype.renderToolDetails = function(tool) {
             <div class="inspector-tool-subsection">
                 <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${descId}')">
                     <span class="inspector-collapse-icon" id="${descId}-icon">▶</span>
-                    📖 描述
+                    📖 ${T('inspector_description', '描述')}
                 </div>
                 <div class="inspector-collapse-content" id="${descId}" style="display: none;">
                     <div class="inspector-content-box">
@@ -88,7 +88,7 @@ InspectorUI.prototype.renderToolDetails = function(tool) {
             <div class="inspector-tool-subsection">
                 <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${paramsId}')">
                     <span class="inspector-collapse-icon" id="${paramsId}-icon">▶</span>
-                    📋 参数列表 (${tool.parameters.length}个)
+                    📋 ${T('inspector_parameter_list', '参数列表')} (${tool.parameters.length}${T('inspector_count_suffix', '个')})
                 </div>
                 <div class="inspector-collapse-content" id="${paramsId}" style="display: none;">
                     <ul class="inspector-param-list">
@@ -96,15 +96,15 @@ InspectorUI.prototype.renderToolDetails = function(tool) {
         
         tool.parameters.forEach(param => {
             const requiredBadge = param.required ? 
-                '<span class="badge bg-danger">必需</span>' : 
-                '<span class="badge bg-secondary">可选</span>';
+                `<span class="badge bg-danger">${T('inspector_required', '必需')}</span>` : 
+                `<span class="badge bg-secondary">${T('inspector_optional', '可选')}</span>`;
             detailsHtml += `
                 <li class="inspector-param-item">
                     <code>${this.escapeHtml(param.name)}</code> 
                     <span class="inspector-param-type">(${this.escapeHtml(param.type)})</span>
                     ${requiredBadge}
                     ${param.description ? `<div class="inspector-param-desc">${this.escapeHtml(param.description)}</div>` : ''}
-                    ${param.enum ? `<div class="inspector-param-desc">可选值: ${param.enum.map(v => `<code>${this.escapeHtml(v)}</code>`).join(', ')}</div>` : ''}
+                    ${param.enum ? `<div class="inspector-param-desc">${T('inspector_enum_values', '可选值')}: ${param.enum.map(v => `<code>${this.escapeHtml(v)}</code>`).join(', ')}</div>` : ''}
                 </li>
             `;
         });

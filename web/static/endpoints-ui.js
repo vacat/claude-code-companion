@@ -38,22 +38,22 @@ function rebuildTable(endpoints) {
         let statusBadge = '';
         if (!endpoint.enabled) {
             // 如果端点被禁用，显示灰色的"禁用"状态
-            statusBadge = '<span class="badge bg-secondary"><i class="fas fa-ban"></i> 禁用</span>';
+            statusBadge = `<span class="badge bg-secondary"><i class="fas fa-ban"></i> <span data-t="disabled">禁用</span></span>`;
         } else if (endpoint.status === 'active') {
             // 如果端点已启用且状态为活跃，显示绿色的"正常"状态
-            statusBadge = '<span class="badge bg-success"><i class="fas fa-check-circle"></i> 正常</span>';
+            statusBadge = `<span class="badge bg-success"><i class="fas fa-check-circle"></i> <span data-t="normal">正常</span></span>`;
         } else if (endpoint.status === 'inactive') {
             // 如果端点已启用但状态为不活跃，显示红色的"不可用"状态
-            statusBadge = '<span class="badge bg-danger"><i class="fas fa-times-circle"></i> 不可用</span>';
+            statusBadge = `<span class="badge bg-danger"><i class="fas fa-times-circle"></i> <span data-t="unavailable">不可用</span></span>`;
         } else {
             // 其他状态（如检测中）
-            statusBadge = '<span class="badge bg-warning"><i class="fas fa-clock"></i> 检测中</span>';
+            statusBadge = `<span class="badge bg-warning"><i class="fas fa-clock"></i> <span data-t="detecting">检测中</span></span>`;
         }
         
         // Build enabled status badge
         const enabledBadge = endpoint.enabled 
-            ? '<span class="badge bg-success"><i class="fas fa-toggle-on"></i> 已启用</span>'
-            : '<span class="badge bg-secondary"><i class="fas fa-toggle-off"></i> 已禁用</span>';
+            ? `<span class="badge bg-success"><i class="fas fa-toggle-on"></i> <span data-t="enabled">已启用</span></span>`
+            : `<span class="badge bg-secondary"><i class="fas fa-toggle-off"></i> <span data-t="disabled">已禁用</span></span>`;
         
         // Build endpoint type badge
         const endpointTypeBadge = endpoint.endpoint_type === 'openai' 
@@ -89,9 +89,9 @@ function rebuildTable(endpoints) {
         if (endpoint.proxy && endpoint.proxy.type && endpoint.proxy.address) {
             const proxyType = endpoint.proxy.type.toUpperCase();
             const hasAuth = endpoint.proxy.username ? ' 🔐' : '';
-            proxyDisplay = `<span class="badge bg-warning" title="代理: ${endpoint.proxy.type}://${endpoint.proxy.address}">${proxyType}${hasAuth}</span>`;
+            proxyDisplay = `<span class="badge bg-warning" title="${t('proxy_with_auth', '代理')}: ${endpoint.proxy.type}://${endpoint.proxy.address}">${proxyType}${hasAuth}</span>`;
         } else {
-            proxyDisplay = '<span class="text-muted">无</span>';
+            proxyDisplay = `<span class="text-muted" data-t="no_proxy">无</span>`;
         }
         
         // Build tags display
@@ -99,7 +99,7 @@ function rebuildTable(endpoints) {
         if (endpoint.tags && endpoint.tags.length > 0) {
             tagsDisplay = endpoint.tags.map(tag => `<span class="badge bg-info me-1 mb-1">${escapeHtml(tag)}</span>`).join('');
         } else {
-            tagsDisplay = '<span class="text-muted">通用</span>';
+            tagsDisplay = `<span class="text-muted" data-t="general">通用</span>`;
         }
         
         row.innerHTML = `

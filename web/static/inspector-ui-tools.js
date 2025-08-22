@@ -37,7 +37,7 @@ InspectorUI.prototype.renderAssistantToolUses = function(toolUses, messageIndex)
                 <div class="inspector-collapse-content" id="${callId}" style="display: none;">
                     <div class="inspector-tool-call-details">
                         <div class="inspector-call-section">
-                            <strong>📤 调用参数:</strong>
+                            <strong>📤 ${T('inspector_call_parameters', '调用参数')}:</strong>
                             <div class="inspector-content-box">
                                 <pre class="inspector-json">${this.formatJSON(tool.input)}</pre>
                             </div>
@@ -54,7 +54,7 @@ InspectorUI.prototype.renderUserToolResults = function(toolResults, messageIndex
         const callId = `user-result-${messageIndex}-${idx}`;
         // 查找对应的 tool_use 来获取工具名称和参数
         const correspondingUse = this.findCorrespondingToolUseGlobally(toolResult.id);
-        const toolName = correspondingUse ? correspondingUse.name : 'Unknown Tool';
+        const toolName = correspondingUse ? correspondingUse.name : T('inspector_unknown_tool', 'Unknown Tool');
         const paramsPreview = correspondingUse ? this.formatParametersPreview(correspondingUse.input) : '';
         
         return `
@@ -70,14 +70,14 @@ InspectorUI.prototype.renderUserToolResults = function(toolResults, messageIndex
                     <div class="inspector-tool-call-details">
                         ${correspondingUse ? `
                             <div class="inspector-call-section">
-                                <strong>📤 调用参数:</strong>
+                                <strong>📤 ${T('inspector_call_parameters', '调用参数')}:</strong>
                                 <div class="inspector-content-box">
                                     <pre class="inspector-json">${this.formatJSON(correspondingUse.input)}</pre>
                                 </div>
                             </div>
                         ` : ''}
                         <div class="inspector-call-section">
-                            <strong>📥 返回结果:</strong>
+                            <strong>📥 ${T('inspector_return_result', '返回结果')}:</strong>
                             <div class="inspector-content-box">
                                 <pre class="inspector-text">${this.escapeHtml(typeof toolResult.result === 'string' ? toolResult.result : JSON.stringify(toolResult.result, null, 2))}</pre>
                             </div>
@@ -115,7 +115,7 @@ InspectorUI.prototype.renderUserToolCalls = function(toolUses, messageIndex) {
         if (isResult) {
             // 尝试找到对应的工具调用来获取工具名称
             const correspondingUse = this.findCorrespondingToolUse(tool.id, toolUses);
-            toolName = correspondingUse ? correspondingUse.name : `Tool Result`;
+            toolName = correspondingUse ? correspondingUse.name : T('inspector_tool_result', 'Tool Result');
             statusIcon = '📥';
             if (correspondingUse && correspondingUse.input) {
                 paramsPreview = this.formatParametersPreview(correspondingUse.input);
@@ -143,7 +143,7 @@ InspectorUI.prototype.renderUserToolCalls = function(toolUses, messageIndex) {
                             ${this.renderToolResultWithParameters(tool, toolUses)}
                         ` : `
                             <div class="inspector-call-section">
-                                <strong>📤 调用参数:</strong>
+                                <strong>📤 ${T('inspector_call_parameters', '调用参数')}:</strong>
                                 <div class="inspector-content-box">
                                     <pre class="inspector-json">${this.formatJSON(tool.input)}</pre>
                                 </div>
@@ -180,7 +180,7 @@ InspectorUI.prototype.renderToolResultWithParameters = function(toolResult, tool
     // 显示工具结果
     html += `
         <div class="inspector-call-section">
-            <strong>📥 工具结果:</strong>
+            <strong>📥 ${T('inspector_tool_result_label', '工具结果')}:</strong>
             <div class="inspector-content-box">
                 <pre class="inspector-text">${this.escapeHtml(typeof toolResult.result === 'string' ? toolResult.result : JSON.stringify(toolResult.result, null, 2))}</pre>
             </div>

@@ -5,7 +5,7 @@ InspectorUI.prototype.renderToolCallDetails = function(call) {
     // 调用参数
     detailsHtml += `
         <div class="inspector-call-section">
-            <strong>📤 调用参数:</strong>
+            <strong>📤 ${T('inspector_call_parameters', '调用参数')}:</strong>
             <div class="inspector-content-box">
                 <pre class="inspector-json">${this.formatJSON(call.input)}</pre>
             </div>
@@ -19,10 +19,10 @@ InspectorUI.prototype.renderToolCallDetails = function(call) {
             
         detailsHtml += `
             <div class="inspector-call-section">
-                <strong>📥 返回结果:</strong>
+                <strong>📥 ${T('inspector_return_result', '返回结果')}:</strong>
                 <div class="inspector-result-status">
-                    状态: ${call.status === 'success' ? '✅ 成功' : call.status === 'error' ? '❌ 失败' : '⏳ 处理中'}
-                    ${resultStr ? `(${resultStr.length} 字符)` : ''}
+                    ${T('inspector_status', '状态')}: ${call.status === 'success' ? `✅ ${T('inspector_success', '成功')}` : call.status === 'error' ? `❌ ${T('inspector_failed', '失败')}` : `⏳ ${T('inspector_processing', '处理中')}`}
+                    ${resultStr ? `(${resultStr.length} ${T('inspector_characters', '字符')})` : ''}
                 </div>
                 <div class="inspector-content-box">
                     ${resultStr.length > 200 ? `
@@ -30,7 +30,7 @@ InspectorUI.prototype.renderToolCallDetails = function(call) {
                             <pre class="inspector-text">${this.escapeHtml(resultPreview)}</pre>
                         </div>
                         <div class="mt-2">
-                            <button class="btn btn-sm btn-outline-info w-100 mb-2" data-action="toggle-full-result">显示完整结果</button>
+                            <button class="btn btn-sm btn-outline-info w-100 mb-2" data-action="toggle-full-result">${T('inspector_show_full_result', '显示完整结果')}</button>
                         </div>
                         <div class="full-result-container d-none-custom">
                             <pre class="inspector-text">${this.escapeHtml(resultStr)}</pre>
@@ -44,8 +44,8 @@ InspectorUI.prototype.renderToolCallDetails = function(call) {
     } else {
         detailsHtml += `
             <div class="inspector-call-section">
-                <strong>📥 返回结果:</strong>
-                <div class="inspector-result-status text-muted">⏳ 等待结果...</div>
+                <strong>📥 ${T('inspector_return_result', '返回结果')}:</strong>
+                <div class="inspector-result-status text-muted">⏳ ${T('inspector_waiting_result', '等待结果')}...</div>
             </div>
         `;
     }
@@ -78,7 +78,7 @@ InspectorUI.prototype.getToolStatusIcon = function(status, isThinking) {
 InspectorUI.prototype.renderErrors = function(errors) {
     const errorsHtml = `
         <div class="inspector-section inspector-errors">
-            <h6 class="inspector-title text-danger">⚠️ 解析错误</h6>
+            <h6 class="inspector-title text-danger">⚠️ ${T('inspector_parse_errors', '解析错误')}</h6>
             ${errors.map(error => `<div class="alert alert-danger">${this.escapeHtml(error)}</div>`).join('')}
         </div>
     `;
@@ -137,11 +137,11 @@ document.addEventListener('click', function(e) {
         if (isShowingFull) {
             StyleUtils.show(preview);
             StyleUtils.hide(fullResult);
-            button.textContent = '显示完整结果';
+            button.textContent = T('inspector_show_full_result', '显示完整结果');
         } else {
             StyleUtils.hide(preview);
             StyleUtils.show(fullResult);
-            button.textContent = '隐藏完整结果';
+            button.textContent = T('inspector_hide_full_result', '隐藏完整结果');
         }
     }
 });

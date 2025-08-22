@@ -23,17 +23,17 @@ function displayMultipleLogDetails(logs) {
     
     let html = `<div class="mb-3">
         <div class="d-flex justify-content-between align-items-center">
-            <h6>请求详情 - ${logs.length} 次尝试</h6>
+            <h6 data-t="request_details_with_attempts">请求详情 - ${logs.length} 次尝试</h6>
             <button class="btn btn-sm btn-outline-success" onclick="exportDebugInfo('${escapeHtml(logs[0].request_id)}')" 
                     data-t="export_debug_info" title="导出调试信息为ZIP文件">
                 <i class="fas fa-download"></i> 导出调试信息
             </button>
         </div>
         <div class="alert alert-info">
-            <strong>请求ID:</strong> ${escapeHtml(logs[0].request_id)}<br>
-            <strong>路径:</strong> ${escapeHtml(logs[0].path)}<br>
-            <strong>请求方法:</strong> ${escapeHtml(logs[0].method)}<br>
-            <strong>总耗时:</strong> ${logs.reduce((sum, log) => sum + log.duration_ms, 0)}ms
+            <strong data-t="request_id">请求ID:</strong> ${escapeHtml(logs[0].request_id)}<br>
+            <strong data-t="path">路径:</strong> ${escapeHtml(logs[0].path)}<br>
+            <strong data-t="request_method">请求方法:</strong> ${escapeHtml(logs[0].method)}<br>
+            <strong data-t="total_duration">总耗时:</strong> ${logs.reduce((sum, log) => sum + log.duration_ms, 0)}ms
         </div>
     </div>`;
     

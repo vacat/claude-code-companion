@@ -6,10 +6,10 @@ InspectorUI.prototype.renderMessages = function(messages) {
     let messagesHtml = `
         <div class="inspector-section">
             <div class="inspector-title-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h6 class="inspector-title" style="margin-bottom: 0;">💬 对话消息</h6>
-                <button class="btn btn-outline-primary btn-sm inspector-main-btn" onclick="window.inspectorToggleMessageOrder()" id="message-order-toggle" data-reversed="true" title="切换消息排序">
+                <h6 class="inspector-title" style="margin-bottom: 0;">${T('inspector_conversation_messages', '💬 对话消息')}</h6>
+                <button class="btn btn-outline-primary btn-sm inspector-main-btn" onclick="window.inspectorToggleMessageOrder()" id="message-order-toggle" data-reversed="true" title="${T('inspector_toggle_message_order', '切换消息排序')}">
                     <span id="message-order-icon">↓</span>
-                    <span id="message-order-text">逆向排列</span>
+                    <span id="message-order-text">${T('inspector_reverse_order', '逆向排列')}</span>
                 </button>
             </div>
             <div id="messages-container">
@@ -43,7 +43,7 @@ InspectorUI.prototype.renderMessage = function(message) {
                 <div class="inspector-content-item">
                     <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${contentId}')">
                         <span class="inspector-collapse-icon" id="${contentId}-icon">▶</span>
-                        💭 正文内容 (${content.text.length} 字符)
+                        💭 ${T('inspector_text_content', '正文内容')} (${content.text.length} ${T('inspector_characters', '字符')})
                     </div>
                     <div class="inspector-collapse-content" id="${contentId}" style="display: none;">
                         <div class="inspector-content-box">
@@ -63,7 +63,7 @@ InspectorUI.prototype.renderMessage = function(message) {
             <div class="inspector-content-item">
                 <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${remindersId}')">
                     <span class="inspector-collapse-icon" id="${remindersId}-icon">▶</span>
-                    ⚠️ System Reminders (${message.systemReminders.length}个)
+                    ⚠️ ${T('inspector_system_reminders', 'System Reminders')} (${message.systemReminders.length}${T('inspector_count_suffix', '个')})
                 </div>
                 <div class="inspector-collapse-content" id="${remindersId}" style="display: none;">
                     ${this.renderSystemReminders(message.systemReminders, message.index)}
@@ -82,7 +82,7 @@ InspectorUI.prototype.renderMessage = function(message) {
                 <div class="inspector-content-item">
                     <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${toolCallsId}')">
                         <span class="inspector-collapse-icon" id="${toolCallsId}-icon">▼</span>
-                        🔧 工具调用 (${toolUses.length}次)
+                        🔧 ${T('inspector_tool_calls', '工具调用')} (${toolUses.length}${T('inspector_times_suffix', '次')})
                     </div>
                     <div class="inspector-collapse-content" id="${toolCallsId}" style="display: block;">
                         ${this.renderAssistantToolUses(toolUses, message.index)}
@@ -99,7 +99,7 @@ InspectorUI.prototype.renderMessage = function(message) {
                 <div class="inspector-content-item">
                     <div class="inspector-collapse-header" onclick="window.inspectorToggleCollapse('${userToolsId}')">
                         <span class="inspector-collapse-icon" id="${userToolsId}-icon">▼</span>
-                        🔧 工具结果 (${toolResults.length}个)
+                        🔧 ${T('inspector_tool_results', '工具结果')} (${toolResults.length}${T('inspector_count_suffix', '个')})
                     </div>
                     <div class="inspector-collapse-content" id="${userToolsId}" style="display: block;">
                         ${this.renderUserToolResults(toolResults, message.index)}

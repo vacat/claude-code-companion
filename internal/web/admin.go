@@ -248,6 +248,9 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 		api.PUT("/config", s.handleHotUpdateConfig)
 		api.GET("/config", s.handleGetConfig)
 		api.PUT("/settings", s.handleUpdateSettings)
+		
+		// 翻译API
+		api.GET("/translations", s.handleGetTranslations)
 	}
 }
 
@@ -326,5 +329,24 @@ func (s *AdminServer) handleGetCSRFToken(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"csrf_token": token,
 	})
+}
+
+// handleGetTranslations returns all available translations for client-side use
+func (s *AdminServer) handleGetTranslations(c *gin.Context) {
+	if s.i18nManager == nil || !s.i18nManager.IsEnabled() {
+		c.JSON(http.StatusOK, gin.H{})
+		return
+	}
+	
+	// Get all translations from the manager
+	allTranslations := s.i18nManager.GetAllTranslations()
+	
+	// Format the response for client consumption
+	response := make(map[string]map[string]string)
+	for lang, translations := range allTranslations {
+		response[string(lang)] = translations
+	}
+	
+	c.JSON(http.StatusOK, response)
 }
 

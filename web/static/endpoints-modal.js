@@ -226,7 +226,7 @@ function saveEndpoint() {
 }
 
 function deleteEndpoint(endpointName) {
-    if (!confirm(`确定要删除端点 "${endpointName}" 吗？`)) {
+    if (!confirm(t('confirm_delete_endpoint').replace('{0}', endpointName))) {
         return;
     }
 
@@ -249,7 +249,7 @@ function deleteEndpoint(endpointName) {
 }
 
 function copyEndpoint(endpointName) {
-    if (!confirm(`确定要复制端点 "${endpointName}" 吗？`)) {
+    if (!confirm(t('confirm_copy_endpoint').replace('{0}', endpointName))) {
         return;
     }
 
