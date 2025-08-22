@@ -22,6 +22,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const action = e.target.dataset.action || e.target.closest('[data-action]')?.dataset.action;
         if (action === 'show-add-endpoint-modal') {
             showAddEndpointModal();
+        } else if (action === 'show-endpoint-wizard') {
+            showEndpointWizard();
         }
     });
 });
@@ -128,3 +130,16 @@ function refreshTable() {
     // Reload endpoint data instead of refreshing the entire page
     loadEndpoints();
 }
+
+// Show endpoint wizard modal
+function showEndpointWizard() {
+    if (window.endpointWizard) {
+        window.endpointWizard.show();
+    } else {
+        console.error('Endpoint wizard not initialized');
+        showAlert('向导功能尚未就绪，请稍后再试', 'warning');
+    }
+}
+
+// Export loadEndpoints for use by the wizard
+window.loadEndpointData = loadEndpoints;

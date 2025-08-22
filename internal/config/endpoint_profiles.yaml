@@ -1,0 +1,113 @@
+# 端点预设配置文件
+# 适合从在线电子表格导出，每行一个端点预设
+
+profiles:
+  - profile_id: "mirrorcode"
+    display_name: "Mirror Code"
+    url: "https://mirrorapi.o3pro.pro/api/claude"
+    endpoint_type: "anthropic"
+    auth_type: "auth_token"
+    path_prefix: ""
+    override_max_tokens: null
+    require_default_model: false
+    default_model_options: ""
+
+  - profile_id: "gac"
+    display_name: "GacCode"
+    url: "https://gaccode.com/claudecode"
+    endpoint_type: "anthropic"
+    auth_type: "api_key"
+    path_prefix: ""
+    override_max_tokens: null
+    require_default_model: false
+    default_model_options: ""
+
+  - profile_id: "aicodewith"
+    display_name: "AiCodeWith"
+    url: "https://api.jiuwanliguoxue.com"
+    endpoint_type: "anthropic"
+    auth_type: "auth_token"
+    path_prefix: ""
+    override_max_tokens: null
+    require_default_model: false
+    default_model_options: ""
+
+  - profile_id: "glmanthropic"
+    display_name: "智谱ZhiPuAI(官方Anthropic)"
+    url: "https://open.bigmodel.cn/api/anthropic"
+    endpoint_type: "anthropic"
+    auth_type: "auth_token"
+    path_prefix: ""
+    override_max_tokens: null
+    require_default_model: false
+    default_model_options: ""
+
+  - profile_id: "kimianthropic"
+    display_name: "Kimi(官方Anthropic)"
+    url: "https://api.moonshot.cn/anthropic"
+    endpoint_type: "anthropic"
+    auth_type: "auth_token"
+    path_prefix: ""
+    override_max_tokens: null
+    require_default_model: true
+    default_model_options: "kimi-k2-0711-preview,kimi-k2-turbo-preview"
+
+  - profile_id: "deepseekanthropic"
+    display_name: "DeepSeek(官方Anthropic)"
+    url: "https://api.deepseek.com/anthropic"
+    endpoint_type: "anthropic"
+    auth_type: "auth_token"
+    path_prefix: ""
+    override_max_tokens: null
+    require_default_model: true
+    default_model_options: "deepseek-chat,deepseek-reasoner"
+
+  - profile_id: "glmopenai"
+    display_name: "智谱ZhiPuAI(OpenAI方式)"
+    url: "https://open.bigmodel.cn"
+    endpoint_type: "openai"
+    auth_type: "auth_token"
+    path_prefix: "/api/paas/v4/chat/completions"
+    override_max_tokens: null
+    require_default_model: true
+    default_model_options: "glm-4.5,glm-4.5-air"
+
+  - profile_id: "openrouter"
+    display_name: "OpenRouter"
+    url: "https://openrouter.ai/api"
+    endpoint_type: "openai"
+    auth_type: "auth_token"
+    path_prefix: "/v1/chat/completions"
+    override_max_tokens: null
+    require_default_model: true
+    default_model_options: "openai/gpt-5-mini,openai/gpt-oss-120b,google/gemini-2.5-pro"
+
+  - profile_id: "modelscope"
+    display_name: "阿里魔搭ModelScope"
+    url: "https://api-inference.modelscope.cn"
+    endpoint_type: "openai"
+    auth_type: "auth_token"
+    path_prefix: "/v1/chat/completions"
+    override_max_tokens: null
+    require_default_model: true
+    default_model_options: "Qwen/Qwen3-Coder-480B-A35B-Instruct,Qwen/Qwen3-235B-A22B-Instruct-2507,openai-mirror/gpt-oss-120b,deepseek-ai/DeepSeek-V3.1"
+
+  - profile_id: "yunwu"
+    display_name: "云雾YunWu.ai"
+    url: "https://yunwu.zeabur.app"
+    endpoint_type: "openai"
+    auth_type: "auth_token"
+    path_prefix: "/v1/chat/completions"
+    override_max_tokens: null
+    require_default_model: true
+    default_model_options: "gpt-5-2025-08-07,gpt-5-mini-2025-08-07,o3"
+
+  - profile_id: "volce"
+    display_name: "火山引擎VolEngine"
+    url: "https://ark.cn-beijing.volces.com"
+    endpoint_type: "openai"
+    auth_type: "auth_token"
+    path_prefix: "/api/v3/chat/completions"
+    override_max_tokens: null
+    require_default_model: true
+    default_model_options: "doubao-seed-1-6-250615,deepseek-v3-1-250821,kimi-k2-250711"

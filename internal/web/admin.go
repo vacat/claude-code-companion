@@ -232,6 +232,9 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 		api.POST("/endpoints/:id/toggle", s.handleToggleEndpoint)
 		api.POST("/endpoints/reorder", s.handleReorderEndpoints)
 		
+		// 端点向导路由
+		s.registerEndpointWizardRoutes(api)
+		
 		api.GET("/taggers", s.handleGetTaggers)
 		api.POST("/taggers", s.handleCreateTagger)
 		api.PUT("/taggers/:name", s.handleUpdateTagger)

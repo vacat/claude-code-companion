@@ -1,0 +1,286 @@
+{{/* Endpoint Wizard Modal Component */}}
+<div class="modal fade" id="endpointWizardModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="wizardModalTitle" data-t="endpoint_wizard">端点添加向导</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- 步骤指示器 -->
+                <div class="wizard-steps mb-4">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <div class="wizard-step-indicator">
+                            <div class="step-item active" data-step="1">
+                                <div class="step-circle">1</div>
+                                <div class="step-label" data-t="wizard_step_1">选择类型</div>
+                            </div>
+                            <div class="step-connector"></div>
+                            <div class="step-item" data-step="2">
+                                <div class="step-circle">2</div>
+                                <div class="step-label" data-t="wizard_step_2">配置信息</div>
+                            </div>
+                            <div class="step-connector"></div>
+                            <div class="step-item" data-step="3">
+                                <div class="step-circle">3</div>
+                                <div class="step-label" data-t="wizard_step_3">确认保存</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 步骤内容 -->
+                <div class="wizard-content">
+                    <!-- 第一步：预设选择 -->
+                    <div id="wizard-step-1" class="wizard-step active">
+                        <div class="text-center mb-4">
+                            <h6 class="mb-3" data-t="wizard_select_type_title">选择端点类型</h6>
+                            <p class="text-muted" data-t="wizard_select_type_desc">选择您要添加的端点类型，我们将为您自动配置相关参数</p>
+                        </div>
+                        <div class="row justify-content-center">
+                            <div class="col-8">
+                                <label for="profile-select" class="form-label" data-t="endpoint_type">端点类型</label>
+                                <select class="form-select form-select-lg" id="profile-select" required>
+                                    <option value="" data-t="select_endpoint_type">请选择端点类型...</option>
+                                    <!-- 动态填充预设选项 -->
+                                </select>
+                                <small class="form-text text-muted mt-2" data-t="wizard_type_help">选择您的AI服务提供商类型</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 第二步：配置填写 -->
+                    <div id="wizard-step-2" class="wizard-step">
+                        <div class="text-center mb-4">
+                            <h6 class="mb-3" data-t="wizard_config_title">配置端点信息</h6>
+                            <p class="text-muted" data-t="wizard_config_desc">填写您的端点配置信息</p>
+                        </div>
+                        <form id="wizard-config-form">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="endpoint-name-wizard" class="form-label">
+                                        <i class="fas fa-tag form-label-icon"></i><span data-t="endpoint_name">端点名称</span> <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="endpoint-name-wizard" required>
+                                    <small class="form-text text-muted" data-t="wizard_name_help">根据预设自动生成，可修改</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="auth-value-wizard" class="form-label" id="auth-label-wizard">
+                                        <i class="fas fa-key form-label-icon"></i><span data-t="auth_info">认证信息</span> <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="auth-value-wizard" required>
+                                        <button class="btn btn-outline-secondary" type="button" id="toggle-auth-wizard">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted" id="auth-help-wizard" data-t="wizard_auth_help">请输入您的认证信息</small>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="url-wizard" class="form-label">
+                                    <i class="fas fa-link form-label-icon"></i><span data-t="api_url">API地址</span> <span class="text-danger">*</span>
+                                </label>
+                                <input type="url" class="form-control" id="url-wizard" required>
+                                <small class="form-text text-muted" data-t="wizard_url_help">可根据需要修改为自定义域名</small>
+                            </div>
+                            <!-- 默认模型字段，根据预设动态显示 -->
+                            <div class="mb-3 d-none" id="default-model-group-wizard">
+                                <label for="default-model-wizard" class="form-label">
+                                    <i class="fas fa-robot form-label-icon"></i><span data-t="default_model">默认模型</span> <span class="text-danger">*</span>
+                                </label>
+                                <div class="position-relative">
+                                    <input type="text" class="form-control" id="default-model-input-wizard" 
+                                           placeholder="请输入或选择模型名称" list="model-options" data-t-placeholder="enter_or_select_model">
+                                    <datalist id="model-options">
+                                        <!-- 动态填充预设模型选项 -->
+                                    </datalist>
+                                </div>
+                                <small class="form-text text-muted" data-t="wizard_model_help">可以选择预设选项或手动输入模型名称</small>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 第三步：确认配置 -->
+                    <div id="wizard-step-3" class="wizard-step">
+                        <div class="text-center mb-4">
+                            <h6 class="mb-3" data-t="wizard_confirm_title">确认端点配置</h6>
+                            <p class="text-muted" data-t="wizard_confirm_desc">请确认以下配置信息无误</p>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0" data-t="configuration_summary">配置摘要</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-borderless">
+                                    <tbody>
+                                        <tr>
+                                            <td class="fw-bold" data-t="endpoint_name">端点名称：</td>
+                                            <td id="confirm-name"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold" data-t="endpoint_type">端点类型：</td>
+                                            <td id="confirm-type"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold" data-t="api_url">API地址：</td>
+                                            <td id="confirm-url"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold" data-t="auth_type">认证方式：</td>
+                                            <td id="confirm-auth-type"></td>
+                                        </tr>
+                                        <tr class="d-none" id="confirm-model-row">
+                                            <td class="fw-bold" data-t="default_model">默认模型：</td>
+                                            <td id="confirm-model"></td>
+                                        </tr>
+                                        <tr class="d-none" id="confirm-path-row">
+                                            <td class="fw-bold" data-t="path_prefix">路径前缀：</td>
+                                            <td id="confirm-path"></td>
+                                        </tr>
+                                        <tr class="d-none" id="confirm-max-tokens-row">
+                                            <td class="fw-bold" data-t="max_tokens_override">最大令牌数覆盖：</td>
+                                            <td id="confirm-max-tokens"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 错误信息显示 -->
+                <div id="wizard-error-alert" class="alert alert-danger d-none mt-3" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="wizard-error-message"></span>
+                </div>
+
+                <!-- 成功信息显示 -->
+                <div id="wizard-success-alert" class="alert alert-success d-none mt-3" role="alert">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="wizard-success-message"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="wizard-prev-btn" data-t="previous">上一步</button>
+                <button type="button" class="btn btn-primary" id="wizard-next-btn" data-t="next">下一步</button>
+                <button type="button" class="btn btn-success d-none" id="wizard-save-btn" data-t="save_endpoint">保存端点</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="cancel">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 向导样式 -->
+<style>
+.wizard-steps {
+    margin-bottom: 2rem;
+}
+
+.wizard-step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+}
+
+.step-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #6c757d;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-bottom: 8px;
+    transition: background-color 0.3s;
+}
+
+.step-item.active .step-circle {
+    background-color: #0d6efd;
+}
+
+.step-item.completed .step-circle {
+    background-color: #198754;
+}
+
+.step-item.completed .step-circle::after {
+    content: '✓';
+    font-size: 14px;
+}
+
+.step-label {
+    font-size: 12px;
+    color: #6c757d;
+    white-space: nowrap;
+}
+
+.step-item.active .step-label {
+    color: #0d6efd;
+    font-weight: 500;
+}
+
+.step-connector {
+    width: 80px;
+    height: 2px;
+    background-color: #dee2e6;
+    margin: 0 10px;
+    margin-bottom: 28px;
+}
+
+.step-item.active ~ .step-connector,
+.step-item.completed ~ .step-connector {
+    background-color: #0d6efd;
+}
+
+.wizard-step {
+    display: none;
+    min-height: 300px;
+}
+
+.wizard-step.active {
+    display: block;
+}
+
+.form-label-icon {
+    margin-right: 5px;
+    width: 14px;
+}
+
+#wizard-step-1 .form-select-lg {
+    padding: 12px 16px;
+    font-size: 1.1rem;
+}
+
+#wizard-step-3 .table td {
+    padding: 0.5rem 0;
+}
+
+#wizard-step-3 .table td:first-child {
+    width: 30%;
+}
+
+@media (max-width: 768px) {
+    .step-connector {
+        width: 40px;
+    }
+    
+    .step-label {
+        font-size: 10px;
+    }
+    
+    .step-circle {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+}</style>
