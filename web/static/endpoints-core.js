@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add event listeners for action buttons
     document.addEventListener('click', function(e) {
-        const action = e.target.dataset.action;
+        const action = e.target.dataset.action || e.target.closest('[data-action]')?.dataset.action;
         if (action === 'show-add-endpoint-modal') {
             showAddEndpointModal();
         }
