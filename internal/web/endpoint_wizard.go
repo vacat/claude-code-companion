@@ -5,6 +5,7 @@ import (
 
 	"claude-code-companion/internal/config"
 	"claude-code-companion/internal/security"
+	"claude-code-companion/internal/i18n"
 
 	"github.com/gin-gonic/gin"
 )
@@ -63,24 +64,24 @@ func (s *AdminServer) handleCreateEndpointFromWizard(c *gin.Context) {
 
 	// 安全验证
 	if err := security.ValidateEndpointName(request.Name); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "端点名称验证失败: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": i18n.TCtx(c, "endpoint_name_validation_failed", "端点名称验证失败: ") + err.Error()})
 		return
 	}
 
 	if err := security.ValidateURL(request.URL); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "URL验证失败: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": i18n.TCtx(c, "url_validation_failed", "URL验证失败: ") + err.Error()})
 		return
 	}
 
 	if request.AuthValue != "" {
 		if err := security.ValidateAuthToken(request.AuthValue); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "认证令牌验证失败: " + err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": i18n.TCtx(c, "auth_token_validation_failed", "认证令牌验证失败: ") + err.Error()})
 			return
 		}
 	}
 
 	if request.DefaultModel != "" {
-		if err := security.ValidateGenericText(request.DefaultModel, 100, "默认模型"); err != nil {
+		if err := security.ValidateGenericText(request.DefaultModel, 100, i18n.TCtx(c, "default_model", "默认模型")); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -147,7 +148,7 @@ func (s *AdminServer) handleGenerateEndpointName(c *gin.Context) {
 	}
 
 	// 安全验证
-	if err := security.ValidateGenericText(request.DisplayName, 100, "显示名称"); err != nil {
+	if err := security.ValidateGenericText(request.DisplayName, 100, i18n.TCtx(c, "display_name", "显示名称")); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

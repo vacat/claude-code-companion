@@ -36,7 +36,7 @@
                                     <label for="endpoint-name" class="form-label">
                                         <i class="fas fa-tag form-label-icon"></i><span data-t="name">名称</span> <span class="text-danger">*</span>
                                         <a href="https://ucn0s6hcz1w1.feishu.cn/sheets/RNPHswfIThqQ1itf1m4cb0mKnrc" target="_blank" class="ms-2 text-primary text-sm">
-                                            (常见端点提供商参数)
+                                            <span data-t="common_endpoint_provider_params">(常见端点提供商参数)</span>
                                         </a>
                                     </label>
                                     <input type="text" class="form-control" id="endpoint-name" required>
@@ -44,12 +44,12 @@
                                 <div class="col-4">
                                     <label for="endpoint-default-model" class="form-label">
                                         <i class="fas fa-robot form-label-icon"></i><span data-t="default_model">默认模型</span>
-                                        <i class="fas fa-question-circle text-muted ms-1" title="可以快捷设置此端点支持的唯一模型名，例如 openai/gpt-5" data-bs-toggle="tooltip"></i>
+                                        <i class="fas fa-question-circle text-muted ms-1" data-t-title="default_model_tooltip" title="可以快捷设置此端点支持的唯一模型名，例如 openai/gpt-5" data-bs-toggle="tooltip"></i>
                                     </label>
                                     <input type="text" class="form-control" id="endpoint-default-model" 
-                                           placeholder="如: claude-3-5-haiku-20241022">
+                                           data-t-placeholder="default_model_placeholder" placeholder="如: claude-3-5-haiku-20241022">
                                     <small class="form-text text-muted d-none-custom" id="default-model-hint">
-                                        Model Rewrite中有不兼容的设置
+                                        <span data-t="model_rewrite_incompatible_settings">Model Rewrite中有不兼容的设置</span>
                                     </small>
                                 </div>
                                 <div class="col-4 d-flex align-items-center">
@@ -78,7 +78,7 @@
                                         <i class="fas fa-tags form-label-icon"></i><span data-t="tags">标签</span>
                                     </label>
                                     <input type="text" class="form-control" id="endpoint-tags" 
-                                           placeholder="用逗号分隔">
+                                           data-t-placeholder="comma_separated" placeholder="用逗号分隔">
                                     <small class="form-text text-muted" data-t="empty_for_universal_endpoint">留空endpoint</small>
                                 </div>
                             </div>
@@ -124,7 +124,7 @@
                                         </label>
                                         <div class="input-group">
                                             <input type="password" class="form-control" id="endpoint-auth-value" required
-                                                   placeholder="输入您的 API Key 或 Token">
+                                                   data-t-placeholder="enter_api_key_or_token" placeholder="输入您的 API Key 或 Token">
                                             <button class="btn btn-outline-secondary" type="button" id="toggle-auth-visibility" data-action="toggle-auth-visibility">
                                                 <i class="fas fa-eye" id="auth-eye-icon"></i>
                                             </button>
@@ -143,7 +143,7 @@
                                                     <label for="oauth-access-token" class="form-label">Access Token <span class="text-danger">*</span></label>
                                                     <div class="input-group">
                                                         <input type="password" class="form-control" id="oauth-access-token" 
-                                                               placeholder="访问令牌（如：sk-ant-oat01-... 或其他格式）">
+                                                               data-t-placeholder="access_token_placeholder" placeholder="访问令牌（如：sk-ant-oat01-... 或其他格式）">
                                                         <button class="btn btn-outline-secondary" type="button" data-action="toggle-oauth-visibility" data-token-id="oauth-access-token" data-eye-id="oauth-access-eye">
                                                             <i class="fas fa-eye" id="oauth-access-eye"></i>
                                                         </button>
@@ -155,7 +155,7 @@
                                                     <label for="oauth-refresh-token" class="form-label">Refresh Token <span class="text-danger">*</span></label>
                                                     <div class="input-group">
                                                         <input type="password" class="form-control" id="oauth-refresh-token" 
-                                                               placeholder="刷新令牌（如：sk-ant-ort01-... 或其他格式）">
+                                                               data-t-placeholder="refresh_token_placeholder" placeholder="刷新令牌（如：sk-ant-ort01-... 或其他格式）">
                                                         <button class="btn btn-outline-secondary" type="button" data-action="toggle-oauth-visibility" data-token-id="oauth-refresh-token" data-eye-id="oauth-refresh-eye">
                                                             <i class="fas fa-eye" id="oauth-refresh-eye"></i>
                                                         </button>
@@ -165,15 +165,15 @@
                                                 <!-- Expires At -->
                                                 <div class="row mb-3">
                                                     <div class="col-6">
-                                                        <label for="oauth-expires-at" class="form-label">过期时间戳 (毫秒) <span class="text-danger">*</span></label>
+                                                        <label for="oauth-expires-at" class="form-label"><span data-t="expires_timestamp_ms">过期时间戳 (毫秒)</span> <span class="text-danger">*</span></label>
                                                         <input type="number" class="form-control" id="oauth-expires-at" 
                                                                placeholder="1755272917673">
                                                     </div>
                                                     <div class="col-6">
-                                                        <label class="form-label">自动刷新</label>
+                                                        <label class="form-label" data-t="auto_refresh">自动刷新</label>
                                                         <div class="form-check mt-2">
                                                             <input class="form-check-input" type="checkbox" id="oauth-auto-refresh" checked>
-                                                            <label class="form-check-label" for="oauth-auto-refresh">启用自动刷新</label>
+                                                            <label class="form-check-label" for="oauth-auto-refresh" data-t="enable_auto_refresh">启用自动刷新</label>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -183,17 +183,17 @@
                                                     <label for="oauth-token-url" class="form-label">Token URL <span class="text-danger">*</span></label>
                                                     <input type="url" class="form-control" id="oauth-token-url" 
                                                            placeholder="https://console.anthropic.com/v1/oauth/token">
-                                                    <small class="form-text text-muted">用于刷新OAuth token的端点地址</small>
+                                                    <small class="form-text text-muted" data-t="oauth_token_refresh_endpoint_description">用于刷新OAuth token的端点地址</small>
                                                 </div>
                                                 
                                                 <div class="row mb-3">
                                                     <div class="col-6">
-                                                        <label for="oauth-client-id" class="form-label">Client ID (可选)</label>
+                                                        <label for="oauth-client-id" class="form-label" data-t="client_id_optional">Client ID (可选)</label>
                                                         <input type="text" class="form-control" id="oauth-client-id" 
                                                                placeholder="9d1c250a-e61b-44d9-88ed-5944d1962f5e">
                                                     </div>
                                                     <div class="col-6">
-                                                        <label for="oauth-scopes" class="form-label">Scopes (可选)</label>
+                                                        <label for="oauth-scopes" class="form-label" data-t="scopes_optional">Scopes (可选)</label>
                                                         <input type="text" class="form-control" id="oauth-scopes" 
                                                                placeholder="user:inference,user:profile">
                                                     </div>
@@ -201,12 +201,12 @@
                                                 
                                                 <div class="alert alert-info p-2 mb-0">
                                                     <small class="text-muted">
-                                                        <strong>说明：</strong><br>
-                                                        • 支持 Anthropic、OpenAI 及其他 OAuth 提供商<br>
-                                                        • API请求将发送到端点URL地址<br>
-                                                        • Token URL：指定OAuth token刷新的端点地址（必填）<br>
-                                                        • 过期时间戳为毫秒级Unix时间戳<br>
-                                                        • 启用自动刷新时，系统会在token过期前自动刷新
+                                                        <strong data-t="description">说明：</strong><br>
+                                                        <!--T:oauth_provider_support-->• 支持 Anthropic、OpenAI 及其他 OAuth 提供商<!--/T--><br>
+                                                        <!--T:api_request_sent_to_endpoint-->• API请求将发送到端点URL地址<!--/T--><br>
+                                                        <!--T:token_url_description-->• Token URL：指定OAuth token刷新的端点地址（必填）<!--/T--><br>
+                                                        <!--T:expires_timestamp_unix_ms-->• 过期时间戳为毫秒级Unix时间戳<!--/T--><br>
+                                                        <!--T:auto_refresh_description-->• 启用自动刷新时，系统会在token过期前自动刷新<!--/T-->
                                                     </small>
                                                 </div>
                                             </div>
@@ -255,21 +255,21 @@
                                         <div class="col-6">
                                             <label for="proxy-username" class="form-label" data-t="username_optional">用户名 (可选)</label>
                                             <input type="text" class="form-control" id="proxy-username" 
-                                                   placeholder="代理认证用户名">
+                                                   data-t-placeholder="proxy_auth_username" placeholder="代理认证用户名">
                                         </div>
                                         <div class="col-6">
                                             <label for="proxy-password" class="form-label" data-t="password_optional">密码 (可选)</label>
                                             <input type="password" class="form-control" id="proxy-password" 
-                                                   placeholder="代理认证密码">
+                                                   data-t-placeholder="proxy_auth_password" placeholder="代理认证密码">
                                         </div>
                                     </div>
                                     
                                     <div class="alert alert-info p-2">
                                         <small class="text-muted">
                                             <strong data-t="description">说明：</strong><br>
-                                            • 留空用户名和密码表示无需认证<br>
-                                            • HTTP代理支持 CONNECT 方法用于HTTPS<br>
-                                            • SOCKS5代理支持TCP连接代理
+                                            <!--T:proxy_no_auth_description-->• 留空用户名和密码表示无需认证<!--/T--><br>
+                                            <!--T:http_proxy_connect_description-->• HTTP代理支持 CONNECT 方法用于HTTPS<!--/T--><br>
+                                            <!--T:socks5_proxy_tcp_description-->• SOCKS5代理支持TCP连接代理<!--/T-->
                                         </small>
                                     </div>
                                 </div>
@@ -301,10 +301,10 @@
                                     <div class="alert alert-info p-2">
                                         <small class="text-muted">
                                             <strong data-t="preset_model_patterns">预设模型模式：</strong><br>
-                                            • Haiku系列: claude-*haiku*<br>
-                                            • Sonnet系列: claude-*sonnet*<br>  
-                                            • Opus系列: claude-*opus*<br>
-                                            • 所有Claude: claude-*
+                                            <!--T:haiku_series_pattern-->• Haiku系列: claude-*haiku*<!--/T--><br>
+                                            <!--T:sonnet_series_pattern-->• Sonnet系列: claude-*sonnet*<!--/T--><br>  
+                                            <!--T:opus_series_pattern-->• Opus系列: claude-*opus*<!--/T--><br>
+                                            <!--T:all_claude_pattern-->• 所有Claude: claude-*<!--/T-->
                                         </small>
                                     </div>
                                 </div>
@@ -337,9 +337,9 @@
                                     <div class="alert alert-info p-2">
                                         <small class="text-muted">
                                             <strong data-t="description">说明：</strong><br>
-                                            • 启用后，所有通过此端点的请求的 max_tokens 参数都会被强制设置为指定值<br>
-                                            • 设置为 0 或禁用此功能则不会修改请求中的 max_tokens<br>
-                                            • 该修改在模型重写后、格式转换前进行
+                                            <!--T:max_tokens_override_description-->• 启用后，所有通过此端点的请求的 max_tokens 参数都会被强制设置为指定值<!--/T--><br>
+                                            <!--T:max_tokens_zero_disable_description-->• 设置为 0 或禁用此功能则不会修改请求中的 max_tokens<!--/T--><br>
+                                            <!--T:max_tokens_timing_description-->• 该修改在模型重写后、格式转换前进行<!--/T-->
                                         </small>
                                     </div>
                                 </div>

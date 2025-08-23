@@ -208,7 +208,7 @@ func (m *Manager) GetAvailableLanguages() []Language {
 func (m *Manager) GetLanguageInfo(lang Language) map[string]string {
 	switch lang {
 	case LanguageZhCN:
-		return map[string]string{"flag": "CN", "name": "中文"}
+		return map[string]string{"flag": "CN", "name": T("language_chinese_name", "中文")}
 	case LanguageEn:
 		return map[string]string{"flag": "US", "name": "English"}
 	default:

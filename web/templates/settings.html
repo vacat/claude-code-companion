@@ -103,25 +103,25 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="tlsHandshake" class="form-label" data-t="tls_handshake_timeout">TLS握手超时</label>
-                                    <input type="text" class="form-control" id="tlsHandshake" value="{{.Config.Timeouts.TLSHandshake}}" placeholder="10s (Go duration格式)">
+                                    <input type="text" class="form-control" id="tlsHandshake" value="{{.Config.Timeouts.TLSHandshake}}" data-t-placeholder="go_duration_format_10s" placeholder="10s (Go duration格式)">
                                 </div>
                                 <div class="mb-3">
                                     <label for="responseHeader" class="form-label" data-t="response_header_timeout">响应头超时</label>
-                                    <input type="text" class="form-control" id="responseHeader" value="{{.Config.Timeouts.ResponseHeader}}" placeholder="60s (Go duration格式)">
+                                    <input type="text" class="form-control" id="responseHeader" value="{{.Config.Timeouts.ResponseHeader}}" data-t-placeholder="go_duration_format_60s" placeholder="60s (Go duration格式)">
                                 </div>
                                 <div class="mb-3">
                                     <label for="idleConnection" class="form-label" data-t="idle_connection_timeout">空闲连接超时</label>
-                                    <input type="text" class="form-control" id="idleConnection" value="{{.Config.Timeouts.IdleConnection}}" placeholder="90s (Go duration格式)">
+                                    <input type="text" class="form-control" id="idleConnection" value="{{.Config.Timeouts.IdleConnection}}" data-t-placeholder="go_duration_format_90s" placeholder="90s (Go duration格式)">
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="healthCheckTimeout" class="form-label" data-t="health_check_overall_timeout">健康检查整体响应超时</label>
-                                    <input type="text" class="form-control" id="healthCheckTimeout" value="{{.Config.Timeouts.HealthCheckTimeout}}" placeholder="30s (Go duration格式)">
+                                    <input type="text" class="form-control" id="healthCheckTimeout" value="{{.Config.Timeouts.HealthCheckTimeout}}" data-t-placeholder="go_duration_format_30s" placeholder="30s (Go duration格式)">
                                 </div>
                                 <div class="mb-3">
                                     <label for="checkInterval" class="form-label" data-t="check_interval">健康检查间隔</label>
-                                    <input type="text" class="form-control" id="checkInterval" value="{{.Config.Timeouts.CheckInterval}}" placeholder="30s (Go duration格式)">
+                                    <input type="text" class="form-control" id="checkInterval" value="{{.Config.Timeouts.CheckInterval}}" data-t-placeholder="go_duration_format_30s_interval" placeholder="30s (Go duration格式)">
                                 </div>
                                 <div class="mb-3">
                                     <label for="recoveryThreshold" class="form-label" data-t="recovery_threshold">恢复阈值</label>

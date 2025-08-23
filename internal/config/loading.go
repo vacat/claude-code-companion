@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"gopkg.in/yaml.v3"
+	"claude-code-companion/internal/i18n"
 )
 
 func LoadConfig(filename string) (*Config, error) {
@@ -113,11 +114,11 @@ func generateDefaultConfig(filename string) error {
 	}
 
 	// 添加注释说明
-	header := `# Claude Code Companion 默认配置文件
+	header := i18n.T("default_config_header", `# Claude Code Companion 默认配置文件
 # 这是自动生成的默认配置文件，请根据需要修改各项配置
 # 注意：endpoints 中的示例端点默认为禁用状态，需要配置正确的 API 密钥并启用
 
-`
+`)
 
 	finalData := header + string(data)
 
@@ -126,8 +127,8 @@ func generateDefaultConfig(filename string) error {
 		return fmt.Errorf("failed to write default config file: %v", err)
 	}
 
-	fmt.Printf("默认配置文件已生成: %s\n", filename)
-	fmt.Println("请编辑配置文件，设置正确的端点信息和 API 密钥后重新启动服务")
+	fmt.Printf(i18n.T("default_config_generated", "默认配置文件已生成: %s\n"), filename)
+	fmt.Println(i18n.T("config_edit_instruction", "请编辑配置文件，设置正确的端点信息和 API 密钥后重新启动服务"))
 
 	return nil
 }

@@ -26,11 +26,11 @@ class EndpointWizard {
                 this.profiles = data.profiles || [];
             } else {
                 console.error('Failed to load endpoint profiles:', response.statusText);
-                showAlert('加载端点预设配置失败', 'danger');
+                showAlert(T('load_endpoint_profiles_failed', '加载端点预设配置失败'), 'danger');
             }
         } catch (error) {
             console.error('Error loading profiles:', error);
-            showAlert('加载端点预设配置失败', 'danger');
+            showAlert(T('load_endpoint_profiles_failed', '加载端点预设配置失败'), 'danger');
         }
     }
 
@@ -101,7 +101,7 @@ class EndpointWizard {
         if (saveBtn) {
             saveBtn.disabled = false;
             saveBtn.textContent = saveBtn.getAttribute('data-t') ? 
-                document.querySelector('[data-t="save_endpoint"]')?.textContent || '保存端点' : '保存端点';
+                document.querySelector('[data-t="save_endpoint"]')?.textContent || T('save_endpoint', '保存端点') : T('save_endpoint', '保存端点');
         }
         if (cancelBtn) cancelBtn.disabled = false;
         if (prevBtn) prevBtn.disabled = false;
@@ -126,7 +126,7 @@ class EndpointWizard {
 
     renderStep1() {
         const select = document.getElementById('profile-select');
-        select.innerHTML = '<option value="">请选择端点类型...</option>';
+        select.innerHTML = `<option value="">${T('select_endpoint_type', '请选择端点类型...')}</option>`;
         
         this.profiles.forEach(profile => {
             const option = document.createElement('option');
@@ -202,10 +202,10 @@ class EndpointWizard {
         
         if (this.selectedProfile.auth_type === 'api_key') {
             authLabel.innerHTML = '<i class="fas fa-key form-label-icon"></i>API Key <span class="text-danger">*</span>';
-            authHelp.textContent = '请输入您的 API Key（如：sk-ant-api03-...）';
+            authHelp.textContent = T('enter_api_key_hint', '请输入您的 API Key（如：sk-ant-api03-...）');
         } else {
             authLabel.innerHTML = '<i class="fas fa-key form-label-icon"></i>API Token <span class="text-danger">*</span>';
-            authHelp.textContent = '请输入您的 API Token（如：sk-...）';
+            authHelp.textContent = T('enter_api_token_hint', '请输入您的 API Token（如：sk-...）');
         }
     }
 
@@ -370,7 +370,7 @@ class EndpointWizard {
 
     nextStep() {
         if (!this.validateCurrentStep()) {
-            this.showError('请完成当前步骤的所有必填项');
+            this.showError(T('complete_required_fields', '请完成当前步骤的所有必填项'));
             return;
         }
 
@@ -385,7 +385,7 @@ class EndpointWizard {
 
     async saveEndpoint() {
         if (!this.validateCurrentStep()) {
-            this.showError('配置验证失败，请检查所有必填项');
+            this.showError(T('config_validation_failed', '配置验证失败，请检查所有必填项'));
             return;
         }
 
@@ -397,7 +397,7 @@ class EndpointWizard {
             // 禁用所有按钮并显示加载状态
             saveBtn.disabled = true;
             cancelBtn.disabled = true;
-            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+            saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${T('saving', '保存中...')}`;
             this.clearAlerts();
 
             const requestData = {
@@ -420,7 +420,7 @@ class EndpointWizard {
                 this.modal.hide();
                 
                 // 使用全局的 showAlert 函数显示成功消息
-                showAlert(`端点 "${data.endpoint.Name}" 创建成功！`, 'success');
+                showAlert(T('endpoint_created_success', `端点 "${data.endpoint.Name}" 创建成功！`, { name: data.endpoint.Name }), 'success');
                 
                 // 刷新端点列表
                 if (window.loadEndpointData) {
@@ -428,7 +428,7 @@ class EndpointWizard {
                 }
             } else {
                 const errorData = await response.json();
-                this.showError(errorData.error || '创建端点失败');
+                this.showError(errorData.error || T('create_endpoint_failed', '创建端点失败'));
                 
                 // 失败：恢复按钮状态，保持对话框打开
                 saveBtn.disabled = false;
@@ -437,7 +437,7 @@ class EndpointWizard {
             }
         } catch (error) {
             console.error('Error saving endpoint:', error);
-            this.showError('保存端点时发生错误');
+            this.showError(T('save_endpoint_error', '保存端点时发生错误'));
             
             // 错误：恢复按钮状态，保持对话框打开
             saveBtn.disabled = false;

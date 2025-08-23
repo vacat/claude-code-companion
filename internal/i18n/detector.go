@@ -3,15 +3,14 @@ package i18n
 import (
 	"strings"
 
-	"claude-code-companion/internal/config"
 	"github.com/gin-gonic/gin"
 )
 
 var (
-	// 使用统一默认值常量
-	LangQueryParam = config.Default.I18n.QueryParam
-	LangCookieName = config.Default.I18n.CookieName  
-	LangHeaderName = config.Default.I18n.HeaderName
+	// Default values for i18n parameters
+	LangQueryParam = "lang"
+	LangCookieName = "language"  
+	LangHeaderName = "Accept-Language"
 )
 
 // Detector handles language detection from various sources

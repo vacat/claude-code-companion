@@ -13,6 +13,7 @@ import (
 	"claude-code-companion/internal/config"
 	"claude-code-companion/internal/logger"
 	"claude-code-companion/internal/security"
+	"claude-code-companion/internal/i18n"
 	"github.com/gin-gonic/gin"
 )
 
@@ -123,7 +124,7 @@ func (s *AdminServer) handleCleanupLogs(c *gin.Context) {
 
 	// 添加安全验证
 	if err := security.ValidateLogDays(days); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "日志保留天数验证失败: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": i18n.TCtx(c, "log_days_validation_failed", "日志保留天数验证失败: ") + err.Error()})
 		return
 	}
 

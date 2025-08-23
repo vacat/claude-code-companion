@@ -6,6 +6,7 @@ import (
 
 	"claude-code-companion/internal/config"
 	"claude-code-companion/internal/security"
+	"claude-code-companion/internal/i18n"
 
 	"github.com/gin-gonic/gin"
 )
@@ -72,29 +73,29 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 
 	// 添加安全验证
 	if err := security.ValidateEndpointName(request.Name); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "端点名称验证失败: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": i18n.TCtx(c, "endpoint_name_validation_failed", "端点名称验证失败: ") + err.Error()})
 		return
 	}
 
 	if err := security.ValidateURL(request.URL); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "URL验证失败: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": i18n.TCtx(c, "url_validation_failed", "URL验证失败: ") + err.Error()})
 		return
 	}
 
 	if err := security.ValidateTags(request.Tags); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "标签验证失败: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": i18n.TCtx(c, "tags_validation_failed", "标签验证失败: ") + err.Error()})
 		return
 	}
 
 	if request.AuthValue != "" {
 		if err := security.ValidateAuthToken(request.AuthValue); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "认证令牌验证失败: " + err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": i18n.TCtx(c, "auth_token_validation_failed", "认证令牌验证失败: ") + err.Error()})
 			return
 		}
 	}
 
 	if request.PathPrefix != "" {
-		if err := security.ValidateGenericText(request.PathPrefix, 200, "路径前缀"); err != nil {
+		if err := security.ValidateGenericText(request.PathPrefix, 200, i18n.TCtx(c, "path_prefix", "路径前缀")); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -193,34 +194,34 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 	// 添加安全验证
 	if request.Name != "" {
 		if err := security.ValidateEndpointName(request.Name); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "端点名称验证失败: " + err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": i18n.TCtx(c, "endpoint_name_validation_failed", "端点名称验证失败: ") + err.Error()})
 			return
 		}
 	}
 
 	if request.URL != "" {
 		if err := security.ValidateURL(request.URL); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "URL验证失败: " + err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": i18n.TCtx(c, "url_validation_failed", "URL验证失败: ") + err.Error()})
 			return
 		}
 	}
 
 	if len(request.Tags) > 0 {
 		if err := security.ValidateTags(request.Tags); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "标签验证失败: " + err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": i18n.TCtx(c, "tags_validation_failed", "标签验证失败: ") + err.Error()})
 			return
 		}
 	}
 
 	if request.AuthValue != "" {
 		if err := security.ValidateAuthToken(request.AuthValue); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "认证令牌验证失败: " + err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": i18n.TCtx(c, "auth_token_validation_failed", "认证令牌验证失败: ") + err.Error()})
 			return
 		}
 	}
 
 	if request.PathPrefix != "" {
-		if err := security.ValidateGenericText(request.PathPrefix, 200, "路径前缀"); err != nil {
+		if err := security.ValidateGenericText(request.PathPrefix, 200, i18n.TCtx(c, "path_prefix", "路径前缀")); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
