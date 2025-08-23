@@ -1,10 +1,12 @@
 package endpoint
 
 import (
+	"log"
 	"sync"
 	"time"
 
 	"claude-code-companion/internal/config"
+	"claude-code-companion/internal/statistics"
 )
 
 type HealthChecker interface {
@@ -12,27 +14,70 @@ type HealthChecker interface {
 }
 
 type Manager struct {
-	selector        *Selector
-	endpoints       []*Endpoint
-	config          *config.Config
-	mutex           sync.RWMutex
-	healthChecker   HealthChecker
-	healthTickers   map[string]*time.Ticker
+	selector          *Selector
+	endpoints         []*Endpoint
+	config            *config.Config
+	mutex             sync.RWMutex
+	healthChecker     HealthChecker
+	healthTickers     map[string]*time.Ticker
+	statisticsManager statistics.StatisticsManager
 }
 
 func NewManager(cfg *config.Config) *Manager {
+	// Initialize statistics manager
+	// Use log directory for statistics database, or current directory as fallback
+	dataDirectory := cfg.Logging.LogDirectory
+	if dataDirectory == "" {
+		dataDirectory = "." // fallback to current directory
+	}
+
+	statisticsManager, err := statistics.NewStatisticsManager(dataDirectory)
+	if err != nil {
+		// This should rarely happen now with the fallback mechanism
+		log.Printf("ERROR: Failed to initialize any statistics manager: %v", err)
+		log.Printf("Statistics functionality will be completely disabled")
+		statisticsManager = nil
+	} else {
+		dbPath := statisticsManager.GetDatabasePath()
+		if dbPath == "memory-only (no persistent storage)" {
+			log.Printf("WARNING: Using memory-only statistics (no persistence)")
+			log.Printf("Statistics will reset when the service restarts")
+			log.Printf("This may be due to file permission issues or insufficient disk space")
+			log.Printf("Check logs for specific error details")
+		} else {
+			log.Printf("Statistics persistence initialized successfully (database: %s)", dbPath)
+		}
+	}
+
 	endpoints := make([]*Endpoint, 0, len(cfg.Endpoints))
 	for _, endpointConfig := range cfg.Endpoints {
 		endpoint := NewEndpoint(endpointConfig)
+		
+		// Initialize or inherit statistics data if statistics manager is available
+		if statisticsManager != nil {
+			if err := initializeEndpointStatistics(endpoint, statisticsManager); err != nil {
+				log.Printf("WARNING: Failed to initialize statistics for endpoint %s: %v", 
+					endpoint.Name, err)
+				log.Printf("Endpoint %s will start with zero statistics", endpoint.Name)
+			} else {
+				log.Printf("Statistics loaded for endpoint %s: TotalRequests=%d, SuccessRequests=%d", 
+					endpoint.Name, endpoint.TotalRequests, endpoint.SuccessRequests)
+			}
+		} else {
+			log.Printf("Statistics persistence unavailable - endpoint %s will start with zero statistics", 
+				endpoint.Name)
+		}
+		
 		endpoints = append(endpoints, endpoint)
 	}
 
 	manager := &Manager{
-		selector:        NewSelector(endpoints),
-		endpoints:       endpoints,
-		config:          cfg,
-		healthChecker:   nil, // 稍后设置
-		healthTickers:   make(map[string]*time.Ticker),
+		selector:          NewSelector(endpoints),
+		endpoints:         endpoints,
+		config:            cfg,
+		healthChecker:     nil, // 稍后设置
+		healthTickers:     make(map[string]*time.Ticker),
+		statisticsManager: statisticsManager,
 	}
 
 	return manager
@@ -57,7 +102,18 @@ func (m *Manager) RecordRequest(endpointID string, success bool) {
 
 	for _, endpoint := range m.endpoints {
 		if endpoint.ID == endpointID {
+			// Update in-memory statistics
 			endpoint.RecordRequest(success)
+			
+			// Update database statistics if statistics manager is available
+			if m.statisticsManager != nil {
+				if err := m.statisticsManager.RecordRequest(endpointID, success); err != nil {
+					// Log error but don't fail the operation
+					// Statistics persistence failure should not break request processing
+					log.Printf("WARNING: Failed to persist statistics for endpoint %s: %v", 
+						endpointID, err)
+				}
+			}
 			break
 		}
 	}
@@ -67,10 +123,38 @@ func (m *Manager) UpdateEndpoints(endpointConfigs []config.EndpointConfig) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
+	// Create map of existing endpoints by name for intelligent matching
+	existingEndpointsByName := make(map[string]*Endpoint)
+	for _, endpoint := range m.endpoints {
+		existingEndpointsByName[endpoint.Name] = endpoint
+	}
+
 	newEndpoints := make([]*Endpoint, 0, len(endpointConfigs))
 	for _, cfg := range endpointConfigs {
-		endpoint := NewEndpoint(cfg)
-		newEndpoints = append(newEndpoints, endpoint)
+		// Check if an endpoint with the same name already exists
+		if existingEndpoint, exists := existingEndpointsByName[cfg.Name]; exists {
+			// Same name endpoint exists - preserve statistics and update configuration
+			endpoint := m.updateExistingEndpoint(existingEndpoint, cfg)
+			newEndpoints = append(newEndpoints, endpoint)
+		} else {
+			// New endpoint - create fresh with inherited statistics from database
+			endpoint := NewEndpoint(cfg)
+			if m.statisticsManager != nil {
+				if err := initializeEndpointStatistics(endpoint, m.statisticsManager); err != nil {
+					log.Printf("WARNING: Failed to load statistics for new endpoint %s: %v", 
+						cfg.Name, err)
+				} else if endpoint.TotalRequests > 0 {
+					log.Printf("Inherited statistics for endpoint %s: TotalRequests=%d", 
+						cfg.Name, endpoint.TotalRequests)
+				}
+			}
+			newEndpoints = append(newEndpoints, endpoint)
+		}
+	}
+
+	// Clean up statistics for endpoints that were removed
+	if m.statisticsManager != nil {
+		m.cleanupRemovedEndpoints(endpointConfigs)
 	}
 
 	// 停止旧的健康检查
@@ -139,6 +223,82 @@ func (m *Manager) runHealthCheck(endpoint *Endpoint, ticker *time.Ticker) {
 			if endpoint.GetSuccessiveSuccesses() >= recoveryThreshold {
 				// 达到恢复阈值，恢复为可用状态
 				endpoint.MarkActive()
+			}
+		}
+	}
+}
+
+// initializeEndpointStatistics initializes or inherits statistics for an endpoint
+func initializeEndpointStatistics(endpoint *Endpoint, statisticsManager statistics.StatisticsManager) error {
+	// Initialize statistics in database and inherit existing data if available
+	dbStats, err := statisticsManager.InitializeEndpointStatistics(
+		endpoint.Name, endpoint.URL, endpoint.EndpointType, endpoint.AuthType)
+	if err != nil {
+		return err
+	}
+
+	// Update endpoint's in-memory statistics with persisted data
+	endpoint.mutex.Lock()
+	endpoint.TotalRequests = dbStats.TotalRequests
+	endpoint.SuccessRequests = dbStats.SuccessRequests
+	endpoint.FailureCount = dbStats.FailureCount
+	endpoint.SuccessiveSuccesses = dbStats.SuccessiveSuccesses
+	endpoint.LastFailure = dbStats.LastFailure
+	endpoint.mutex.Unlock()
+
+	return nil
+}
+
+// updateExistingEndpoint updates an existing endpoint's configuration while preserving statistics
+func (m *Manager) updateExistingEndpoint(existingEndpoint *Endpoint, newConfig config.EndpointConfig) *Endpoint {
+	// Create new endpoint with updated configuration but preserve statistics
+	newEndpoint := NewEndpoint(newConfig)
+	
+	// Copy statistics from existing endpoint to preserve accumulated data
+	existingEndpoint.mutex.RLock()
+	newEndpoint.mutex.Lock()
+	newEndpoint.TotalRequests = existingEndpoint.TotalRequests
+	newEndpoint.SuccessRequests = existingEndpoint.SuccessRequests
+	newEndpoint.FailureCount = existingEndpoint.FailureCount
+	newEndpoint.SuccessiveSuccesses = existingEndpoint.SuccessiveSuccesses
+	newEndpoint.LastFailure = existingEndpoint.LastFailure
+	newEndpoint.Status = existingEndpoint.Status
+	newEndpoint.LastCheck = existingEndpoint.LastCheck
+	
+	// Preserve request history for health checking
+	newEndpoint.RequestHistory = existingEndpoint.RequestHistory
+	newEndpoint.mutex.Unlock()
+	existingEndpoint.mutex.RUnlock()
+
+	// Update database metadata if statistics manager is available
+	if m.statisticsManager != nil {
+		if err := m.statisticsManager.UpdateEndpointMetadata(
+			newEndpoint.ID, newEndpoint.Name, newEndpoint.URL, 
+			newEndpoint.EndpointType, newEndpoint.AuthType); err != nil {
+			log.Printf("WARNING: Failed to update metadata for endpoint %s: %v", 
+				newEndpoint.Name, err)
+		}
+	}
+
+	return newEndpoint
+}
+
+// cleanupRemovedEndpoints removes statistics for endpoints that are no longer in configuration
+func (m *Manager) cleanupRemovedEndpoints(newConfigs []config.EndpointConfig) {
+	// Create set of new endpoint names
+	newEndpointNames := make(map[string]bool)
+	for _, cfg := range newConfigs {
+		newEndpointNames[cfg.Name] = true
+	}
+
+	// Check existing endpoints and remove statistics for those not in new config
+	for _, endpoint := range m.endpoints {
+		if !newEndpointNames[endpoint.Name] {
+			// Endpoint was removed - delete its statistics
+			log.Printf("Cleaning up statistics for removed endpoint: %s", endpoint.Name)
+			if err := m.statisticsManager.DeleteStatistics(endpoint.ID); err != nil {
+				log.Printf("WARNING: Failed to delete statistics for removed endpoint %s: %v", 
+					endpoint.Name, err)
 			}
 		}
 	}

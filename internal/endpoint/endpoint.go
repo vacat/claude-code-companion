@@ -10,6 +10,7 @@ import (
 	"claude-code-companion/internal/config"
 	"claude-code-companion/internal/interfaces"
 	"claude-code-companion/internal/oauth"
+	"claude-code-companion/internal/statistics"
 	"claude-code-companion/internal/utils"
 )
 
@@ -228,7 +229,8 @@ func (e *Endpoint) GetSuccessiveSuccesses() int {
 
 
 func generateID(name string) string {
-	return fmt.Sprintf("endpoint-%s-%d", name, time.Now().Unix())
+	// Use stable ID based on endpoint name hash for statistics persistence
+	return statistics.GenerateEndpointID(name)
 }
 
 // parseDuration 解析时间字符串，失败时返回默认值
