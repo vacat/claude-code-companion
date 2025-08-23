@@ -229,14 +229,33 @@
                                 </button>
                             </div>
                             
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-info-circle"></i>
+                                <strong><span data-t="enhanced_script_notice">增强脚本说明</span>：</strong>
+                                <span data-t="enhanced_script_description">此脚本会自动检查并修改 Claude Code 设置文件以确保代理配置生效。如果设置文件存在冲突配置，会自动备份原文件。</span>
+                            </div>
+                            
                             <div class="position-relative">
                                 <div class="code-block" id="windows-script-content">
                                     @echo off<br>
-                                    set ANTHROPIC_BASE_URL={{.BaseURL}}<br>
-                                    set ANTHROPIC_AUTH_TOKEN=hello<br>
-                                    set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1<br>
-                                    set API_TIMEOUT_MS=600000<br>
-                                    claude %*
+                                    REM Claude Code Companion - Windows Launcher<br>
+                                    echo Configuring Claude Code for proxy use...<br><br>
+                                    
+                                    REM Use embedded Node.js to process settings.json<br>
+                                    node -e "const fs=require('fs');const path=require('path');const os=require('os');const claudeDir=path.join(os.homedir(),'.claude');const settingsFile=path.join(claudeDir,'settings.json');const targetEnv={'ANTHROPIC_BASE_URL':'{{.BaseURL}}','ANTHROPIC_AUTH_TOKEN':'hello','CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC':'1','API_TIMEOUT_MS':'600000'};function processSettings(){if(!fs.existsSync(settingsFile)){console.log('Claude settings file not found, using environment variables only');return true;}try{const content=fs.readFileSync(settingsFile,'utf8');const settings=JSON.parse(content);if(!settings.env)settings.env={};let needsUpdate=false;let backupCreated=false;for(const[key,targetValue]of Object.entries(targetEnv)){const currentValue=settings.env[key];if(currentValue!==targetValue){if(!backupCreated){const timestamp=new Date().toISOString().replace(/[:.]/g,'-');const backupFile=settingsFile+'.backup-'+timestamp;fs.copyFileSync(settingsFile,backupFile);console.log('Backed up settings to: '+backupFile);backupCreated=true;}if(currentValue){console.log('Updating '+key+': '+currentValue+' -> '+targetValue);}else{console.log('Adding '+key+': '+targetValue);}settings.env[key]=targetValue;needsUpdate=true;}}if(needsUpdate){fs.writeFileSync(settingsFile,JSON.stringify(settings,null,2));console.log('Settings updated successfully');}else{console.log('Settings already configured correctly');}return true;}catch(error){console.error('Error processing settings:',error.message);console.log('Using fallback environment variables...');return false;}}process.exit(processSettings()?0:1);"<br><br>
+                                    
+                                    REM Check configuration result<br>
+                                    if %errorlevel% equ 0 (<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;echo Starting Claude...<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;claude %*<br>
+                                    ) else (<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;echo Configuration failed, using fallback environment variables...<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;set ANTHROPIC_BASE_URL={{.BaseURL}}<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;set ANTHROPIC_AUTH_TOKEN=hello<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;set API_TIMEOUT_MS=600000<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;claude %*<br>
+                                    )
                                 </div>
                                 <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
                                     <i class="fas fa-copy"></i>
@@ -253,14 +272,33 @@
                                 </button>
                             </div>
                             
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-info-circle"></i>
+                                <strong><span data-t="enhanced_script_notice">增强脚本说明</span>：</strong>
+                                <span data-t="enhanced_script_description">此脚本会自动检查并修改 Claude Code 设置文件以确保代理配置生效。如果设置文件存在冲突配置，会自动备份原文件。</span>
+                            </div>
+                            
                             <div class="position-relative">
                                 <div class="code-block" id="macos-script-content">
                                     #!/bin/bash<br>
-                                    export ANTHROPIC_BASE_URL="{{.BaseURL}}"<br>
-                                    export ANTHROPIC_AUTH_TOKEN="hello"<br>
-                                    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1<br>
-                                    export API_TIMEOUT_MS=600000<br>
-                                    claude "$@"
+                                    # Claude Code Companion - macOS Launcher<br>
+                                    echo "Configuring Claude Code for proxy use..."<br><br>
+                                    
+                                    # Use embedded Node.js to process settings.json<br>
+                                    node -e "const fs=require('fs');const path=require('path');const os=require('os');const claudeDir=path.join(os.homedir(),'.claude');const settingsFile=path.join(claudeDir,'settings.json');const targetEnv={'ANTHROPIC_BASE_URL':'{{.BaseURL}}','ANTHROPIC_AUTH_TOKEN':'hello','CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC':'1','API_TIMEOUT_MS':'600000'};function processSettings(){if(!fs.existsSync(settingsFile)){console.log('Claude settings file not found, using environment variables only');return true;}try{const content=fs.readFileSync(settingsFile,'utf8');const settings=JSON.parse(content);if(!settings.env)settings.env={};let needsUpdate=false;let backupCreated=false;for(const[key,targetValue]of Object.entries(targetEnv)){const currentValue=settings.env[key];if(currentValue!==targetValue){if(!backupCreated){const timestamp=new Date().toISOString().replace(/[:.]/g,'-');const backupFile=settingsFile+'.backup-'+timestamp;fs.copyFileSync(settingsFile,backupFile);console.log('Backed up settings to: '+backupFile);backupCreated=true;}if(currentValue){console.log('Updating '+key+': '+currentValue+' -> '+targetValue);}else{console.log('Adding '+key+': '+targetValue);}settings.env[key]=targetValue;needsUpdate=true;}}if(needsUpdate){fs.writeFileSync(settingsFile,JSON.stringify(settings,null,2));console.log('Settings updated successfully');}else{console.log('Settings already configured correctly');}return true;}catch(error){console.error('Error processing settings:',error.message);console.log('Using fallback environment variables...');return false;}}process.exit(processSettings()?0:1);"<br><br>
+                                    
+                                    # Check configuration result<br>
+                                    if [ $? -eq 0 ]; then<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;echo "Starting Claude..."<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;exec claude "$@"<br>
+                                    else<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;echo "Configuration failed, using fallback environment variables..."<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;export ANTHROPIC_BASE_URL="{{.BaseURL}}"<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;export ANTHROPIC_AUTH_TOKEN="hello"<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1"<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;export API_TIMEOUT_MS="600000"<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;exec claude "$@"<br>
+                                    fi
                                 </div>
                                 <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
                                     <i class="fas fa-copy"></i>
@@ -277,14 +315,33 @@
                                 </button>
                             </div>
                             
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-info-circle"></i>
+                                <strong><span data-t="enhanced_script_notice">增强脚本说明</span>：</strong>
+                                <span data-t="enhanced_script_description">此脚本会自动检查并修改 Claude Code 设置文件以确保代理配置生效。如果设置文件存在冲突配置，会自动备份原文件。</span>
+                            </div>
+                            
                             <div class="position-relative">
                                 <div class="code-block" id="linux-script-content">
                                     #!/bin/bash<br>
-                                    export ANTHROPIC_BASE_URL="{{.BaseURL}}"<br>
-                                    export ANTHROPIC_AUTH_TOKEN="hello"<br>
-                                    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1<br>
-                                    export API_TIMEOUT_MS=600000<br>
-                                    claude "$@"
+                                    # Claude Code Companion - Linux Launcher<br>
+                                    echo "Configuring Claude Code for proxy use..."<br><br>
+                                    
+                                    # Use embedded Node.js to process settings.json<br>
+                                    node -e "const fs=require('fs');const path=require('path');const os=require('os');const claudeDir=path.join(os.homedir(),'.claude');const settingsFile=path.join(claudeDir,'settings.json');const targetEnv={'ANTHROPIC_BASE_URL':'{{.BaseURL}}','ANTHROPIC_AUTH_TOKEN':'hello','CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC':'1','API_TIMEOUT_MS':'600000'};function processSettings(){if(!fs.existsSync(settingsFile)){console.log('Claude settings file not found, using environment variables only');return true;}try{const content=fs.readFileSync(settingsFile,'utf8');const settings=JSON.parse(content);if(!settings.env)settings.env={};let needsUpdate=false;let backupCreated=false;for(const[key,targetValue]of Object.entries(targetEnv)){const currentValue=settings.env[key];if(currentValue!==targetValue){if(!backupCreated){const timestamp=new Date().toISOString().replace(/[:.]/g,'-');const backupFile=settingsFile+'.backup-'+timestamp;fs.copyFileSync(settingsFile,backupFile);console.log('Backed up settings to: '+backupFile);backupCreated=true;}if(currentValue){console.log('Updating '+key+': '+currentValue+' -> '+targetValue);}else{console.log('Adding '+key+': '+targetValue);}settings.env[key]=targetValue;needsUpdate=true;}}if(needsUpdate){fs.writeFileSync(settingsFile,JSON.stringify(settings,null,2));console.log('Settings updated successfully');}else{console.log('Settings already configured correctly');}return true;}catch(error){console.error('Error processing settings:',error.message);console.log('Using fallback environment variables...');return false;}}process.exit(processSettings()?0:1);"<br><br>
+                                    
+                                    # Check configuration result<br>
+                                    if [ $? -eq 0 ]; then<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;echo "Starting Claude..."<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;exec claude "$@"<br>
+                                    else<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;echo "Configuration failed, using fallback environment variables..."<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;export ANTHROPIC_BASE_URL="{{.BaseURL}}"<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;export ANTHROPIC_AUTH_TOKEN="hello"<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1"<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;export API_TIMEOUT_MS="600000"<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;exec claude "$@"<br>
+                                    fi
                                 </div>
                                 <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
                                     <i class="fas fa-copy"></i>
@@ -325,15 +382,76 @@
                                     </div>
                                 </li>
                             </ol>
+                            
+                            <div class="alert alert-success mt-3">
+                                <i class="fas fa-magic"></i>
+                                <strong><span data-t="smart_configuration">智能配置</span>：</strong>
+                                <span data-t="smart_configuration_desc">脚本会自动检测并处理 Claude Code 设置文件，确保代理配置始终生效。</span>
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            <h5><span data-t="Environment Variables">环境变量说明</span></h5>
+                            <h5><span data-t="Enhanced Features">增强功能</span></h5>
+                            <ul>
+                                <li><i class="fas fa-check-circle text-success"></i> <span data-t="auto_settings_modification">自动修改 settings.json 文件</span></li>
+                                <li><i class="fas fa-check-circle text-success"></i> <span data-t="automatic_backup">冲突时自动备份原始配置</span></li>
+                                <li><i class="fas fa-check-circle text-success"></i> <span data-t="fallback_support">失败时环境变量后备支持</span></li>
+                                <li><i class="fas fa-check-circle text-success"></i> <span data-t="preserve_custom_settings">保留用户自定义设置</span></li>
+                            </ul>
+                            
+                            <h5 class="mt-4"><span data-t="Environment Variables">环境变量说明</span></h5>
                             <ul>
                                 <li><strong>ANTHROPIC_BASE_URL:</strong> <span data-t="Proxy server URL">代理服务器 URL</span></li>
                                 <li><strong>ANTHROPIC_AUTH_TOKEN:</strong> <span data-t="Authentication token">认证令牌</span></li>
                                 <li><strong>CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:</strong> <span data-t="Disable non-essential traffic">禁用非必要流量</span></li>
                                 <li><strong>API_TIMEOUT_MS:</strong> <span data-t="API timeout in milliseconds">API 超时时间（毫秒）</span></li>
                             </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- 添加常见问题解答 -->
+                    <div class="row mt-5">
+                        <div class="col-12">
+                            <h5><span data-t="faq_title">常见问题</span></h5>
+                            <div class="accordion" id="faqAccordion">
+                                <div class="accordion-item">
+                                    <h6 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                            <span data-t="faq_script_safe">脚本修改我的设置文件安全吗？</span>
+                                        </button>
+                                    </h6>
+                                    <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                        <div class="accordion-body">
+                                            <span data-t="faq_script_safe_answer">完全安全。脚本在修改前会自动创建带时间戳的备份文件，您可以随时恢复。脚本只修改代理相关的环境变量，保留所有其他配置。</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="accordion-item">
+                                    <h6 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                            <span data-t="faq_node_required">需要安装 Node.js 吗？</span>
+                                        </button>
+                                    </h6>
+                                    <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                        <div class="accordion-body">
+                                            <span data-t="faq_node_required_answer">不需要单独安装。Claude Code 本身基于 Node.js，所以脚本可以直接使用现有的 Node.js 环境。</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="accordion-item">
+                                    <h6 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                            <span data-t="faq_restore_settings">如何恢复原始设置？</span>
+                                        </button>
+                                    </h6>
+                                    <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                        <div class="accordion-body">
+                                            <span data-t="faq_restore_settings_answer">在 ~/.claude/ 目录中找到 settings.json.backup-* 文件，将其重命名为 settings.json 即可恢复。</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

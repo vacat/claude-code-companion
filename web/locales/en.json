@@ -503,6 +503,22 @@
     "auth_token": "Auth Token",
     "api_key_option": "API Key (x-api-key)",
     "auth_token_option": "Auth Token (Authorization Bearer)",
-    "oauth_option": "OAuth 2.0"
+    "oauth_option": "OAuth 2.0",
+    "enhanced_script_notice": "Enhanced Script Info",
+    "enhanced_script_description": "This script automatically checks and modifies Claude Code settings file to ensure proxy configuration works. If conflicting settings exist, it will backup the original file.",
+    "smart_configuration": "Smart Configuration",
+    "smart_configuration_desc": "The script automatically detects and processes Claude Code settings files to ensure proxy configuration always takes effect.",
+    "Enhanced Features": "Enhanced Features", 
+    "auto_settings_modification": "Automatic settings.json modification",
+    "automatic_backup": "Automatic backup of original configuration when conflicts occur",
+    "fallback_support": "Environment variable fallback support on failure",
+    "preserve_custom_settings": "Preserve user custom settings",
+    "faq_title": "FAQ",
+    "faq_script_safe": "Is it safe for the script to modify my settings file?",
+    "faq_script_safe_answer": "Completely safe. The script automatically creates timestamped backup files before modification, which you can restore at any time. The script only modifies proxy-related environment variables and preserves all other configurations.",
+    "faq_node_required": "Do I need to install Node.js?",
+    "faq_node_required_answer": "No separate installation needed. Claude Code is built on Node.js, so the script can directly use the existing Node.js environment.",
+    "faq_restore_settings": "How do I restore original settings?",
+    "faq_restore_settings_answer": "Find the settings.json.backup-* file in the ~/.claude/ directory and rename it to settings.json to restore."
   }
 }

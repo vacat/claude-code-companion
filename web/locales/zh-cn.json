@@ -483,6 +483,22 @@
     "inspector_character_thinking_content": "字符思考内容",
     "inspector_thinking_mode_content": "内部推理",
     "inspector_thinking_content_description": "内部模型推理过程（通常对用户隐藏）",
-    "inspector_unknown_content_type": "未知内容格式"
+    "inspector_unknown_content_type": "未知内容格式",
+    "enhanced_script_notice": "增强脚本说明",
+    "enhanced_script_description": "此脚本会自动检查并修改 Claude Code 设置文件以确保代理配置生效。如果设置文件存在冲突配置，会自动备份原文件。",
+    "smart_configuration": "智能配置",
+    "smart_configuration_desc": "脚本会自动检测并处理 Claude Code 设置文件，确保代理配置始终生效。",
+    "Enhanced Features": "增强功能",
+    "auto_settings_modification": "自动修改 settings.json 文件",
+    "automatic_backup": "冲突时自动备份原始配置",
+    "fallback_support": "失败时环境变量后备支持",
+    "preserve_custom_settings": "保留用户自定义设置",
+    "faq_title": "常见问题",
+    "faq_script_safe": "脚本修改我的设置文件安全吗？",
+    "faq_script_safe_answer": "完全安全。脚本在修改前会自动创建带时间戳的备份文件，您可以随时恢复。脚本只修改代理相关的环境变量，保留所有其他配置。",
+    "faq_node_required": "需要安装 Node.js 吗？",
+    "faq_node_required_answer": "不需要单独安装。Claude Code 本身基于 Node.js，所以脚本可以直接使用现有的 Node.js 环境。",
+    "faq_restore_settings": "如何恢复原始设置？",
+    "faq_restore_settings_answer": "在 ~/.claude/ 目录中找到 settings.json.backup-* 文件，将其重命名为 settings.json 即可恢复。"
   }
 }
