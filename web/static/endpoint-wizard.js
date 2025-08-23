@@ -152,7 +152,7 @@ class EndpointWizard {
         if (!this.selectedProfile) return;
 
         // 自动生成端点名称
-        this.generateUniqueEndpointName(this.selectedProfile.display_name);
+        this.generateUniqueEndpointName(this.selectedProfile.profile_id);
 
         // 设置认证信息标签和提示
         this.setupAuthFields();
@@ -164,32 +164,32 @@ class EndpointWizard {
         this.handleDefaultModelField();
     }
 
-    async generateUniqueEndpointName(displayName) {
+    async generateUniqueEndpointName(profileId) {
         try {
             const response = await apiRequest('/admin/api/endpoints/generate-name', {
                 method: 'POST',
-                body: JSON.stringify({ display_name: displayName })
+                body: JSON.stringify({ profile_id: profileId })
             });
 
             if (response.ok) {
                 const data = await response.json();
-                document.getElementById('endpoint-name-wizard').value = data.suggested_name || displayName;
+                document.getElementById('endpoint-name-wizard').value = data.suggested_name || profileId;
             } else {
                 // 回退到本地生成
-                const normalizedName = this.normalizeEndpointName(displayName);
+                const normalizedName = this.normalizeEndpointName(profileId);
                 document.getElementById('endpoint-name-wizard').value = normalizedName;
             }
         } catch (error) {
             console.error('Error generating endpoint name:', error);
             // 回退到本地生成
-            const normalizedName = this.normalizeEndpointName(displayName);
+            const normalizedName = this.normalizeEndpointName(profileId);
             document.getElementById('endpoint-name-wizard').value = normalizedName;
         }
     }
 
-    normalizeEndpointName(displayName) {
+    normalizeEndpointName(profileId) {
         // 简单的名称标准化逻辑
-        return displayName.toLowerCase()
+        return profileId.toLowerCase()
             .replace(/[^a-z0-9\s-]/g, '')
             .replace(/\s+/g, '-')
             .replace(/-+/g, '-')

@@ -139,7 +139,7 @@ func (s *AdminServer) handleCreateEndpointFromWizard(c *gin.Context) {
 // handleGenerateEndpointName 生成唯一的端点名称
 func (s *AdminServer) handleGenerateEndpointName(c *gin.Context) {
 	var request struct {
-		DisplayName string `json:"display_name" binding:"required"`
+		ProfileID string `json:"profile_id" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -148,7 +148,7 @@ func (s *AdminServer) handleGenerateEndpointName(c *gin.Context) {
 	}
 
 	// 安全验证
-	if err := security.ValidateGenericText(request.DisplayName, 100, i18n.TCtx(c, "display_name", "显示名称")); err != nil {
+	if err := security.ValidateGenericText(request.ProfileID, 100, i18n.TCtx(c, "profile_id", "配置ID")); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -160,8 +160,8 @@ func (s *AdminServer) handleGenerateEndpointName(c *gin.Context) {
 		existingNames[i] = ep.Name
 	}
 
-	// 生成唯一名称
-	uniqueName := config.GenerateUniqueEndpointName(request.DisplayName, existingNames)
+	// 生成唯一名称（使用profile_id作为基础名称）
+	uniqueName := config.GenerateUniqueEndpointName(request.ProfileID, existingNames)
 
 	c.JSON(http.StatusOK, gin.H{
 		"suggested_name": uniqueName,
