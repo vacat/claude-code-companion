@@ -79,7 +79,7 @@
                                     </label>
                                     <input type="text" class="form-control" id="endpoint-tags" 
                                            data-t-placeholder="comma_separated" placeholder="用逗号分隔">
-                                    <small class="form-text text-muted" data-t="empty_for_universal_endpoint">留空endpoint</small>
+                                    <small class="form-text text-muted" data-t="empty_for_universal_endpoint">Leave empty for universal endpoint</small>
                                 </div>
                             </div>
 
@@ -93,7 +93,7 @@
                                         <option value="anthropic">Anthropic (Claude)</option>
                                         <option value="openai">OpenAI Compatible</option>
                                     </select>
-                                    <small class="form-text text-muted" data-t="select_api_compatible_type">选择端点的API兼容类型</small>
+                                    <small class="form-text text-muted" data-t="select_api_compatible_type">Select API compatible type for the endpoint</small>
                                 </div>
                                 <div class="col-6 d-none-custom" id="path-prefix-group">
                                     <label for="endpoint-path-prefix" class="form-label">
@@ -112,9 +112,9 @@
                                         <i class="fas fa-key form-label-icon"></i><span data-t="authentication_method">认证方式</span> <span class="text-danger">*</span>
                                     </label>
                                     <select class="form-select" id="endpoint-auth-type" required data-change="auth-type">
-                                        <option value="api_key">API Key (x-api-key)</option>
-                                        <option value="auth_token" selected>Auth Token (Authorization Bearer)</option>
-                                        <option value="oauth">OAuth 2.0</option>
+                                        <option value="api_key" data-t-option="api_key_option">API Key (x-api-key)</option>
+                                        <option value="auth_token" selected data-t-option="auth_token_option">Auth Token (Authorization Bearer)</option>
+                                        <option value="oauth" data-t-option="oauth_option">OAuth 2.0</option>
                                     </select>
                                 </div>
                                 <div class="col-8">
@@ -140,7 +140,7 @@
                                             <div class="card-body p-3">
                                                 <!-- Access Token -->
                                                 <div class="mb-3">
-                                                    <label for="oauth-access-token" class="form-label">Access Token <span class="text-danger">*</span></label>
+                                                    <label for="oauth-access-token" class="form-label" data-t="access_token">Access Token <span class="text-danger">*</span></label>
                                                     <div class="input-group">
                                                         <input type="password" class="form-control" id="oauth-access-token" 
                                                                data-t-placeholder="access_token_placeholder" placeholder="访问令牌（如：sk-ant-oat01-... 或其他格式）">
@@ -152,7 +152,7 @@
                                                 
                                                 <!-- Refresh Token -->
                                                 <div class="mb-3">
-                                                    <label for="oauth-refresh-token" class="form-label">Refresh Token <span class="text-danger">*</span></label>
+                                                    <label for="oauth-refresh-token" class="form-label" data-t="refresh_token">Refresh Token <span class="text-danger">*</span></label>
                                                     <div class="input-group">
                                                         <input type="password" class="form-control" id="oauth-refresh-token" 
                                                                data-t-placeholder="refresh_token_placeholder" placeholder="刷新令牌（如：sk-ant-ort01-... 或其他格式）">

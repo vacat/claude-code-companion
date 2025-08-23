@@ -431,6 +431,18 @@
     "saving": "保存中...",
     "endpoint_created_success": "端点 \"{name}\" 创建成功！",
     "create_endpoint_failed": "创建端点失败",
-    "save_endpoint_error": "保存端点时发生错误"
+    "save_endpoint_error": "保存端点时发生错误",
+    "proxy": "代理",
+    "no_tags_registered": "未注册标签",
+    "low_thinking_tooltip": "低级思考：{{tokens}} tokens",
+    "medium_thinking_tooltip": "中级思考：{{tokens}} tokens",
+    "high_thinking_tooltip": "高级思考：{{tokens}} tokens",
+    "ultra_thinking_tooltip": "超级思考：{{tokens}} tokens",
+    "access_token": "访问令牌",
+    "refresh_token": "刷新令牌",
+    "auth_token": "认证令牌",
+    "api_key_option": "API Key (x-api-key)",
+    "auth_token_option": "认证令牌 (Authorization Bearer)",
+    "oauth_option": "OAuth 2.0"
   }
 }

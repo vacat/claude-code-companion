@@ -10,10 +10,10 @@ function displayLogDetails(log) {
     modalBody.innerHTML = `
         <div class="mb-3">
             <div class="d-flex justify-content-between align-items-center">
-                <h6 data-t="request_details">请求详情</h6>
+                <h6 data-t="request_details">Request Details</h6>
                 <button class="btn btn-sm btn-outline-success" onclick="exportDebugInfo('${escapeHtml(log.request_id)}')" 
                         data-t="export_debug_info" data-t-title="export_debug_info_tooltip">
-                    <i class="fas fa-download"></i> <span data-t="export_debug_info">导出调试信息</span>
+                    <i class="fas fa-download"></i> <span data-t="export_debug_info">Export Debug Info</span>
                 </button>
             </div>
         </div>
@@ -21,7 +21,7 @@ function displayLogDetails(log) {
         <div class="mb-3">
             <div class="collapsible-header" onclick="toggleCollapsible('basicInfo')">
                 <span class="collapsible-toggle collapsed">▼</span>
-                <h6 class="mb-0" data-t="basic_info">基本信息</h6>
+                <h6 class="mb-0" data-t="basic_info">Basic Information</h6>
             </div>
             <div class="collapsible-content collapsed" id="basicInfo">
                 <table class="table table-sm">
@@ -66,7 +66,7 @@ function displayLogDetails(log) {
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="single-response-tab" data-bs-toggle="tab" data-bs-target="#single-response" type="button" role="tab">
-                    <span data-t="response_data">响应数据</span> ${responseChanges ? `<span class="comparison-badge badge bg-warning" data-t="modified">修改</span>` : ''}
+                    <span data-t="response_data">Response Data</span> ${responseChanges ? `<span class="comparison-badge badge bg-warning" data-t="modified">Modified</span>` : ''}
                 </button>
             </li>
         </ul>
@@ -83,6 +83,11 @@ function displayLogDetails(log) {
             </div>
         </div>
     `;
+    
+    // Process translations for dynamic content
+    if (window.I18n && window.I18n.processDataTElements) {
+        window.I18n.processDataTElements();
+    }
     
     // Reinitialize tooltips for dynamic content
     var tooltipTriggerList = [].slice.call(modalBody.querySelectorAll('[title]'));

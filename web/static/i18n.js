@@ -372,6 +372,57 @@
             this.log(`Added ${Object.keys(translations).length} translations for ${lang}`);
         },
         
+        
+        // Process option translations  
+        processOptionTranslations: function() {
+            const elements = document.querySelectorAll('[data-t-option]');
+            elements.forEach(element => {
+                const key = element.getAttribute('data-t-option');
+                const fallback = element.getAttribute('data-fallback') || element.textContent;
+                
+                if (key) {
+                    const translation = this.translate(key, fallback);
+                    element.textContent = translation;
+                }
+            });
+        },
+        
+        // Process tooltip translations with token replacement
+        processTooltipTranslations: function() {
+            const elements = document.querySelectorAll('[data-t-tooltip]');
+            elements.forEach(element => {
+                const key = element.getAttribute('data-t-tooltip');
+                const tokens = element.getAttribute('data-tokens');
+                
+                if (key && tokens) {
+                    const template = this.translate(key);
+                    const translatedText = template.replace('{{tokens}}', tokens);
+                    element.setAttribute('title', translatedText);
+                }
+            });
+        },
+        
+        // Override processDataTElements to include tooltip and option processing
+        processDataTElements: function() {
+            // Process regular data-t elements
+            const elements = document.querySelectorAll('[data-t]');
+            elements.forEach(element => {
+                const key = element.getAttribute('data-t');
+                const fallback = element.getAttribute('data-fallback') || element.textContent;
+                
+                if (key) {
+                    const translation = this.translate(key, fallback);
+                    element.textContent = translation;
+                }
+            });
+            
+            // Process option translations
+            this.processOptionTranslations();
+            
+            // Process tooltip translations
+            this.processTooltipTranslations();
+        },
+        
         // Get all translations for debugging
         getAllTranslations: function() {
             const result = {};

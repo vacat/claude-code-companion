@@ -109,7 +109,11 @@ function renderTags() {
     container.innerHTML = '';
     
     if (tags.length === 0) {
-        container.innerHTML = '<p class="text-muted">No tags registered</p>';
+        container.innerHTML = '<p class="text-muted" data-t="no_tags_registered">No tags registered</p>';
+        // Process translation for dynamic content
+        if (window.I18n && window.I18n.processDataTElements) {
+            window.I18n.processDataTElements();
+        }
         return;
     }
     

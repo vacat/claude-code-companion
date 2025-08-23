@@ -491,6 +491,18 @@
     "saving": "Saving...",
     "endpoint_created_success": "Endpoint \"{name}\" created successfully!",
     "create_endpoint_failed": "Failed to create endpoint",
-    "save_endpoint_error": "Error occurred while saving endpoint"
+    "save_endpoint_error": "Error occurred while saving endpoint",
+    "proxy": "Proxy",
+    "no_tags_registered": "No tags registered",
+    "low_thinking_tooltip": "Low Thinking: {{tokens}} tokens",
+    "medium_thinking_tooltip": "Medium Thinking: {{tokens}} tokens",
+    "high_thinking_tooltip": "High Thinking: {{tokens}} tokens",
+    "ultra_thinking_tooltip": "Ultra Thinking: {{tokens}} tokens",
+    "access_token": "Access Token",
+    "refresh_token": "Refresh Token",
+    "auth_token": "Auth Token",
+    "api_key_option": "API Key (x-api-key)",
+    "auth_token_option": "Auth Token (Authorization Bearer)",
+    "oauth_option": "OAuth 2.0"
   }
 }

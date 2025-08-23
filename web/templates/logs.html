@@ -106,21 +106,25 @@
                                                     <span class="badge bg-success thinking-badge" 
                                                           data-bs-toggle="tooltip" 
                                                           data-bs-placement="top" 
+                                                          data-t-tooltip="low_thinking_tooltip" data-tokens="{{.ThinkingBudgetTokens}}"
                                                           title="Low Thinking: {{.ThinkingBudgetTokens}} tokens">T</span>
                                                 {{else if le .ThinkingBudgetTokens 16384}}
                                                     <span class="badge bg-warning thinking-badge" 
                                                           data-bs-toggle="tooltip" 
                                                           data-bs-placement="top" 
+                                                          data-t-tooltip="medium_thinking_tooltip" data-tokens="{{.ThinkingBudgetTokens}}"
                                                           title="Medium Thinking: {{.ThinkingBudgetTokens}} tokens">T</span>
                                                 {{else if le .ThinkingBudgetTokens 32768}}
                                                     <span class="badge bg-warning text-dark thinking-badge" 
                                                           data-bs-toggle="tooltip" 
                                                           data-bs-placement="top" 
+                                                          data-t-tooltip="high_thinking_tooltip" data-tokens="{{.ThinkingBudgetTokens}}"
                                                           title="High Thinking: {{.ThinkingBudgetTokens}} tokens">T</span>
                                                 {{else}}
                                                     <span class="badge bg-danger thinking-badge" 
                                                           data-bs-toggle="tooltip" 
                                                           data-bs-placement="top" 
+                                                          data-t-tooltip="ultra_thinking_tooltip" data-tokens="{{.ThinkingBudgetTokens}}"
                                                           title="Ultra Thinking: {{.ThinkingBudgetTokens}} tokens">T</span>
                                                 {{end}}
                                             {{else}}
