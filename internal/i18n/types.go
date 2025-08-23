@@ -6,6 +6,13 @@ type Language string
 const (
 	LanguageZhCN Language = "zh-cn"
 	LanguageEn   Language = "en"
+	LanguageDe   Language = "de"
+	LanguageEs   Language = "es"
+	LanguageIt   Language = "it"
+	LanguageJa   Language = "ja"
+	LanguageKo   Language = "ko"
+	LanguagePt   Language = "pt"
+	LanguageRu   Language = "ru"
 )
 
 // Config holds i18n configuration
@@ -27,7 +34,7 @@ func DefaultConfig() *Config {
 // IsValidLanguage checks if the given language is supported
 func IsValidLanguage(lang string) bool {
 	switch Language(lang) {
-	case LanguageZhCN, LanguageEn:
+	case LanguageZhCN, LanguageEn, LanguageDe, LanguageEs, LanguageIt, LanguageJa, LanguageKo, LanguagePt, LanguageRu:
 		return true
 	default:
 		return false

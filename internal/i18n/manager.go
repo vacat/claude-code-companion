@@ -81,7 +81,7 @@ func (m *Manager) loadTranslations() error {
 		return nil
 	}
 	
-	supportedLangs := []Language{LanguageEn, LanguageZhCN}
+	supportedLangs := []Language{LanguageEn, LanguageZhCN, LanguageDe, LanguageEs, LanguageIt, LanguageJa, LanguageKo, LanguagePt, LanguageRu}
 	
 	for _, lang := range supportedLangs {
 		filename := filepath.Join(m.config.LocalesPath, string(lang)+".json")
@@ -201,7 +201,7 @@ func (m *Manager) AddTranslation(lang Language, original, translation string) {
 
 // GetAvailableLanguages returns all available languages
 func (m *Manager) GetAvailableLanguages() []Language {
-	return []Language{LanguageZhCN, LanguageEn}
+	return []Language{LanguageZhCN, LanguageEn, LanguageDe, LanguageEs, LanguageIt, LanguageJa, LanguageKo, LanguagePt, LanguageRu}
 }
 
 // GetLanguageInfo returns display information for a language
@@ -211,6 +211,20 @@ func (m *Manager) GetLanguageInfo(lang Language) map[string]string {
 		return map[string]string{"flag": "CN", "name": T("language_chinese_name", "中文")}
 	case LanguageEn:
 		return map[string]string{"flag": "US", "name": "English"}
+	case LanguageDe:
+		return map[string]string{"flag": "DE", "name": "Deutsch"}
+	case LanguageEs:
+		return map[string]string{"flag": "ES", "name": "Español"}
+	case LanguageIt:
+		return map[string]string{"flag": "IT", "name": "Italiano"}
+	case LanguageJa:
+		return map[string]string{"flag": "JP", "name": "日本語"}
+	case LanguageKo:
+		return map[string]string{"flag": "KR", "name": "한국어"}
+	case LanguagePt:
+		return map[string]string{"flag": "PT", "name": "Português"}
+	case LanguageRu:
+		return map[string]string{"flag": "RU", "name": "Русский"}
 	default:
 		return map[string]string{"flag": "??", "name": string(lang)}
 	}

@@ -311,7 +311,7 @@
         
         // Check if language is valid
         isValidLanguage: function(lang) {
-            const validLangs = ['zh-cn', 'en'];
+            const validLangs = ['zh-cn', 'en', 'de', 'es', 'it', 'ja', 'ko', 'pt', 'ru'];
             return validLangs.includes(lang.toLowerCase());
         },
         
@@ -320,6 +320,13 @@
             lang = lang.toLowerCase();
             if (lang.startsWith('zh')) return 'zh-cn';
             if (lang.startsWith('en')) return 'en';
+            if (lang.startsWith('de')) return 'de';
+            if (lang.startsWith('es')) return 'es';
+            if (lang.startsWith('it')) return 'it';
+            if (lang.startsWith('ja')) return 'ja';
+            if (lang.startsWith('ko')) return 'ko';
+            if (lang.startsWith('pt')) return 'pt';
+            if (lang.startsWith('ru')) return 'ru';
             return this.config.defaultLanguage;
         },
         

@@ -73,8 +73,22 @@ func (d *Detector) parseAcceptLanguage(acceptLang string) Language {
 			return LanguageZhCN
 		case strings.HasPrefix(strings.ToLower(lang), "en"):
 			return LanguageEn
+		case strings.HasPrefix(strings.ToLower(lang), "de"):
+			return LanguageDe
+		case strings.HasPrefix(strings.ToLower(lang), "es"):
+			return LanguageEs
+		case strings.HasPrefix(strings.ToLower(lang), "it"):
+			return LanguageIt
+		case strings.HasPrefix(strings.ToLower(lang), "ja"):
+			return LanguageJa
+		case strings.HasPrefix(strings.ToLower(lang), "ko"):
+			return LanguageKo
+		case strings.HasPrefix(strings.ToLower(lang), "pt"):
+			return LanguagePt
+		case strings.HasPrefix(strings.ToLower(lang), "ru"):
+			return LanguageRu
 		default:
-			return d.defaultLang
+			continue
 		}
 	}
 	
