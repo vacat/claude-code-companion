@@ -78,8 +78,18 @@
             // Clear cache when language changes
             this.cache.clear();
             
-            // Re-process all elements
-            this.processAllElements();
+            // Load translations for the new language
+            const loadPromise = this.loadLanguageData(lang);
+            
+            if (loadPromise && typeof loadPromise.then === 'function') {
+                loadPromise.then(() => {
+                    // Re-process all elements after translations are loaded
+                    this.processAllElements();
+                });
+            } else {
+                // Re-process all elements immediately for default language
+                this.processAllElements();
+            }
             
             this.log('Language set to: ' + lang);
             return true;
@@ -92,20 +102,49 @@
         
         // Load translations from server
         loadTranslations: function() {
-            // For now, we'll use embedded translations
-            // In production, this would load from server
+            // Load translation data for current language
             if (!this.translations.has(this.config.currentLanguage)) {
                 this.loadLanguageData(this.config.currentLanguage);
             }
         },
         
-        // Load language data (placeholder for server communication)
+        // Load language data from server
         loadLanguageData: function(lang) {
-            // This would typically fetch from /admin/api/translations/{lang}
-            // For now, we'll use empty map
-            if (!this.translations.has(lang)) {
-                this.translations.set(lang, new Map());
+            if (this.translations.has(lang)) {
+                return Promise.resolve();
             }
+            
+            // Create empty map first
+            this.translations.set(lang, new Map());
+            
+            // For default language (zh-cn), we don't need to load from server
+            if (lang === this.config.defaultLanguage) {
+                return Promise.resolve();
+            }
+            
+            // Load from server for non-default languages
+            return fetch(`/admin/api/translations`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to load translations`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Process the translations data for the specific language
+                    if (data[lang]) {
+                        const langData = this.translations.get(lang);
+                        Object.entries(data[lang]).forEach(([key, value]) => {
+                            langData.set(key, value);
+                        });
+                        this.log(`Loaded ${Object.keys(data[lang]).length} translations for ${lang}`);
+                    } else {
+                        this.log(`No translations found for ${lang}`, 'warn');
+                    }
+                })
+                .catch(error => {
+                    this.log(`Failed to load translations for ${lang}: ${error.message}`, 'warn');
+                });
         },
         
         // Core translation functions
