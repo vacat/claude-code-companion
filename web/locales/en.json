@@ -519,6 +519,9 @@
     "faq_node_required": "Do I need to install Node.js?",
     "faq_node_required_answer": "No separate installation needed. Claude Code is built on Node.js, so the script can directly use the existing Node.js environment.",
     "faq_restore_settings": "How do I restore original settings?",
-    "faq_restore_settings_answer": "Find the settings.json.backup-* file in the ~/.claude/ directory and rename it to settings.json to restore."
+    "faq_restore_settings_answer": "Find the settings.json.backup-* file in the ~/.claude/ directory and rename it to settings.json to restore.",
+    "prerequisite_notice": "Prerequisites",
+    "prerequisite_description": "Please ensure that you have the official Claude Code installed on your system",
+    "script_guide": "Script Guide"
   }
 }

@@ -499,6 +499,9 @@
     "faq_node_required": "需要安装 Node.js 吗？",
     "faq_node_required_answer": "不需要单独安装。Claude Code 本身基于 Node.js，所以脚本可以直接使用现有的 Node.js 环境。",
     "faq_restore_settings": "如何恢复原始设置？",
-    "faq_restore_settings_answer": "在 ~/.claude/ 目录中找到 settings.json.backup-* 文件，将其重命名为 settings.json 即可恢复。"
+    "faq_restore_settings_answer": "在 ~/.claude/ 目录中找到 settings.json.backup-* 文件，将其重命名为 settings.json 即可恢复。",
+    "prerequisite_notice": "前置要求",
+    "prerequisite_description": "请先保证系统上已经安装了官方版的 Claude Code",
+    "script_guide": "脚本指南"
   }
 }

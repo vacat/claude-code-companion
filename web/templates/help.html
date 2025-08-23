@@ -26,8 +26,8 @@
                         <a href="/admin/" class="btn btn-light btn-lg">
                             <i class="fas fa-cog"></i> <span data-t="admin_panel">管理面板</span>
                         </a>
-                        <a href="#installation" class="btn btn-outline-light btn-lg">
-                            <i class="fas fa-download"></i> <span data-t="installation_guide">安装指南</span>
+                        <a href="#scripts" class="btn btn-outline-light btn-lg">
+                            <i class="fas fa-code"></i> <span data-t="script_guide">脚本指南</span>
                         </a>
                     </div>
                 </div>
@@ -39,146 +39,12 @@
     </div>
 
     <div class="container">
-        <!-- Installation Guide Section -->
-        <section id="installation" class="mb-5">
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="h4 mb-0">
-                        <i class="fas fa-download text-primary"></i> 
-                        <span data-t="install_claude_code">安装 Claude Code</span>
-                    </h2>
-                </div>
-                <div class="card-body">
-                    <!-- OS Tabs -->
-                    <ul class="nav nav-tabs mb-4" id="osTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="windows-tab" data-bs-toggle="tab" data-bs-target="#windows" 
-                                    type="button" role="tab" aria-controls="windows" aria-selected="true">
-                                <i class="fab fa-windows"></i> Windows
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="macos-tab" data-bs-toggle="tab" data-bs-target="#macos" 
-                                    type="button" role="tab" aria-controls="macos" aria-selected="false">
-                                <i class="fab fa-apple"></i> macOS
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="linux-tab" data-bs-toggle="tab" data-bs-target="#linux" 
-                                    type="button" role="tab" aria-controls="linux" aria-selected="false">
-                                <i class="fab fa-linux"></i> Linux
-                            </button>
-                        </li>
-                    </ul>
-
-                    <!-- Tab Content -->
-                    <div class="tab-content" id="osTabContent">
-                        <!-- Windows -->
-                        <div class="tab-pane fade show active" id="windows" role="tabpanel" aria-labelledby="windows-tab">
-                            <h5><span data-t="windows_installation">Windows 安装</span></h5>
-                            <p class="text-muted mb-3">
-                                <span data-t="windows_install_note">Claude Code 需要 Node.js 18 或更高版本</span>
-                            </p>
-                            <ol>
-                                <li class="mb-2"><span data-t="method1_npm_install">方法 1：NPM 安装（推荐）</span></li>
-                            </ol>
-                            
-                            <div class="position-relative mb-4">
-                                <div class="code-block">
-                                    # <span data-t="install_via_npm">通过 NPM 安装</span><br>
-                                    npm install -g @anthropic-ai/claude-code
-                                </div>
-                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-
-                            <ol start="2">
-                                <li class="mb-2"><span data-t="method2_native_install">方法 2：原生安装（Beta）</span></li>
-                            </ol>
-                            
-                            <div class="position-relative">
-                                <div class="code-block">
-                                    # <span data-t="using_powershell">使用 PowerShell</span><br>
-                                    irm https://claude.ai/install.ps1 | iex
-                                </div>
-                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- macOS -->
-                        <div class="tab-pane fade" id="macos" role="tabpanel" aria-labelledby="macos-tab">
-                            <h5><span data-t="macos_installation">macOS 安装</span></h5>
-                            <p class="text-muted mb-3">
-                                <span data-t="macos_install_note">Claude Code 需要 Node.js 18 或更高版本</span>
-                            </p>
-                            <ol>
-                                <li class="mb-2"><span data-t="method1_npm_install">方法 1：NPM 安装（推荐）</span></li>
-                            </ol>
-
-                            <div class="position-relative mb-4">
-                                <div class="code-block">
-                                    # <span data-t="install_via_npm">通过 NPM 安装</span><br>
-                                    npm install -g @anthropic-ai/claude-code
-                                </div>
-                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-
-                            <ol start="2">
-                                <li class="mb-2"><span data-t="method2_native_install">方法 2：原生安装（Beta）</span></li>
-                            </ol>
-
-                            <div class="position-relative">
-                                <div class="code-block">
-                                    # <span data-t="install_using_curl">使用 curl 安装</span><br>
-                                    curl -fsSL claude.ai/install.sh | bash
-                                </div>
-                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Linux -->
-                        <div class="tab-pane fade" id="linux" role="tabpanel" aria-labelledby="linux-tab">
-                            <h5><span data-t="linux_installation">Linux 安装</span></h5>
-                            <p class="text-muted mb-3">
-                                <span data-t="linux_install_note">Claude Code 需要 Node.js 18 或更高版本（仅限NPM方式）</span>
-                            </p>
-                            <ol>
-                                <li class="mb-2"><span data-t="method1_npm_install">方法 1：NPM 安装（推荐）</span></li>
-                            </ol>
-
-                            <div class="position-relative mb-4">
-                                <div class="code-block">
-                                    # <span data-t="install_via_npm">通过 NPM 安装</span><br>
-                                    npm install -g @anthropic-ai/claude-code
-                                </div>
-                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-
-                            <ol start="2">
-                                <li class="mb-2"><span data-t="method2_native_install">方法 2：原生安装（Beta）</span></li>
-                            </ol>
-
-                            <div class="position-relative">
-                                <div class="code-block">
-                                    # <span data-t="install_using_curl">使用 curl 安装</span><br>
-                                    curl -fsSL claude.ai/install.sh | bash
-                                </div>
-                                <button class="btn btn-sm btn-outline-light copy-btn" onclick="copyToClipboard(this)">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Prerequisites Section -->
+        <section id="prerequisites" class="mb-5">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <strong><span data-t="prerequisite_notice">前置要求</span>：</strong>
+                <span data-t="prerequisite_description">请先保证系统上已经安装了官方版的 Claude Code</span>
             </div>
         </section>
 
