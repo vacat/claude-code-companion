@@ -227,7 +227,7 @@ function showToast(message, type = 'info') {
 function generateSessionIdColor(sessionId) {
     try {
         if (!sessionId || typeof sessionId !== 'string') {
-            return '#FFFFFF';
+            return 'transparent';
         }
         
         // Get last 6 characters
@@ -238,13 +238,13 @@ function generateSessionIdColor(sessionId) {
         
         // Validate hex characters
         if (!/^[0-9a-fA-F]{6}$/.test(padded)) {
-            return '#FFFFFF';
+            return 'transparent';
         }
         
         return '#' + padded.toUpperCase();
     } catch (error) {
         console.warn('Error generating session ID color:', error);
-        return '#FFFFFF';
+        return 'transparent';
     }
 }
 

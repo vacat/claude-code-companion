@@ -20,15 +20,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize session ID badges with colors
     document.querySelectorAll('.session-id-badge').forEach(function(badge) {
         const sessionId = badge.getAttribute('data-session-id');
+        
+        // Always set background color, even for empty or '--' cases
+        const color = generateSessionIdColor(sessionId);
+        badge.style.backgroundColor = color;
+        
         if (sessionId && sessionId !== '--') {
-            // Set background color based on sessionid
-            const color = generateSessionIdColor(sessionId);
-            badge.style.backgroundColor = color;
-            
             // Set display text to last 2 characters
             const displayText = getSessionIdDisplayText(sessionId);
             badge.textContent = displayText;
         }
+        // For empty or '--' cases, keep the original text content
     });
     
     // Add event listeners for log page buttons

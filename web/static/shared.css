@@ -482,9 +482,13 @@ input, textarea, select {
     text-align: center;
     border-radius: 3px;
     color: #000000;
-    background-color: #FFFFFF;
+    background-color: transparent;
     min-width: 24px;
     font-family: monospace;
+    /* 为透明背景提供文字阴影，确保在各种背景下都可见 */
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+    /* 完全去掉边框 */
+    border: none;
 }
 
 .session-id-cell {
