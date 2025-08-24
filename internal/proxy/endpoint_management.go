@@ -104,8 +104,8 @@ func (s *Server) tryProxyRequestWithRetry(c *gin.Context, ep *endpoint.Endpoint,
 type ErrorCategory int
 
 const (
-	ErrorCategoryClientError         ErrorCategory = 0 // 客户端错误，不应重试
-	ErrorCategoryServerError         ErrorCategory = 1 // 服务器错误，可以重试
+	ErrorCategoryClientError         ErrorCategory = 0 // 4xx错误，直接切换端点
+	ErrorCategoryServerError         ErrorCategory = 1 // 5xx错误，原地重试后切换端点
 	ErrorCategoryNetworkError        ErrorCategory = 2 // 网络错误，应该重试
 	ErrorCategoryUsageValidationError ErrorCategory = 3 // Usage验证错误，原地重试
 	ErrorCategorySSEValidationError  ErrorCategory = 4 // SSE流不完整验证错误，原地重试
@@ -124,8 +124,9 @@ func (s *Server) determineRetryBehaviorFromError(err error, statusCode int, curr
 	
 	switch errorCategory {
 	case ErrorCategoryClientError:
-		// 客户端错误（如请求格式错误、认证失败等），立刻返回错误
-		return RetryBehaviorReturnError
+		// 客户端错误（4xx状态码），直接尝试下一个端点
+		// 修改逻辑：4xx错误现在直接切换端点，避免因提供商不正确返回4xx导致停下
+		return RetryBehaviorSwitchEndpoint
 		
 	case ErrorCategoryNetworkError:
 		// 网络错误（连接失败、超时等），在同一端点重试
@@ -186,7 +187,7 @@ func (s *Server) categorizeError(err error, statusCode int) ErrorCategory {
 	
 	errStr := err.Error()
 	
-	// 客户端错误（不应重试）
+	// 客户端错误（基于错误字符串判断的特定错误仍然直接切换端点）
 	if strings.Contains(errStr, "Request format conversion failed") ||
 	   strings.Contains(errStr, "Authentication failed") ||
 	   strings.Contains(errStr, "Failed to create request") ||
