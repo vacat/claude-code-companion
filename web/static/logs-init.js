@@ -78,6 +78,13 @@ function addLogPageEventListeners() {
                 toggleAutoRefresh();
                 break;
                 
+            case 'copy-request-id':
+                e.preventDefault();
+                const requestId = target.dataset.requestId;
+                console.log('Copying request ID:', requestId); // Debug log
+                copyRequestId(requestId);
+                break;
+                
             default:
                 // Handle onclick attribute for cleanup and failed-only buttons (fallback)
                 const onclick = target.getAttribute('onclick');
