@@ -68,10 +68,11 @@
                                     <tr>
                                         <td>{{.Timestamp.Format "15:04:05"}}</td>
                                         <td class="request-id-cell" data-request-id="{{.RequestID}}">
-                                            <small>{{.RequestID}}</small>
-                                            <button class="copy-request-id-btn" data-action="copy-request-id" data-request-id="{{.RequestID}}" data-t-title="copy_request_id_tooltip">
-                                                <i class="fas fa-copy"></i>
-                                            </button>
+                                            <small>{{.RequestID}}
+                                                <button class="copy-request-id-btn" data-action="copy-request-id" data-request-id="{{.RequestID}}" data-t-title="copy_request_id_tooltip">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </small>
                                         </td>
                                         <td class="session-id-cell">
                                             <span class="session-id-badge" data-session-id="{{.SessionID}}" title="{{if .SessionID}}{{.SessionID}}{{else}}--{{end}}">

@@ -396,15 +396,19 @@ input, textarea, select {
     position: relative;
 }
 
+.request-id-cell small {
+    position: relative;
+    display: inline-block;
+}
+
 .copy-request-id-btn {
     position: absolute;
-    right: 4px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(255, 255, 255, 0.9);
+    right: 0;
+    top: 0;
+    background: rgba(255, 255, 255, 0.95);
     border: 1px solid #dee2e6;
     border-radius: 3px;
-    padding: 2px 4px;
+    padding: 1px 3px;
     font-size: 0.7rem;
     color: #6c757d;
     cursor: pointer;
@@ -412,27 +416,30 @@ input, textarea, select {
     visibility: hidden;
     transition: all 0.2s ease;
     z-index: 10;
-    width: 20px;
-    height: 18px;
+    width: 16px;
+    height: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
 .request-id-cell:hover .copy-request-id-btn {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
 }
 
 .copy-request-id-btn:hover {
     background: #f8f9fa;
     border-color: #adb5bd;
     color: #0d6efd;
-    transform: translateY(-50%) scale(1.1);
+    transform: scale(1.1);
 }
 
 .copy-request-id-btn:active {
-    transform: translateY(-50%) scale(1.0);
+    transform: scale(1.0);
 }
 
 /* Version update badge styles */
