@@ -33,7 +33,11 @@ func (s *Server) tryProxyRequestWithRetry(c *gin.Context, ep *endpoint.Endpoint,
 		
 		success, shouldRetryAnywhere := s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest, currentGlobalAttempt)
 		if success {
-			s.endpointManager.RecordRequest(ep.ID, true)
+			// 检查是否应该跳过健康统计记录
+			skipHealthRecord, _ := c.Get("skip_health_record")
+			if skipHealthRecord != true {
+				s.endpointManager.RecordRequest(ep.ID, true)
+			}
 			
 			// 尝试提取基准信息用于健康检查
 			if len(requestBody) > 0 {
@@ -47,8 +51,13 @@ func (s *Server) tryProxyRequestWithRetry(c *gin.Context, ep *endpoint.Endpoint,
 			return true, false
 		}
 		
-		// 记录失败
-		s.endpointManager.RecordRequest(ep.ID, false)
+		// 记录失败，但检查是否为 count_tokens 请求，如果是则不计入健康统计
+		skipHealthRecord, _ := c.Get("skip_health_record")
+		isCountTokensRequest := strings.Contains(path, "/count_tokens")
+		shouldSkip := (skipHealthRecord == true) || isCountTokensRequest
+		if !shouldSkip {
+			s.endpointManager.RecordRequest(ep.ID, false)
+		}
 		
 		// 如果明确指示不应重试任何地方，直接返回
 		if !shouldRetryAnywhere {
@@ -336,8 +345,13 @@ func (s *Server) endpointContainsAllTags(endpointTags, requestTags []string) boo
 
 // fallbackToOtherEndpoints 当endpoint失败时，根据是否有tag决定fallback策略
 func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBody []byte, requestID string, startTime time.Time, failedEndpoint *endpoint.Endpoint, taggedRequest *tagging.TaggedRequest) {
-	// 记录失败的endpoint
-	s.endpointManager.RecordRequest(failedEndpoint.ID, false)
+	// 记录失败的endpoint，但检查是否为 count_tokens 请求，如果是则不计入健康统计
+	skipHealthRecord, _ := c.Get("skip_health_record")
+	isCountTokensRequest := strings.Contains(path, "/count_tokens")
+	shouldSkip := (skipHealthRecord == true) || isCountTokensRequest
+	if !shouldSkip {
+		s.endpointManager.RecordRequest(failedEndpoint.ID, false)
+	}
 	
 	allEndpoints := s.endpointManager.GetAllEndpoints()
 	var requestTags []string
@@ -379,6 +393,17 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 			totalAttempted += attemptedCount
 		}
 		
+		// 检查是否为 count_tokens 请求且所有失败都是因为 OpenAI 端点不支持
+		isCountTokensRequest := strings.Contains(path, "/count_tokens")
+		countTokensOpenAISkip, _ := c.Get("count_tokens_openai_skip")
+		
+		if isCountTokensRequest && countTokensOpenAISkip == true {
+			// 所有端点都因为不支持 count_tokens 而跳过，提供特殊错误消息
+			s.sendProxyError(c, http.StatusNotFound, "count_tokens_unsupported", 
+				fmt.Sprintf("request %s with tag (%s): count_tokens API is not supported by available endpoints. Please use Anthropic-type endpoints for token counting.", requestID, strings.Join(requestTags, ", ")), requestID)
+			return
+		}
+		
 		// 所有endpoint都失败了，发送错误响应但不记录额外日志（每个endpoint的失败已经记录过了）
 		errorMsg := s.generateDetailedEndpointUnavailableMessage(requestID, requestTags)
 		s.sendProxyError(c, http.StatusBadGateway, "all_endpoints_failed", errorMsg, requestID)
@@ -404,6 +429,17 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 			return
 		}
 		totalAttempted += attemptedCount
+		
+		// 检查是否为 count_tokens 请求且所有失败都是因为 OpenAI 端点不支持
+		isCountTokensRequest := strings.Contains(path, "/count_tokens")
+		countTokensOpenAISkip, _ := c.Get("count_tokens_openai_skip")
+		
+		if isCountTokensRequest && countTokensOpenAISkip == true {
+			// 所有端点都因为不支持 count_tokens 而跳过，提供特殊错误消息
+			s.sendProxyError(c, http.StatusNotFound, "count_tokens_unsupported", 
+				fmt.Sprintf("request %s: count_tokens API is not supported by available endpoints. Please use Anthropic-type endpoints for token counting.", requestID), requestID)
+			return
+		}
 		
 		// 所有universal endpoint都失败了，发送错误响应但不记录额外日志（每个endpoint的失败已经记录过了）
 		errorMsg := s.generateDetailedEndpointUnavailableMessage(requestID, requestTags)

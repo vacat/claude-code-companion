@@ -17,6 +17,21 @@ import (
 )
 
 func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path string, requestBody []byte, requestID string, startTime time.Time, taggedRequest *tagging.TaggedRequest, attemptNumber int) (bool, bool) {
+	// 检查是否为 count_tokens 请求到 OpenAI 端点
+	isCountTokensRequest := strings.Contains(path, "/count_tokens")
+	isOpenAIEndpoint := ep.EndpointType == "openai"
+	
+	// OpenAI 端点不支持 count_tokens，立即尝试下一个端点
+	if isCountTokensRequest && isOpenAIEndpoint {
+		s.logger.Debug(fmt.Sprintf("Skipping count_tokens request on OpenAI endpoint %s", ep.Name))
+		// 标记这次尝试为特殊情况，不记录健康统计，不记录日志（除非所有端点都因此失败）
+		c.Set("skip_health_record", true)
+		c.Set("skip_logging", true)
+		c.Set("count_tokens_openai_skip", true)
+		c.Set("last_error", fmt.Errorf("count_tokens not supported on OpenAI endpoint"))
+		c.Set("last_status_code", http.StatusNotFound)
+		return false, true // 立即尝试下一个端点
+	}
 	// 为这个端点记录独立的开始时间
 	endpointStartTime := time.Now()
 	targetURL := ep.GetFullURL(path)

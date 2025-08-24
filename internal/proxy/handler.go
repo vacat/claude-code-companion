@@ -40,15 +40,8 @@ func (s *Server) handleProxy(c *gin.Context) {
 	// 处理请求标签
 	taggedRequest := s.processRequestTags(c.Request)
 
-	// 检查 OpenAI 端点是否收到 count_tokens 请求
-	if strings.Contains(path, "/count_tokens") {
-		selectedEndpoint, err := s.selectEndpointForRequest(taggedRequest)
-		if err == nil && selectedEndpoint.EndpointType == "openai" {
-			s.logger.Debug("Rejecting count_tokens request for OpenAI endpoint")
-			s.sendProxyError(c, http.StatusNotFound, "unsupported_endpoint", "OpenAI endpoints do not support count_tokens API", requestID)
-			return
-		}
-	}
+	// count_tokens 请求将通过统一的端点尝试和回退逻辑处理
+	// OpenAI 端点不支持 count_tokens，但会自动回退到支持的端点
 
 	// 选择端点并处理请求
 	selectedEndpoint, err := s.selectEndpointForRequest(taggedRequest)
