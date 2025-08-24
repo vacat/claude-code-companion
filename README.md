@@ -45,7 +45,7 @@ Claude Code 伴侣是一个为 Claude Code 提供的本地 API 代理工具。�
 ## 一些文档
 
 [常见端点提供商的参数参考](https://ucn0s6hcz1w1.feishu.cn/sheets/RNPHswfIThqQ1itf1m4cb0mKnrc)
-
+[深入理解TAG系统和一些实际案例](https://ucn0s6hcz1w1.feishu.cn/docx/YTvYdv7kzodpr9xZ2RXcGOc5n3c)
 
 ## 常见使用场景
 
