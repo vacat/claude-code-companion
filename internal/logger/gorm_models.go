@@ -34,6 +34,7 @@ type GormRequestLog struct {
 	Error                string `gorm:"column:error;type:text;default:''"`
 	Tags                 string `gorm:"column:tags;type:text;default:'[]'"` // JSON array
 	ContentTypeOverride  string `gorm:"column:content_type_override;size:100;default:''"`
+	SessionID            string `gorm:"column:session_id;size:100;default:''"`
 	
 	// 模型重写字段
 	OriginalModel       string `gorm:"column:original_model;size:100;default:''"`
@@ -86,6 +87,7 @@ func ConvertToGormRequestLog(log *RequestLog) *GormRequestLog {
 		Model:                   log.Model,
 		Error:                   log.Error,
 		ContentTypeOverride:     log.ContentTypeOverride,
+		SessionID:               log.SessionID,
 		OriginalModel:           log.OriginalModel,
 		RewrittenModel:          log.RewrittenModel,
 		ModelRewriteApplied:     log.ModelRewriteApplied,
@@ -130,6 +132,7 @@ func ConvertFromGormRequestLog(gormLog *GormRequestLog) *RequestLog {
 		Model:                   gormLog.Model,
 		Error:                   gormLog.Error,
 		ContentTypeOverride:     gormLog.ContentTypeOverride,
+		SessionID:               gormLog.SessionID,
 		OriginalModel:           gormLog.OriginalModel,
 		RewrittenModel:          gormLog.RewrittenModel,
 		ModelRewriteApplied:     gormLog.ModelRewriteApplied,

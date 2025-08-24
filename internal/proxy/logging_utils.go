@@ -32,6 +32,9 @@ func (s *Server) sendFailureResponse(c *gin.Context, requestID string, startTime
 		requestLog.Model = utils.ExtractModelFromRequestBody(string(requestBody))
 		requestLog.RequestBodySize = len(requestBody)
 		
+		// 提取 Session ID
+		requestLog.SessionID = utils.ExtractSessionIDFromRequestBody(string(requestBody))
+		
 		// 根据配置记录请求体内容
 		if s.config.Logging.LogRequestBody != "none" {
 			if s.config.Logging.LogRequestBody == "truncated" {
@@ -140,7 +143,7 @@ func (s *Server) logSimpleRequest(requestID, endpoint, method, path string, orig
 		}
 	}
 	
-	// 设置模型信息
+	// 设置模型信息和 Session ID
 	if len(originalRequestBody) > 0 {
 		extractedModel := utils.ExtractModelFromRequestBody(string(originalRequestBody))
 		if originalModel != "" {
@@ -155,6 +158,9 @@ func (s *Server) logSimpleRequest(requestID, endpoint, method, path string, orig
 			requestLog.RewrittenModel = rewrittenModel
 			requestLog.ModelRewriteApplied = rewrittenModel != requestLog.OriginalModel
 		}
+		
+		// 提取 Session ID
+		requestLog.SessionID = utils.ExtractSessionIDFromRequestBody(string(originalRequestBody))
 	}
 	
 	// 更新并记录日志

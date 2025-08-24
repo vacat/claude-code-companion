@@ -44,7 +44,7 @@ func createOptimizedIndexes(db *gorm.DB) error {
 	return nil
 }
 
-// validateTableCompatibility 验证现有表结构兼容性
+// validateTableCompatibility 验证现有表结构兼容性并自动添加缺失的列
 func validateTableCompatibility(db *gorm.DB) error {
 	// 检查表是否存在
 	if !db.Migrator().HasTable(&GormRequestLog{}) {
@@ -63,6 +63,22 @@ func validateTableCompatibility(db *gorm.DB) error {
 	for _, column := range requiredColumns {
 		if !db.Migrator().HasColumn(&GormRequestLog{}, column) {
 			return fmt.Errorf("required column %s does not exist", column)
+		}
+	}
+	
+	// 检查并添加新增的可选列
+	optionalColumns := map[string]string{
+		"session_id": "session_id VARCHAR(100) DEFAULT ''",
+	}
+	
+	for column, definition := range optionalColumns {
+		if !db.Migrator().HasColumn(&GormRequestLog{}, column) {
+			// 添加缺失的列
+			sql := fmt.Sprintf("ALTER TABLE request_logs ADD COLUMN %s", definition)
+			if err := db.Exec(sql).Error; err != nil {
+				return fmt.Errorf("failed to add column %s: %v", column, err)
+			}
+			fmt.Printf("Added column %s to request_logs table\n", column)
 		}
 	}
 	

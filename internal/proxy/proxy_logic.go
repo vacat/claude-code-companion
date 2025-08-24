@@ -473,6 +473,9 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			requestLog.RewrittenModel = rewrittenModel
 			requestLog.ModelRewriteApplied = rewrittenModel != requestLog.OriginalModel
 		}
+		
+		// 提取 Session ID
+		requestLog.SessionID = utils.ExtractSessionIDFromRequestBody(string(requestBody))
 	}
 	
 	// 更新基本字段

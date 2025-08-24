@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"strings"
 	
 	commonjson "claude-code-companion/internal/common/json"
 )
@@ -80,4 +81,45 @@ func ExtractThinkingInfo(body string) (*ThinkingInfo, error) {
 	}
 	
 	return info, nil
+}
+
+// ExtractSessionIDFromUserID extracts session ID from user_id field
+// Format: user_xxx_account__session_<uuid>
+// Returns the UUID part after "_account__session_", or empty string if not found
+func ExtractSessionIDFromUserID(userID string) string {
+	if userID == "" {
+		return ""
+	}
+	
+	// Look for the pattern "_account__session_"
+	sessionPrefix := "_account__session_"
+	index := strings.LastIndex(userID, sessionPrefix)
+	if index == -1 {
+		return ""
+	}
+	
+	// Extract everything after "_account__session_"
+	sessionID := userID[index+len(sessionPrefix):]
+	if sessionID == "" {
+		return ""
+	}
+	
+	return sessionID
+}
+
+// ExtractSessionIDFromRequestBody extracts session ID from request body JSON
+// by first extracting metadata.user_id and then extracting session ID from it
+func ExtractSessionIDFromRequestBody(body string) string {
+	if body == "" {
+		return ""
+	}
+	
+	// Extract user_id from metadata
+	userID, err := ExtractNestedStringField([]byte(body), []string{"metadata", "user_id"})
+	if err != nil || userID == "" {
+		return ""
+	}
+	
+	// Extract session ID from user_id
+	return ExtractSessionIDFromUserID(userID)
 }
