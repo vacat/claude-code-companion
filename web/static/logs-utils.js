@@ -222,3 +222,43 @@ function showToast(message, type = 'info') {
         }
     }, 3000);
 }
+
+// Generate sessionid color based on last 6 characters
+function generateSessionIdColor(sessionId) {
+    try {
+        if (!sessionId || typeof sessionId !== 'string') {
+            return '#FFFFFF';
+        }
+        
+        // Get last 6 characters
+        const last6 = sessionId.slice(-6);
+        
+        // If less than 6 characters, pad with zeros
+        const padded = last6.padStart(6, '0');
+        
+        // Validate hex characters
+        if (!/^[0-9a-fA-F]{6}$/.test(padded)) {
+            return '#FFFFFF';
+        }
+        
+        return '#' + padded.toUpperCase();
+    } catch (error) {
+        console.warn('Error generating session ID color:', error);
+        return '#FFFFFF';
+    }
+}
+
+// Get sessionid display text (last 2 characters)
+function getSessionIdDisplayText(sessionId) {
+    try {
+        if (!sessionId || typeof sessionId !== 'string') {
+            return '--';
+        }
+        
+        const last2 = sessionId.slice(-2);
+        return last2.length > 0 ? last2.toUpperCase() : '--';
+    } catch (error) {
+        console.warn('Error getting session ID display text:', error);
+        return '--';
+    }
+}

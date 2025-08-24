@@ -49,6 +49,7 @@
                                     <tr>
                                         <th data-t="time">时间</th>
                                         <th data-t="request_id">请求ID</th>
+                                        <th data-t="session">会话</th>
                                         <th data-t="endpoint">端点</th>
                                         <th data-t="model">模型</th>
                                         <th data-t="tags">标签</th>
@@ -71,6 +72,11 @@
                                             <button class="copy-request-id-btn" data-action="copy-request-id" data-request-id="{{.RequestID}}" data-t-title="copy_request_id_tooltip">
                                                 <i class="fas fa-copy"></i>
                                             </button>
+                                        </td>
+                                        <td class="session-id-cell">
+                                            <span class="session-id-badge" data-session-id="{{.SessionID}}" title="{{if .SessionID}}{{.SessionID}}{{else}}--{{end}}">
+                                                {{if .SessionID}}{{.SessionID}}{{else}}--{{end}}
+                                            </span>
                                         </td>
                                         <td class="endpoint-cell" data-endpoint="{{.Endpoint}}">{{.Endpoint}}</td>
                                         <td>
