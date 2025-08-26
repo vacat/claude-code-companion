@@ -204,6 +204,52 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	}
 	defer resp.Body.Close()
 
+	// 检查认证失败情况，如果是OAuth端点且有refresh_token，先尝试刷新token
+	if (resp.StatusCode == 401 || resp.StatusCode == 403) &&
+		ep.AuthType == "oauth" &&
+		ep.OAuthConfig != nil &&
+		ep.OAuthConfig.RefreshToken != "" {
+		
+		// 检查是否已经因为这个端点的认证问题刷新过token
+		refreshKey := fmt.Sprintf("oauth_refresh_attempted_%s", ep.ID)
+		if _, alreadyRefreshed := c.Get(refreshKey); !alreadyRefreshed {
+			s.logger.Info(fmt.Sprintf("Authentication failed (HTTP %d) for OAuth endpoint %s, attempting token refresh", resp.StatusCode, ep.Name))
+			
+			// 标记我们已经为这个端点尝试过token刷新，避免无限循环
+			c.Set(refreshKey, true)
+			
+			// 尝试刷新token
+			if refreshErr := ep.RefreshOAuthTokenWithCallback(s.config.Timeouts.ToProxyTimeoutConfig(), s.createOAuthTokenRefreshCallback()); refreshErr != nil {
+				s.logger.Error(fmt.Sprintf("Failed to refresh OAuth token for endpoint %s: %v", ep.Name, refreshErr), refreshErr)
+				
+				// 刷新失败，读取响应体用于日志记录
+				duration := time.Since(endpointStartTime)
+				body, _ := io.ReadAll(resp.Body)
+				contentEncoding := resp.Header.Get("Content-Encoding")
+				decompressedBody, err := s.validator.GetDecompressedBody(body, contentEncoding)
+				if err != nil {
+					decompressedBody = body // 如果解压失败，使用原始数据
+				}
+				
+				s.logSimpleRequest(requestID, ep.URL, c.Request.Method, path, requestBody, finalRequestBody, c, req, resp, decompressedBody, duration, nil, s.isRequestExpectingStream(req), tags, "", originalModel, rewrittenModel, attemptNumber)
+				// 设置错误信息到context中
+				c.Set("last_error", fmt.Errorf("OAuth token refresh failed: %v", refreshErr))
+				c.Set("last_status_code", resp.StatusCode)
+				return false, true
+			} else {
+				s.logger.Info(fmt.Sprintf("OAuth token refreshed successfully for endpoint %s, retrying request", ep.Name))
+				
+				// 关闭原始响应体
+				resp.Body.Close()
+				
+				// Token刷新成功，递归重试相同的endpoint（重新走完整的请求流程）
+				return s.proxyToEndpoint(c, ep, path, requestBody, requestID, startTime, taggedRequest, attemptNumber)
+			}
+		} else {
+			s.logger.Debug(fmt.Sprintf("OAuth token refresh already attempted for endpoint %s in this request, not retrying", ep.Name))
+		}
+	}
+	
 	// 只有2xx状态码才认为是成功，其他所有状态码都尝试下一个端点
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		duration := time.Since(endpointStartTime)
