@@ -167,7 +167,8 @@
                                                     <div class="col-6">
                                                         <label for="oauth-expires-at" class="form-label"><span data-t="expires_timestamp_ms">过期时间戳 (毫秒)</span> <span class="text-danger">*</span></label>
                                                         <input type="number" class="form-control" id="oauth-expires-at" 
-                                                               placeholder="1755272917673">
+                                                               placeholder="1755272917673" min="0">
+                                                        <small class="form-text text-muted" data-t="expires_at_help">填0可触发自动刷新获取正确的过期时间</small>
                                                     </div>
                                                     <div class="col-6">
                                                         <label class="form-label" data-t="auto_refresh">自动刷新</label>

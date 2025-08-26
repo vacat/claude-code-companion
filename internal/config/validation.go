@@ -252,8 +252,9 @@ func validateOAuthConfig(config *OAuthConfig, context string) error {
 		return fmt.Errorf("%s: oauth refresh_token is required", context)
 	}
 	
-	if config.ExpiresAt <= 0 {
-		return fmt.Errorf("%s: oauth expires_at must be a valid timestamp (milliseconds)", context)
+	// ExpiresAt can be 0 to trigger automatic refresh, or positive timestamp
+	if config.ExpiresAt < 0 {
+		return fmt.Errorf("%s: oauth expires_at must be 0 (for auto-refresh) or a valid positive timestamp (milliseconds)", context)
 	}
 	
 	if config.TokenURL == "" {
