@@ -409,3 +409,94 @@ document.addEventListener('DOMContentLoaded', function() {
         defaultModelInput.addEventListener('blur', onDefaultModelChange);
     }
 });
+
+// ===== HTTP Header Override Functions =====
+
+// Header override enable/disable toggle
+document.getElementById('header-override-enabled').addEventListener('change', function() {
+    const configDiv = document.getElementById('header-override-config');
+    this.checked ? StyleUtils.show(configDiv) : StyleUtils.hide(configDiv);
+});
+
+// Add header override rule
+function addHeaderOverrideRule(headerName = '', headerValue = '') {
+    const rulesList = document.getElementById('header-override-rules-list');
+    
+    const ruleDiv = document.createElement('div');
+    ruleDiv.className = 'row mb-2 header-override-rule';
+    ruleDiv.innerHTML = `
+        <div class="col-4">
+            <input type="text" class="form-control header-name-input" 
+                   placeholder="Header名称 (如: User-Agent)" value="${escapeHtml(headerName)}">
+        </div>
+        <div class="col-6">
+            <input type="text" class="form-control header-value-input" 
+                   placeholder="Header值 (留空删除)" value="${escapeHtml(headerValue)}">
+        </div>
+        <div class="col-2">
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeHeaderOverrideRule(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    rulesList.appendChild(ruleDiv);
+}
+
+// Remove header override rule
+function removeHeaderOverrideRule(button) {
+    button.closest('.header-override-rule').remove();
+}
+
+// Collect header override configuration data
+function collectHeaderOverrideData() {
+    const enabled = document.getElementById('header-override-enabled').checked;
+    if (!enabled) {
+        return null;
+    }
+
+    const overrides = {};
+    document.querySelectorAll('.header-override-rule').forEach(ruleDiv => {
+        const headerName = ruleDiv.querySelector('.header-name-input').value.trim();
+        const headerValue = ruleDiv.querySelector('.header-value-input').value; // 不trim，允许空字符串
+        
+        if (headerName) {
+            overrides[headerName] = headerValue;
+        }
+    });
+
+    return Object.keys(overrides).length > 0 ? overrides : null;
+}
+
+// Load header override configuration to form
+function loadHeaderOverrideConfig(overrides) {
+    const checkbox = document.getElementById('header-override-enabled');
+    const configDiv = document.getElementById('header-override-config');
+    const rulesList = document.getElementById('header-override-rules-list');
+    
+    // Clear existing rules
+    rulesList.innerHTML = '';
+    
+    if (overrides && Object.keys(overrides).length > 0) {
+        checkbox.checked = true;
+        StyleUtils.show(configDiv);
+        
+        Object.entries(overrides).forEach(([headerName, headerValue]) => {
+            addHeaderOverrideRule(headerName, headerValue);
+        });
+    } else {
+        checkbox.checked = false;
+        StyleUtils.hide(configDiv);
+    }
+}
+
+// Add event listener for add header rule button
+document.addEventListener('DOMContentLoaded', function() {
+    // Add header override rule button event listener
+    const addHeaderRuleBtn = document.querySelector('[data-action="add-header-override-rule"]');
+    if (addHeaderRuleBtn) {
+        addHeaderRuleBtn.addEventListener('click', function() {
+            addHeaderOverrideRule();
+        });
+    }
+});

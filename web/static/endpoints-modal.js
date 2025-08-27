@@ -92,6 +92,9 @@ function showEditEndpointModal(endpointName) {
     // Load max_tokens override configuration
     loadMaxTokensOverrideConfig(endpoint.override_max_tokens);
     
+    // Load header override configuration
+    loadHeaderOverrideConfig(endpoint.header_overrides);
+    
     // Reset to basic configuration tab
     resetModalTabs();
     
@@ -171,7 +174,8 @@ function saveEndpoint() {
         enabled: document.getElementById('endpoint-enabled').checked,
         tags: tags,
         proxy: collectProxyData(), // New: collect proxy configuration
-        override_max_tokens: collectMaxTokensOverrideData() // New: collect max_tokens override configuration
+        override_max_tokens: collectMaxTokensOverrideData(), // New: collect max_tokens override configuration
+        header_overrides: collectHeaderOverrideData() // New: collect header override configuration
     };
     
     // Add OAuth config if present

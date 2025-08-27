@@ -177,6 +177,21 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		}
 	}
 
+	// 应用HTTP Header覆盖规则（在所有其他header处理之后）
+	if headerOverrides := ep.GetHeaderOverrides(); headerOverrides != nil && len(headerOverrides) > 0 {
+		for headerName, headerValue := range headerOverrides {
+			if headerValue == "" {
+				// 空值表示删除header
+				req.Header.Del(headerName)
+				s.logger.Debug(fmt.Sprintf("Header override: deleted header %s for endpoint %s", headerName, ep.Name))
+			} else {
+				// 非空值表示设置header
+				req.Header.Set(headerName, headerValue)
+				s.logger.Debug(fmt.Sprintf("Header override: set header %s = [REDACTED] for endpoint %s", headerName, ep.Name))
+			}
+		}
+	}
+
 	if c.Request.URL.RawQuery != "" {
 		req.URL.RawQuery = c.Request.URL.RawQuery
 	}

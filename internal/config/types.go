@@ -36,6 +36,7 @@ type EndpointConfig struct {
 	Proxy             *ProxyConfig        `yaml:"proxy,omitempty"`         // 新增：代理配置
 	OAuthConfig       *OAuthConfig        `yaml:"oauth_config,omitempty"`  // 新增：OAuth配置
 	OverrideMaxTokens *int                `yaml:"override_max_tokens,omitempty"` // 新增：覆盖max_tokens配置
+	HeaderOverrides   map[string]string `yaml:"header_overrides,omitempty" json:"header_overrides,omitempty"` // 新增：HTTP Header覆盖配置
 }
 
 // 新增：代理配置结构

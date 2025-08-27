@@ -345,6 +345,41 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- HTTP Header 覆盖配置区域 -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-code"></i> <span data-t="header_override_configuration">HTTP Header 覆盖配置</span>
+                                    </h6>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="header-override-enabled">
+                                        <label class="form-check-label" for="header-override-enabled" data-t="enable_header_override">启用 Header 覆盖</label>
+                                    </div>
+                                </div>
+                                
+                                <div id="header-override-config" class="d-none-custom">
+                                    <small class="form-text text-muted mb-3 d-block" data-t="configure_header_overrides_description">配置在请求发出前要覆盖或删除的HTTP头部</small>
+                                    
+                                    <div id="header-override-rules-list">
+                                        <!-- 动态生成的header覆盖规则列表 -->
+                                    </div>
+                                    
+                                    <button type="button" class="btn btn-outline-primary btn-sm mb-3" data-action="add-header-override-rule">
+                                        <i class="fas fa-plus"></i> <span data-t="add_header_rule">添加Header规则</span>
+                                    </button>
+                                    
+                                    <div class="alert alert-info p-2">
+                                        <small class="text-muted">
+                                            <strong data-t="description">说明：</strong><br>
+                                            <!--T:header_override_replace_description-->• 设置值将替换或添加对应的HTTP头部<!--/T--><br>
+                                            <!--T:header_override_delete_description-->• 留空值将删除对应的HTTP头部<!--/T--><br>
+                                            <!--T:header_override_timing_description-->• Header覆盖在认证头部设置后进行，优先级最高<!--/T--><br>
+                                            <!--T:header_override_case_insensitive-->• Header名称不区分大小写<!--/T-->
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </form>

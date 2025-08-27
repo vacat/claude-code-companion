@@ -68,6 +68,14 @@ func deepCopyConfig(src *config.Config) config.Config {
 			dst.Endpoints[i].Tags = make([]string, len(ep.Tags))
 			copy(dst.Endpoints[i].Tags, ep.Tags)
 		}
+		
+		// 深拷贝 HeaderOverrides map
+		if ep.HeaderOverrides != nil {
+			dst.Endpoints[i].HeaderOverrides = make(map[string]string)
+			for k, v := range ep.HeaderOverrides {
+				dst.Endpoints[i].HeaderOverrides[k] = v
+			}
+		}
 	}
 	
 	return dst
