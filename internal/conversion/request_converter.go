@@ -71,31 +71,34 @@ func (c *RequestConverter) Convert(anthropicReq []byte) ([]byte, *ConversionCont
 		})
 	}
 
-	// tool_choice 映射
-	if anthReq.ToolChoice != nil {
-		switch anthReq.ToolChoice.Type {
-		case "auto":
-			out.ToolChoice = "auto"
-		case "any":
-			// OpenAI 没有"any"语义；你可以：
-			// 方案 A：用 "required" 强制必须走工具（更贴近"有就用"）
-			// 方案 B：用 "auto"（由模型自己判断）
-			// 这里选择更"强"的 A，避免模型直接文本结束：
-			out.ToolChoice = "required"
-		case "tool":
-			out.ToolChoice = map[string]interface{}{
-				"type": "function",
-				"function": map[string]interface{}{
-					"name": anthReq.ToolChoice.Name,
-				},
+	// tool_choice 映射 - 只有在有工具时才设置
+	if len(anthReq.Tools) > 0 {
+		if anthReq.ToolChoice != nil {
+			switch anthReq.ToolChoice.Type {
+			case "auto":
+				out.ToolChoice = "auto"
+			case "any":
+				// OpenAI 没有"any"语义；你可以：
+				// 方案 A：用 "required" 强制必须走工具（更贴近"有就用"）
+				// 方案 B：用 "auto"（由模型自己判断）
+				// 这里选择更"强"的 A，避免模型直接文本结束：
+				out.ToolChoice = "required"
+			case "tool":
+				out.ToolChoice = map[string]interface{}{
+					"type": "function",
+					"function": map[string]interface{}{
+						"name": anthReq.ToolChoice.Name,
+					},
+				}
+			default:
+				out.ToolChoice = "auto"
 			}
-		default:
+		} else {
+			// 当有工具但没有指定 tool_choice 时，默认为 "auto"
 			out.ToolChoice = "auto"
 		}
-	} else {
-		// Claude Code 常常期望工具被使用，这里默认 "auto"
-		out.ToolChoice = "auto"
 	}
+	// 如果没有工具，不设置 tool_choice
 
 	// System 映射（可选）
 	if s := c.anthropicSystemToText(anthReq.System); s != "" {

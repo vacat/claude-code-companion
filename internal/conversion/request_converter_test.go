@@ -443,6 +443,22 @@ func TestToolChoiceMapping(t *testing.T) {
 						},
 					},
 				},
+				Tools: []AnthropicTool{
+					{
+						Name:        "list_files",
+						Description: "List files in a directory",
+						InputSchema: map[string]interface{}{
+							"type": "object",
+							"properties": map[string]interface{}{
+								"path": map[string]interface{}{
+									"type":        "string",
+									"description": "Directory path",
+								},
+							},
+							"required": []string{"path"},
+						},
+					},
+				},
 				ToolChoice: tc.anthToolChoice,
 				MaxTokens:  intPtr(1024),
 			}
@@ -556,4 +572,161 @@ func TestSystemMessageHandling(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestToolChoiceOnlyWhenToolsPresent(t *testing.T) {
+	converter := NewRequestConverter(getTestLogger())
+
+	// 测试用例1：没有工具时，不应该设置tool_choice
+	t.Run("no_tools_no_tool_choice", func(t *testing.T) {
+		anthReq := AnthropicRequest{
+			Model: "claude-3-sonnet-20240229",
+			Messages: []AnthropicMessage{
+				{
+					Role: "user",
+					Content: []AnthropicContentBlock{
+						{Type: "text", Text: "Hello, how are you?"},
+					},
+				},
+			},
+			MaxTokens: intPtr(1024),
+		}
+
+		reqBytes, _ := json.Marshal(anthReq)
+		result, _, err := converter.Convert(reqBytes)
+
+		if err != nil {
+			t.Fatalf("Conversion failed: %v", err)
+		}
+
+		var oaReq OpenAIRequest
+		if err := json.Unmarshal(result, &oaReq); err != nil {
+			t.Fatalf("Failed to unmarshal result: %v", err)
+		}
+
+		// 验证没有工具
+		if len(oaReq.Tools) != 0 {
+			t.Errorf("Expected 0 tools, got %d", len(oaReq.Tools))
+		}
+
+		// 验证没有设置tool_choice
+		if oaReq.ToolChoice != nil {
+			t.Errorf("Expected tool_choice to be nil when no tools present, got %v", oaReq.ToolChoice)
+		}
+	})
+
+	// 测试用例2：有工具但没有指定tool_choice时，应该设置为"auto"
+	t.Run("has_tools_default_auto", func(t *testing.T) {
+		anthReq := AnthropicRequest{
+			Model: "claude-3-sonnet-20240229",
+			Messages: []AnthropicMessage{
+				{
+					Role: "user",
+					Content: []AnthropicContentBlock{
+						{Type: "text", Text: "List files"},
+					},
+				},
+			},
+			Tools: []AnthropicTool{
+				{
+					Name:        "list_files",
+					Description: "List files in a directory",
+					InputSchema: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"path": map[string]interface{}{
+								"type":        "string",
+								"description": "Directory path",
+							},
+						},
+						"required": []string{"path"},
+					},
+				},
+			},
+			MaxTokens: intPtr(1024),
+		}
+
+		reqBytes, _ := json.Marshal(anthReq)
+		result, _, err := converter.Convert(reqBytes)
+
+		if err != nil {
+			t.Fatalf("Conversion failed: %v", err)
+		}
+
+		var oaReq OpenAIRequest
+		if err := json.Unmarshal(result, &oaReq); err != nil {
+			t.Fatalf("Failed to unmarshal result: %v", err)
+		}
+
+		// 验证有工具
+		if len(oaReq.Tools) != 1 {
+			t.Errorf("Expected 1 tool, got %d", len(oaReq.Tools))
+		}
+
+		// 验证设置了tool_choice为"auto"
+		if oaReq.ToolChoice == nil {
+			t.Fatal("Expected tool_choice to be set when tools are present, got nil")
+		}
+		if oaReq.ToolChoice != "auto" {
+			t.Errorf("Expected tool_choice 'auto' when tools present but no tool_choice specified, got %v", oaReq.ToolChoice)
+		}
+	})
+
+	// 测试用例3：有工具且指定了tool_choice时，应该正确设置
+	t.Run("has_tools_explicit_choice", func(t *testing.T) {
+		anthReq := AnthropicRequest{
+			Model: "claude-3-sonnet-20240229",
+			Messages: []AnthropicMessage{
+				{
+					Role: "user",
+					Content: []AnthropicContentBlock{
+						{Type: "text", Text: "List files"},
+					},
+				},
+			},
+			Tools: []AnthropicTool{
+				{
+					Name:        "list_files",
+					Description: "List files in a directory",
+					InputSchema: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"path": map[string]interface{}{
+								"type":        "string",
+								"description": "Directory path",
+							},
+						},
+						"required": []string{"path"},
+					},
+				},
+			},
+			ToolChoice: &AnthropicToolChoice{Type: "any"},
+			MaxTokens:  intPtr(1024),
+		}
+
+		reqBytes, _ := json.Marshal(anthReq)
+		result, _, err := converter.Convert(reqBytes)
+
+		if err != nil {
+			t.Fatalf("Conversion failed: %v", err)
+		}
+
+		var oaReq OpenAIRequest
+		if err := json.Unmarshal(result, &oaReq); err != nil {
+			t.Fatalf("Failed to unmarshal result: %v", err)
+		}
+
+		// 验证有工具
+		if len(oaReq.Tools) != 1 {
+			t.Errorf("Expected 1 tool, got %d", len(oaReq.Tools))
+		}
+
+		// 验证设置了tool_choice为"required"（any映射为required）
+		if oaReq.ToolChoice == nil {
+			t.Fatal("Expected tool_choice to be set when tools are present, got nil")
+		}
+		if oaReq.ToolChoice != "required" {
+			t.Errorf("Expected tool_choice 'required' when tool_choice is 'any', got %v", oaReq.ToolChoice)
+		}
+	})
 }
