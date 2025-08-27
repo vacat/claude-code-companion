@@ -490,13 +490,105 @@ function loadHeaderOverrideConfig(overrides) {
     }
 }
 
-// Add event listener for add header rule button
+// ===== Request Parameter Override Functions =====
+
+
+// Add parameter override rule
+function addParameterOverrideRule(paramName = '', paramValue = '') {
+    const rulesList = document.getElementById('parameter-override-rules-list');
+    
+    const ruleDiv = document.createElement('div');
+    ruleDiv.className = 'row mb-2 parameter-override-rule';
+    ruleDiv.innerHTML = `
+        <div class="col-4">
+            <input type="text" class="form-control parameter-name-input" 
+                   placeholder="参数名称 (如: max_tokens)" value="${escapeHtml(paramName)}">
+        </div>
+        <div class="col-6">
+            <input type="text" class="form-control parameter-value-input" 
+                   placeholder="参数值 (留空删除)" value="${escapeHtml(paramValue)}">
+        </div>
+        <div class="col-2">
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeParameterOverrideRule(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    rulesList.appendChild(ruleDiv);
+}
+
+// Remove parameter override rule
+function removeParameterOverrideRule(button) {
+    button.closest('.parameter-override-rule').remove();
+}
+
+// Collect parameter override configuration data
+function collectParameterOverrideData() {
+    const enabled = document.getElementById('parameter-override-enabled').checked;
+    if (!enabled) {
+        return null;
+    }
+
+    const overrides = {};
+    document.querySelectorAll('.parameter-override-rule').forEach(ruleDiv => {
+        const paramName = ruleDiv.querySelector('.parameter-name-input').value.trim();
+        const paramValue = ruleDiv.querySelector('.parameter-value-input').value; // 不trim，允许空字符串
+        
+        if (paramName) {
+            overrides[paramName] = paramValue;
+        }
+    });
+
+    return Object.keys(overrides).length > 0 ? overrides : null;
+}
+
+// Load parameter override configuration to form
+function loadParameterOverrideConfig(overrides) {
+    const checkbox = document.getElementById('parameter-override-enabled');
+    const configDiv = document.getElementById('parameter-override-config');
+    const rulesList = document.getElementById('parameter-override-rules-list');
+    
+    // Clear existing rules
+    rulesList.innerHTML = '';
+    
+    if (overrides && Object.keys(overrides).length > 0) {
+        checkbox.checked = true;
+        StyleUtils.show(configDiv);
+        
+        Object.entries(overrides).forEach(([paramName, paramValue]) => {
+            addParameterOverrideRule(paramName, paramValue);
+        });
+    } else {
+        checkbox.checked = false;
+        StyleUtils.hide(configDiv);
+    }
+}
+
+// Add event listener for parameter override enable/disable toggle and buttons
 document.addEventListener('DOMContentLoaded', function() {
+    // Parameter override enable/disable toggle
+    const parameterOverrideEnabled = document.getElementById('parameter-override-enabled');
+    if (parameterOverrideEnabled) {
+        parameterOverrideEnabled.addEventListener('change', function() {
+            const configDiv = document.getElementById('parameter-override-config');
+            this.checked ? StyleUtils.show(configDiv) : StyleUtils.hide(configDiv);
+        });
+    }
+    
     // Add header override rule button event listener
     const addHeaderRuleBtn = document.querySelector('[data-action="add-header-override-rule"]');
     if (addHeaderRuleBtn) {
         addHeaderRuleBtn.addEventListener('click', function() {
             addHeaderOverrideRule();
+        });
+    }
+    
+    // Add parameter override rule button event listener
+    const addParameterRuleBtn = document.querySelector('[data-action="add-parameter-override-rule"]');
+    if (addParameterRuleBtn) {
+        addParameterRuleBtn.addEventListener('click', function() {
+            addParameterOverrideRule();
         });
     }
 });

@@ -21,7 +21,13 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced-tab-pane" 
                                     type="button" role="tab" aria-controls="advanced-tab-pane" aria-selected="false">
-                                <i class="fas fa-sliders-h"></i> <span data-t="advanced_configuration">高级配置</span>
+                                <i class="fas fa-sliders-h"></i> <span data-t="advanced_configuration1">高级参数1</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="advanced2-tab" data-bs-toggle="tab" data-bs-target="#advanced2-tab-pane" 
+                                    type="button" role="tab" aria-controls="advanced2-tab-pane" aria-selected="false">
+                                <i class="fas fa-cogs"></i> <span data-t="advanced_configuration2">高级参数2</span>
                             </button>
                         </li>
                     </ul>
@@ -346,8 +352,12 @@
                                 </div>
                             </div>
 
+                        </div>
+
+                        <!-- Advanced Configuration 2 Tab -->
+                        <div class="tab-pane fade" id="advanced2-tab-pane" role="tabpanel" aria-labelledby="advanced2-tab">
                             <!-- HTTP Header 覆盖配置区域 -->
-                            <div class="mb-3">
+                            <div class="mb-4">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h6 class="mb-0">
                                         <i class="fas fa-code"></i> <span data-t="header_override_configuration">HTTP Header 覆盖配置</span>
@@ -376,6 +386,41 @@
                                             <!--T:header_override_delete_description-->• 留空值将删除对应的HTTP头部<!--/T--><br>
                                             <!--T:header_override_timing_description-->• Header覆盖在认证头部设置后进行，优先级最高<!--/T--><br>
                                             <!--T:header_override_case_insensitive-->• Header名称不区分大小写<!--/T-->
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Request Parameter 覆盖配置区域 -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-edit"></i> <span data-t="parameter_override_configuration">Request Parameter 覆盖配置</span>
+                                    </h6>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="parameter-override-enabled">
+                                        <label class="form-check-label" for="parameter-override-enabled" data-t="enable_parameter_override">启用 Parameter 覆盖</label>
+                                    </div>
+                                </div>
+                                
+                                <div id="parameter-override-config" class="d-none-custom">
+                                    <small class="form-text text-muted mb-3 d-block" data-t="configure_parameter_overrides_description">配置在请求发出前要覆盖或删除的请求参数</small>
+                                    
+                                    <div id="parameter-override-rules-list">
+                                        <!-- 动态生成的parameter覆盖规则列表 -->
+                                    </div>
+                                    
+                                    <button type="button" class="btn btn-outline-primary btn-sm mb-3" data-action="add-parameter-override-rule">
+                                        <i class="fas fa-plus"></i> <span data-t="add_parameter_rule">添加Parameter规则</span>
+                                    </button>
+                                    
+                                    <div class="alert alert-info p-2">
+                                        <small class="text-muted">
+                                            <strong data-t="description">说明：</strong><br>
+                                            <!--T:parameter_override_replace_description-->• 设置值将替换或添加对应的请求参数<!--/T--><br>
+                                            <!--T:parameter_override_delete_description-->• 留空值将删除对应的请求参数<!--/T--><br>
+                                            <!--T:parameter_override_timing_description-->• Parameter覆盖在模型重写后、格式转换前进行<!--/T--><br>
+                                            <!--T:parameter_override_examples-->• 常用参数: max_tokens, temperature, top_p<!--/T-->
                                         </small>
                                     </div>
                                 </div>

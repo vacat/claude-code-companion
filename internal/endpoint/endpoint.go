@@ -39,7 +39,8 @@ type Endpoint struct {
 	Proxy             *config.ProxyConfig      `json:"proxy,omitempty"` // 新增：代理配置
 	OAuthConfig       *config.OAuthConfig      `json:"oauth_config,omitempty"` // 新增：OAuth配置
 	OverrideMaxTokens *int                     `json:"override_max_tokens,omitempty"` // 新增：覆盖max_tokens配置
-	HeaderOverrides   map[string]string      `json:"header_overrides,omitempty"` // 新增：HTTP Header覆盖配置
+	HeaderOverrides     map[string]string      `json:"header_overrides,omitempty"`     // 新增：HTTP Header覆盖配置
+	ParameterOverrides  map[string]string      `json:"parameter_overrides,omitempty"` // 新增：Request Parameters覆盖配置
 	Status              Status                   `json:"status"`
 	LastCheck           time.Time                `json:"last_check"`
 	FailureCount        int                      `json:"failure_count"`
@@ -70,7 +71,8 @@ func NewEndpoint(cfg config.EndpointConfig) *Endpoint {
 		Proxy:             cfg.Proxy,      // 新增：从配置中复制代理配置
 		OAuthConfig:       cfg.OAuthConfig, // 新增：从配置中复制OAuth配置
 		OverrideMaxTokens: cfg.OverrideMaxTokens, // 新增：从配置中复制max_tokens覆盖配置
-		HeaderOverrides:   cfg.HeaderOverrides,   // 新增：从配置中复制HTTP Header覆盖配置
+		HeaderOverrides:     cfg.HeaderOverrides,     // 新增：从配置中复制HTTP Header覆盖配置
+		ParameterOverrides:  cfg.ParameterOverrides,  // 新增：从配置中复制Request Parameters覆盖配置
 		Status:            StatusActive,
 		LastCheck:         time.Now(),
 		RequestHistory:    utils.NewCircularBuffer(100, 140*time.Second), // 100个记录，140秒窗口
@@ -137,6 +139,23 @@ func (e *Endpoint) GetHeaderOverrides() map[string]string {
 	// 返回HeaderOverrides的副本以避免并发修改
 	overrides := make(map[string]string, len(e.HeaderOverrides))
 	for k, v := range e.HeaderOverrides {
+		overrides[k] = v
+	}
+	return overrides
+}
+
+// GetParameterOverrides 安全地获取Parameter覆盖配置的副本
+func (e *Endpoint) GetParameterOverrides() map[string]string {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	
+	if e.ParameterOverrides == nil {
+		return nil
+	}
+	
+	// 返回ParameterOverrides的副本以避免并发修改
+	overrides := make(map[string]string, len(e.ParameterOverrides))
+	for k, v := range e.ParameterOverrides {
 		overrides[k] = v
 	}
 	return overrides

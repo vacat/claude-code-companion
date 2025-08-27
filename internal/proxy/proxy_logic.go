@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -125,6 +126,23 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			"original_size": len(requestBody),
 			"converted_size": len(convertedBody),
 		})
+	}
+
+	// 应用请求参数覆盖规则（在格式转换之后，创建HTTP请求之前）
+	if parameterOverrides := ep.GetParameterOverrides(); parameterOverrides != nil && len(parameterOverrides) > 0 {
+		overriddenBody, err := s.applyParameterOverrides(finalRequestBody, parameterOverrides)
+		if err != nil {
+			s.logger.Debug("Failed to apply parameter overrides", map[string]interface{}{
+				"error": err.Error(),
+			})
+			// 不返回错误，继续使用原始请求体
+		} else {
+			finalRequestBody = overriddenBody
+			s.logger.Info("Request parameter overrides applied", map[string]interface{}{
+				"endpoint": ep.Name,
+				"overrides_count": len(parameterOverrides),
+			})
+		}
 	}
 
 	// 创建最终的HTTP请求
@@ -560,4 +578,59 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	s.logger.LogRequest(requestLog)
 
 	return true, false
+}
+
+// applyParameterOverrides 应用请求参数覆盖规则
+func (s *Server) applyParameterOverrides(requestBody []byte, parameterOverrides map[string]string) ([]byte, error) {
+	if len(parameterOverrides) == 0 {
+		return requestBody, nil
+	}
+
+	// 解析JSON请求体
+	var requestData map[string]interface{}
+	if err := json.Unmarshal(requestBody, &requestData); err != nil {
+		// 如果解析失败，记录日志但不返回错误，使用原始请求体
+		s.logger.Debug("Failed to parse request body as JSON for parameter override, using original body", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return requestBody, nil
+	}
+
+	// 应用参数覆盖规则
+	modified := false
+	for paramName, paramValue := range parameterOverrides {
+		if paramValue == "" {
+			// 空值表示删除参数
+			if _, exists := requestData[paramName]; exists {
+				delete(requestData, paramName)
+				modified = true
+				s.logger.Debug(fmt.Sprintf("Parameter override: deleted parameter %s", paramName))
+			}
+		} else {
+			// 非空值表示设置参数
+			// 尝试解析参数值为适当的类型
+			var parsedValue interface{}
+			if err := json.Unmarshal([]byte(paramValue), &parsedValue); err != nil {
+				// 如果JSON解析失败，作为字符串处理
+				parsedValue = paramValue
+			}
+			requestData[paramName] = parsedValue
+			modified = true
+			s.logger.Debug(fmt.Sprintf("Parameter override: set parameter %s = %v", paramName, parsedValue))
+		}
+	}
+
+	// 如果没有修改，返回原始请求体
+	if !modified {
+		return requestBody, nil
+	}
+
+	// 重新序列化为JSON
+	modifiedBody, err := json.Marshal(requestData)
+	if err != nil {
+		s.logger.Error("Failed to marshal modified request body", err)
+		return requestBody, nil // 返回原始请求体
+	}
+
+	return modifiedBody, nil
 }

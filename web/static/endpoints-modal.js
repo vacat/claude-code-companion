@@ -29,6 +29,12 @@ function showAddEndpointModal() {
     // Clear max_tokens override configuration
     loadMaxTokensOverrideConfig(null);
     
+    // Clear header override configuration
+    loadHeaderOverrideConfig(null);
+    
+    // Clear parameter override configuration
+    loadParameterOverrideConfig(null);
+    
     // Reset to basic configuration tab
     resetModalTabs();
     
@@ -95,6 +101,9 @@ function showEditEndpointModal(endpointName) {
     // Load header override configuration
     loadHeaderOverrideConfig(endpoint.header_overrides);
     
+    // Load parameter override configuration
+    loadParameterOverrideConfig(endpoint.parameter_overrides);
+    
     // Reset to basic configuration tab
     resetModalTabs();
     
@@ -106,18 +115,26 @@ function resetModalTabs() {
     // Reset tab state
     const basicTab = document.getElementById('basic-tab');
     const advancedTab = document.getElementById('advanced-tab');
+    const advanced2Tab = document.getElementById('advanced2-tab');
     const basicPane = document.getElementById('basic-tab-pane');
     const advancedPane = document.getElementById('advanced-tab-pane');
+    const advanced2Pane = document.getElementById('advanced2-tab-pane');
     
     // Activate basic configuration tab
     basicTab.classList.add('active');
     basicTab.setAttribute('aria-selected', 'true');
     basicPane.classList.add('show', 'active');
     
-    // Deactivate advanced configuration tab
+    // Deactivate advanced configuration tabs
     advancedTab.classList.remove('active');
     advancedTab.setAttribute('aria-selected', 'false');
     advancedPane.classList.remove('show', 'active');
+    
+    if (advanced2Tab && advanced2Pane) {
+        advanced2Tab.classList.remove('active');
+        advanced2Tab.setAttribute('aria-selected', 'false');
+        advanced2Pane.classList.remove('show', 'active');
+    }
 }
 
 function saveEndpoint() {
@@ -175,7 +192,8 @@ function saveEndpoint() {
         tags: tags,
         proxy: collectProxyData(), // New: collect proxy configuration
         override_max_tokens: collectMaxTokensOverrideData(), // New: collect max_tokens override configuration
-        header_overrides: collectHeaderOverrideData() // New: collect header override configuration
+        header_overrides: collectHeaderOverrideData(), // New: collect header override configuration
+        parameter_overrides: collectParameterOverrideData() // New: collect parameter override configuration
     };
     
     // Add OAuth config if present
