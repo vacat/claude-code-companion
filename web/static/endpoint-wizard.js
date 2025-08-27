@@ -267,14 +267,6 @@ class EndpointWizard {
             pathRow.classList.add('d-none');
         }
 
-        // 处理最大令牌数覆盖行
-        const maxTokensRow = document.getElementById('confirm-max-tokens-row');
-        if (this.selectedProfile.override_max_tokens) {
-            document.getElementById('confirm-max-tokens').textContent = this.selectedProfile.override_max_tokens;
-            maxTokensRow.classList.remove('d-none');
-        } else {
-            maxTokensRow.classList.add('d-none');
-        }
     }
 
     showStep(step) {

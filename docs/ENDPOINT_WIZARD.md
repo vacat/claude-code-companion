@@ -27,7 +27,6 @@ profiles:
     endpoint_type: "anthropic"         # 端点类型
     auth_type: "api_key"              # 认证方式
     path_prefix: ""                   # 路径前缀
-    override_max_tokens: null         # 强制max_tokens值
     require_default_model: false      # 是否必须填写默认模型
     default_model_options: ""         # 预定义模型选项(逗号分隔)
 ```
@@ -39,7 +38,6 @@ profiles:
 - `endpoint_type`: `anthropic` 或 `openai`
 - `auth_type`: `api_key` 或 `auth_token`
 - `path_prefix`: API路径前缀，配置文件中必须提供
-- `override_max_tokens`: 某些端点(如DeepSeek)需要强制设置的max_tokens值
 - `require_default_model`: 是否要求用户必须填写默认模型
 - `default_model_options`: 预定义的模型选项，逗号分隔，空值表示无预设选项
 
@@ -89,7 +87,6 @@ type EndpointProfile struct {
     EndpointType         string `yaml:"endpoint_type"`
     AuthType             string `yaml:"auth_type"`
     PathPrefix           string `yaml:"path_prefix"`
-    OverrideMaxTokens    *int   `yaml:"override_max_tokens"`
     RequireDefaultModel  bool   `yaml:"require_default_model"`
     DefaultModelOptions  string `yaml:"default_model_options"`
 }
@@ -414,7 +411,7 @@ class EndpointWizard {
 
 ### 开发维护流程
 1. 开发者在`endpoint_profiles.yaml`中添加或修改预设配置
-2. 配置包含9个字段：profile_id, display_name, url, endpoint_type, auth_type, path_prefix, override_max_tokens, require_default_model, default_model_options
+2. 配置包含8个字段：profile_id, display_name, url, endpoint_type, auth_type, path_prefix, require_default_model, default_model_options
 3. **重要约束**：
    - `url` 字段必须填写，不能为空
    - `path_prefix` 字段必须填写，Anthropic端点可填空字符串，OpenAI端点必须填写路径

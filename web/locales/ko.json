@@ -175,7 +175,6 @@
     "preset_model_patterns": "사전 설정 모델 패턴:",
     "max_tokens_override_configuration": "Max Tokens 재정의 구성",
     "enable_max_tokens_override": "Max Tokens 재정의 활성화",
-    "override_max_tokens_description": "이 엔드포인트를 통한 모든 요청에 대해 max_tokens 매개변수 재정의",
     "max_tokens_value": "Max Tokens 값",
     "max_tokens_range": "범위: 1-200000",
     "endpoint_wizard": "엔드포인트 설정 마법사",

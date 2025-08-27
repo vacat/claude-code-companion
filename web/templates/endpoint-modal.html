@@ -317,40 +317,6 @@
                                 </div>
                             </div>
 
-                            <!-- Max Tokens 覆盖配置区域 -->
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h6 class="mb-0">
-                                        <i class="fas fa-calculator"></i> <span data-t="max_tokens_override_configuration">Max Tokens 覆盖配置</span>
-                                    </h6>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="max-tokens-override-enabled">
-                                        <label class="form-check-label" for="max-tokens-override-enabled" data-t="enable_max_tokens_override">启用 Max Tokens 覆盖</label>
-                                    </div>
-                                </div>
-                                
-                                <div id="max-tokens-override-config" class="d-none-custom">
-                                    <small class="form-text text-muted mb-3 d-block" data-t="override_max_tokens_description">强制覆盖请求中的 max_tokens 参数为指定值</small>
-                                    
-                                    <div class="row mb-3">
-                                        <div class="col-6">
-                                            <label for="max-tokens-value" class="form-label" data-t="max_tokens_value">Max Tokens 值</label>
-                                            <input type="number" class="form-control" id="max-tokens-value" 
-                                                   placeholder="4096" min="1" max="200000">
-                                            <small class="form-text text-muted" data-t="max_tokens_range">范围: 1-200000</small>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="alert alert-info p-2">
-                                        <small class="text-muted">
-                                            <strong data-t="description">说明：</strong><br>
-                                            <!--T:max_tokens_override_description-->• 启用后，所有通过此端点的请求的 max_tokens 参数都会被强制设置为指定值<!--/T--><br>
-                                            <!--T:max_tokens_zero_disable_description-->• 设置为 0 或禁用此功能则不会修改请求中的 max_tokens<!--/T--><br>
-                                            <!--T:max_tokens_timing_description-->• 该修改在模型重写后、格式转换前进行<!--/T-->
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
 
                         </div>
 

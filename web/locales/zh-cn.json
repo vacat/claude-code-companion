@@ -175,7 +175,6 @@
     "preset_model_patterns": "预设模型模式：",
     "max_tokens_override_configuration": "Max Tokens 覆盖配置",
     "enable_max_tokens_override": "启用 Max Tokens 覆盖",
-    "override_max_tokens_description": "强制覆盖请求中的 max_tokens 参数为指定值",
     "max_tokens_value": "Max Tokens 值",
     "max_tokens_range": "范围: 1-200000",
     "endpoint_wizard": "端点添加向导",

@@ -107,7 +107,6 @@ type MetadataConfig struct {
     Tags              []string
     ModelRewrite      *config.ModelRewriteConfig
     Proxy             *config.ProxyConfig
-    OverrideMaxTokens *int
 }
 ```
 

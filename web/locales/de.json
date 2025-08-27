@@ -175,7 +175,6 @@
     "preset_model_patterns": "Vordefinierte Modell-Muster:",
     "max_tokens_override_configuration": "Max-Tokens-Überschreibungs-Konfiguration",
     "enable_max_tokens_override": "Max-Tokens-Überschreibung aktivieren",
-    "override_max_tokens_description": "Max-Tokens-Parameter für alle Anfragen über diesen Endpoint überschreiben",
     "max_tokens_value": "Max-Tokens-Wert",
     "max_tokens_range": "Bereich: 1-200000",
     "endpoint_wizard": "Endpoint-Einrichtungs-Assistent",

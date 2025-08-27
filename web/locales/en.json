@@ -175,7 +175,6 @@
     "preset_model_patterns": "Preset Model Patterns:",
     "max_tokens_override_configuration": "Max Tokens Override Configuration",
     "enable_max_tokens_override": "Enable Max Tokens Override",
-    "override_max_tokens_description": "Override max_tokens parameter for all requests through this endpoint",
     "max_tokens_value": "Max Tokens Value",
     "max_tokens_range": "Range: 1-200000",
     "endpoint_wizard": "Endpoint Setup Wizard",

@@ -63,7 +63,6 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 		Tags              []string             `json:"tags"`
 		Proxy             *config.ProxyConfig  `json:"proxy,omitempty"` // 新增：代理配置
 		OAuthConfig       *config.OAuthConfig  `json:"oauth_config,omitempty"` // 新增：OAuth配置
-		OverrideMaxTokens *int                 `json:"override_max_tokens,omitempty"` // 新增：覆盖max_tokens配置
 		HeaderOverrides     map[string]string    `json:"header_overrides,omitempty"`   // 新增：HTTP Header覆盖配置
 		ParameterOverrides  map[string]string    `json:"parameter_overrides,omitempty"` // 新增：Request Parameter覆盖配置
 	}
@@ -153,7 +152,7 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 	newEndpoint := createEndpointConfigFromRequest(
 		request.Name, request.URL, request.EndpointType, request.PathPrefix,
 		request.AuthType, request.AuthValue, 
-		request.Enabled, maxPriority+1, request.Tags, request.Proxy, request.OAuthConfig, request.OverrideMaxTokens, request.HeaderOverrides, request.ParameterOverrides)
+		request.Enabled, maxPriority+1, request.Tags, request.Proxy, request.OAuthConfig, request.HeaderOverrides, request.ParameterOverrides)
 	currentEndpoints = append(currentEndpoints, newEndpoint)
 
 	// 使用热更新机制
@@ -185,7 +184,6 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 		Tags              []string             `json:"tags"`
 		Proxy             *config.ProxyConfig  `json:"proxy,omitempty"` // 新增：代理配置
 		OAuthConfig       *config.OAuthConfig  `json:"oauth_config,omitempty"` // 新增：OAuth配置
-		OverrideMaxTokens *int                 `json:"override_max_tokens,omitempty"` // 新增：覆盖max_tokens配置
 		HeaderOverrides     map[string]string    `json:"header_overrides,omitempty"`   // 新增：HTTP Header覆盖配置
 		ParameterOverrides  map[string]string    `json:"parameter_overrides,omitempty"` // 新增：Request Parameter覆盖配置
 	}
@@ -311,8 +309,6 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 			// 更新代理配置
 			currentEndpoints[i].Proxy = request.Proxy
 			
-			// 更新max_tokens覆盖配置
-			currentEndpoints[i].OverrideMaxTokens = request.OverrideMaxTokens
 			
 			// 更新HTTP Header覆盖配置
 			currentEndpoints[i].HeaderOverrides = request.HeaderOverrides

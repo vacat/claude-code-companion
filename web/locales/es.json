@@ -175,7 +175,6 @@
     "preset_model_patterns": "Patrones de Modelo Predefinidos:",
     "max_tokens_override_configuration": "Configuración de Anulación de Max Tokens",
     "enable_max_tokens_override": "Habilitar Anulación de Max Tokens",
-    "override_max_tokens_description": "Anular el parámetro max_tokens para todas las solicitudes a través de este endpoint",
     "max_tokens_value": "Valor de Max Tokens",
     "max_tokens_range": "Rango: 1-200000",
     "endpoint_wizard": "Asistente de Configuración de Endpoint",

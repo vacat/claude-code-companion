@@ -19,7 +19,6 @@ type EndpointProfile struct {
 	EndpointType         string `yaml:"endpoint_type" json:"endpoint_type"`
 	AuthType             string `yaml:"auth_type" json:"auth_type"`
 	PathPrefix           string `yaml:"path_prefix" json:"path_prefix"`
-	OverrideMaxTokens    *int   `yaml:"override_max_tokens" json:"override_max_tokens"`
 	RequireDefaultModel  bool   `yaml:"require_default_model" json:"require_default_model"`
 	DefaultModelOptions  string `yaml:"default_model_options" json:"default_model_options"`
 }
@@ -60,7 +59,6 @@ func (p *EndpointProfile) ToEndpointConfig(name, authValue, defaultModel, url st
 		ModelRewrite:      nil,
 		Proxy:             nil,
 		OAuthConfig:       nil,
-		OverrideMaxTokens: p.OverrideMaxTokens,
 	}
 	
 	// 如果需要默认模型且提供了模型名称，添加模型重写配置

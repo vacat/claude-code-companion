@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"claude-code-companion/internal/config"
@@ -243,23 +242,3 @@ func (s *Server) createOAuthTokenRefreshCallback() func(*endpoint.Endpoint) erro
 	}
 }
 
-// overrideMaxTokens 重写请求中的max_tokens字段
-func (s *Server) overrideMaxTokens(requestBody []byte, maxTokens int) ([]byte, error) {
-	// 先尝试解析JSON
-	var requestData map[string]interface{}
-	if err := json.Unmarshal(requestBody, &requestData); err != nil {
-		// 不是JSON格式，跳过重写
-		return requestBody, nil
-	}
-
-	// 设置max_tokens字段
-	requestData["max_tokens"] = maxTokens
-
-	// 重新序列化为JSON
-	modifiedBody, err := json.Marshal(requestData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request body after max_tokens override: %v", err)
-	}
-
-	return modifiedBody, nil
-}

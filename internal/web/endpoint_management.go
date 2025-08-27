@@ -101,7 +101,6 @@ func (s *AdminServer) handleCopyEndpoint(c *gin.Context) {
 		Enabled:           sourceEndpoint.Enabled,
 		Priority:          maxPriority + 1,
 		Tags:              make([]string, len(sourceEndpoint.Tags)), // 复制tags
-		OverrideMaxTokens: sourceEndpoint.OverrideMaxTokens, // 复制max_tokens覆盖配置
 	}
 
 	// 深度复制Tags切片

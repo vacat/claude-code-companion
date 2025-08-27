@@ -22,11 +22,6 @@ document.getElementById('model-rewrite-enabled').addEventListener('change', func
     updateDefaultModelState();
 });
 
-// Max tokens override enable/disable toggle
-document.getElementById('max-tokens-override-enabled').addEventListener('change', function() {
-    const configDiv = document.getElementById('max-tokens-override-config');
-    this.checked ? StyleUtils.show(configDiv) : StyleUtils.hide(configDiv);
-});
 
 // Add rewrite rule
 function addRewriteRule(sourcePattern = '', targetModel = '') {
@@ -265,41 +260,6 @@ function saveModelRewriteConfig(endpointName, config) {
     });
 }
 
-// ===== Max Tokens Override Functions =====
-
-// Collect max_tokens override data
-function collectMaxTokensOverrideData() {
-    const enabled = document.getElementById('max-tokens-override-enabled').checked;
-    if (!enabled) {
-        return null;
-    }
-
-    const value = parseInt(document.getElementById('max-tokens-value').value);
-    if (!value || value <= 0) {
-        return null; // Don't save if value is empty or invalid
-    }
-
-    return value;
-}
-
-// Load max_tokens override configuration
-function loadMaxTokensOverrideConfig(value) {
-    const checkbox = document.getElementById('max-tokens-override-enabled');
-    const configDiv = document.getElementById('max-tokens-override-config');
-    
-    if (value && value > 0) {
-        checkbox.checked = true;
-        StyleUtils.show(configDiv);
-        
-        document.getElementById('max-tokens-value').value = value;
-    } else {
-        checkbox.checked = false;
-        StyleUtils.hide(configDiv);
-        
-        // Reset form field
-        document.getElementById('max-tokens-value').value = '';
-    }
-}
 
 // ===== Default Model Functions =====
 

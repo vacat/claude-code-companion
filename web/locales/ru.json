@@ -175,7 +175,6 @@
     "preset_model_patterns": "Предустановленные шаблоны моделей:",
     "max_tokens_override_configuration": "Конфигурация переопределения Max Tokens",
     "enable_max_tokens_override": "Включить переопределение Max Tokens",
-    "override_max_tokens_description": "Переопределить параметр max_tokens для всех запросов через эту конечную точку",
     "max_tokens_value": "Значение Max Tokens",
     "max_tokens_range": "Диапазон: 1-200000",
     "endpoint_wizard": "Мастер настройки конечной точки",

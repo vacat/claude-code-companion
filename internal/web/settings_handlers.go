@@ -58,10 +58,6 @@ func deepCopyConfig(src *config.Config) config.Config {
 			dst.Endpoints[i].OAuthConfig = &oauth
 		}
 		
-		if ep.OverrideMaxTokens != nil {
-			maxTokens := *ep.OverrideMaxTokens
-			dst.Endpoints[i].OverrideMaxTokens = &maxTokens
-		}
 		
 		// 深拷贝 Tags slice
 		if ep.Tags != nil {

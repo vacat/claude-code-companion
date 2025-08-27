@@ -26,8 +26,6 @@ function showAddEndpointModal() {
     // Clear default model
     document.getElementById('endpoint-default-model').value = '';
     
-    // Clear max_tokens override configuration
-    loadMaxTokensOverrideConfig(null);
     
     // Clear header override configuration
     loadHeaderOverrideConfig(null);
@@ -95,8 +93,6 @@ function showEditEndpointModal(endpointName) {
     // Load default model after loading model rewrite config
     loadDefaultModel(endpoint.model_rewrite);
     
-    // Load max_tokens override configuration
-    loadMaxTokensOverrideConfig(endpoint.override_max_tokens);
     
     // Load header override configuration
     loadHeaderOverrideConfig(endpoint.header_overrides);
@@ -191,7 +187,6 @@ function saveEndpoint() {
         enabled: document.getElementById('endpoint-enabled').checked,
         tags: tags,
         proxy: collectProxyData(), // New: collect proxy configuration
-        override_max_tokens: collectMaxTokensOverrideData(), // New: collect max_tokens override configuration
         header_overrides: collectHeaderOverrideData(), // New: collect header override configuration
         parameter_overrides: collectParameterOverrideData() // New: collect parameter override configuration
     };

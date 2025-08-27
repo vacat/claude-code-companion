@@ -8,7 +8,6 @@ profiles:
     endpoint_type: "anthropic"
     auth_type: "auth_token"
     path_prefix: ""
-    override_max_tokens: null
     require_default_model: false
     default_model_options: ""
 
@@ -18,7 +17,6 @@ profiles:
     endpoint_type: "anthropic"
     auth_type: "api_key"
     path_prefix: ""
-    override_max_tokens: null
     require_default_model: false
     default_model_options: ""
 
@@ -28,7 +26,6 @@ profiles:
     endpoint_type: "anthropic"
     auth_type: "auth_token"
     path_prefix: ""
-    override_max_tokens: null
     require_default_model: false
     default_model_options: ""
 
@@ -38,7 +35,6 @@ profiles:
     endpoint_type: "anthropic"
     auth_type: "auth_token"
     path_prefix: ""
-    override_max_tokens: null
     require_default_model: false
     default_model_options: ""
 
@@ -48,7 +44,6 @@ profiles:
     endpoint_type: "anthropic"
     auth_type: "auth_token"
     path_prefix: ""
-    override_max_tokens: null
     require_default_model: true
     default_model_options: "kimi-k2-0711-preview,kimi-k2-turbo-preview"
 
@@ -58,7 +53,6 @@ profiles:
     endpoint_type: "anthropic"
     auth_type: "auth_token"
     path_prefix: ""
-    override_max_tokens: null
     require_default_model: true
     default_model_options: "deepseek-chat,deepseek-reasoner"
 
@@ -68,7 +62,6 @@ profiles:
     endpoint_type: "openai"
     auth_type: "auth_token"
     path_prefix: "/api/paas/v4/chat/completions"
-    override_max_tokens: null
     require_default_model: true
     default_model_options: "glm-4.5,glm-4.5-air"
 
@@ -78,7 +71,6 @@ profiles:
     endpoint_type: "openai"
     auth_type: "auth_token"
     path_prefix: "/v1/chat/completions"
-    override_max_tokens: null
     require_default_model: true
     default_model_options: "openai/gpt-5-mini,openai/gpt-oss-120b,google/gemini-2.5-pro"
 
@@ -88,7 +80,6 @@ profiles:
     endpoint_type: "openai"
     auth_type: "auth_token"
     path_prefix: "/v1/chat/completions"
-    override_max_tokens: null
     require_default_model: true
     default_model_options: "Qwen/Qwen3-Coder-480B-A35B-Instruct,Qwen/Qwen3-235B-A22B-Instruct-2507,openai-mirror/gpt-oss-120b,deepseek-ai/DeepSeek-V3.1"
 
@@ -98,7 +89,6 @@ profiles:
     endpoint_type: "openai"
     auth_type: "auth_token"
     path_prefix: "/v1/chat/completions"
-    override_max_tokens: null
     require_default_model: true
     default_model_options: "Qwen3-Coder,glm-4.5,Qwen3-235B-A22B-Instruct,deepseek-v3.1"
 
@@ -108,7 +98,6 @@ profiles:
     endpoint_type: "openai"
     auth_type: "auth_token"
     path_prefix: "/v1/chat/completions"
-    override_max_tokens: null
     require_default_model: true
     default_model_options: "gpt-5-2025-08-07,gpt-5-mini-2025-08-07,o3"
 
@@ -118,7 +107,6 @@ profiles:
     endpoint_type: "openai"
     auth_type: "auth_token"
     path_prefix: "/api/v3/chat/completions"
-    override_max_tokens: null
     require_default_model: true
     default_model_options: "doubao-seed-1-6-250615,deepseek-v3-1-250821,kimi-k2-250711"
 
@@ -128,7 +116,6 @@ profiles:
     endpoint_type: "openai"
     auth_type: "auth_token"
     path_prefix: "/v1/chat/completions"
-    override_max_tokens: null
     require_default_model: true
     default_model_options: "qwen-3-coder-480b,qwen-3-235b-a22b-instruct-2507,qwen-3-235b-a22b-thinking-2507,gpt-oss-120b"
 
@@ -138,6 +125,5 @@ profiles:
     endpoint_type: "openai"
     auth_type: "auth_token"
     path_prefix: "/v1/chat/completions"
-    override_max_tokens: null
     require_default_model: true
     default_model_options: "openai/gpt-oss-120b,moonshotai/kimi-k2-instruct"

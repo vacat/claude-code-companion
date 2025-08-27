@@ -175,7 +175,6 @@
     "preset_model_patterns": "Padrões de Modelo Predefinidos:",
     "max_tokens_override_configuration": "Configuração de Substituição de Max Tokens",
     "enable_max_tokens_override": "Habilitar Substituição de Max Tokens",
-    "override_max_tokens_description": "Substituir o parâmetro max_tokens para todas as solicitações através deste endpoint",
     "max_tokens_value": "Valor de Max Tokens",
     "max_tokens_range": "Intervalo: 1-200000",
     "endpoint_wizard": "Assistente de Configuração de Endpoint",

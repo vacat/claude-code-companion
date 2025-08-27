@@ -38,7 +38,6 @@ type Endpoint struct {
 	ModelRewrite      *config.ModelRewriteConfig `json:"model_rewrite,omitempty"` // 新增：模型重写配置
 	Proxy             *config.ProxyConfig      `json:"proxy,omitempty"` // 新增：代理配置
 	OAuthConfig       *config.OAuthConfig      `json:"oauth_config,omitempty"` // 新增：OAuth配置
-	OverrideMaxTokens *int                     `json:"override_max_tokens,omitempty"` // 新增：覆盖max_tokens配置
 	HeaderOverrides     map[string]string      `json:"header_overrides,omitempty"`     // 新增：HTTP Header覆盖配置
 	ParameterOverrides  map[string]string      `json:"parameter_overrides,omitempty"` // 新增：Request Parameters覆盖配置
 	Status              Status                   `json:"status"`
@@ -70,7 +69,6 @@ func NewEndpoint(cfg config.EndpointConfig) *Endpoint {
 		ModelRewrite:      cfg.ModelRewrite, // 新增：从配置中复制模型重写配置
 		Proxy:             cfg.Proxy,      // 新增：从配置中复制代理配置
 		OAuthConfig:       cfg.OAuthConfig, // 新增：从配置中复制OAuth配置
-		OverrideMaxTokens: cfg.OverrideMaxTokens, // 新增：从配置中复制max_tokens覆盖配置
 		HeaderOverrides:     cfg.HeaderOverrides,     // 新增：从配置中复制HTTP Header覆盖配置
 		ParameterOverrides:  cfg.ParameterOverrides,  // 新增：从配置中复制Request Parameters覆盖配置
 		Status:            StatusActive,

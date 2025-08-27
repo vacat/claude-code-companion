@@ -175,7 +175,6 @@
     "preset_model_patterns": "プリセットモデルパターン:",
     "max_tokens_override_configuration": "Max Tokens上書き設定",
     "enable_max_tokens_override": "Max Tokens上書き有効化",
-    "override_max_tokens_description": "このエンドポイント経由のすべてのリクエストでmax_tokensパラメータを上書き",
     "max_tokens_value": "Max Tokens値",
     "max_tokens_range": "範囲: 1-200000",
     "endpoint_wizard": "エンドポイントセットアップウィザード",
