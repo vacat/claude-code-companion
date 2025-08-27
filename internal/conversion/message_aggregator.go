@@ -117,41 +117,40 @@ func (a *MessageAggregator) processToolCall(toolCall OpenAIToolCall, toolCallSta
 	var state *AggregatedToolCall
 	var stateKey string
 	
+	// Always use index-based key to avoid duplicates when ID is missing
+	indexKey := fmt.Sprintf("index_%d", toolCall.Index)
+	
 	// Handle case where subsequent chunks don't have ID (OpenAI streaming behavior)
 	if toolCall.ID == "" {
-		// Find existing tool call by index (should only have one active tool call per index)
-		// In most cases, there will be only one tool call, so we can use the first one
-		for key, existingState := range toolCallStates {
-			if key != "" { // Skip any accidentally created empty-key states
-				state = existingState
-				stateKey = key
-				break
-			}
-		}
+		// Find existing tool call by index - this is the correct approach for streaming
+		var exists bool
+		state, exists = toolCallStates[indexKey]
 		
-		// If no existing state found, this is an error case - create one with a placeholder ID
-		if state == nil {
+		if !exists {
+			// Create new state using index as fallback ID
 			stateKey = fmt.Sprintf("tool_call_%d", toolCall.Index)
 			state = &AggregatedToolCall{
 				ID:        stateKey,
 				Name:      "",
 				Arguments: "",
 			}
-			toolCallStates[stateKey] = state
+			toolCallStates[indexKey] = state
+		} else {
+			stateKey = indexKey
 		}
 	} else {
-		// Normal case: tool call has ID
-		stateKey = toolCall.ID
+		// Normal case: tool call has ID, but use consistent index-based key
 		var exists bool
-		state, exists = toolCallStates[stateKey]
+		state, exists = toolCallStates[indexKey]
 		if !exists {
 			state = &AggregatedToolCall{
-				ID:        toolCall.ID,
+				ID:        toolCall.ID, // Use the real ID when available
 				Name:      "",
 				Arguments: "",
 			}
-			toolCallStates[stateKey] = state
+			toolCallStates[indexKey] = state // Store using index-based key to avoid duplicates
 		}
+		stateKey = indexKey
 	}
 
 	// Update name (should only be set once)
@@ -167,8 +166,38 @@ func (a *MessageAggregator) processToolCall(toolCall OpenAIToolCall, toolCallSta
 
 // finalizeToolCalls converts tool call states to final array
 func (a *MessageAggregator) finalizeToolCalls(aggregated *AggregatedMessage, toolCallStates map[string]*AggregatedToolCall) {
-	for _, state := range toolCallStates {
-		aggregated.ToolCalls = append(aggregated.ToolCalls, *state)
+	// Create a slice to store tool calls with their indices
+	type indexedToolCall struct {
+		index    int
+		toolCall AggregatedToolCall
+	}
+	
+	var indexedCalls []indexedToolCall
+	
+	// Extract index from key and create indexed tool calls
+	for key, state := range toolCallStates {
+		// Extract index from key like "index_0", "index_1", etc.
+		var index int
+		if n, err := fmt.Sscanf(key, "index_%d", &index); n == 1 && err == nil {
+			indexedCalls = append(indexedCalls, indexedToolCall{
+				index:    index,
+				toolCall: *state,
+			})
+		}
+	}
+	
+	// Sort by index to maintain original order
+	for i := 0; i < len(indexedCalls); i++ {
+		for j := i + 1; j < len(indexedCalls); j++ {
+			if indexedCalls[i].index > indexedCalls[j].index {
+				indexedCalls[i], indexedCalls[j] = indexedCalls[j], indexedCalls[i]
+			}
+		}
+	}
+	
+	// Add sorted tool calls to aggregated message
+	for _, indexed := range indexedCalls {
+		aggregated.ToolCalls = append(aggregated.ToolCalls, indexed.toolCall)
 	}
 }
 
