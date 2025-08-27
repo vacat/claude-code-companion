@@ -2,6 +2,8 @@ package proxy
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -111,6 +113,20 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			"original_size": len(requestBody),
 			"converted_size": len(convertedBody),
 		})
+	}
+
+	// OpenAI user 参数长度限制 hack（在格式转换之后，参数覆盖之前）
+	if ep.EndpointType == "openai" {
+		hackedBody, err := s.applyOpenAIUserLengthHack(finalRequestBody)
+		if err != nil {
+			s.logger.Debug("Failed to apply OpenAI user length hack", map[string]interface{}{
+				"error": err.Error(),
+			})
+			// 不返回错误，继续使用原始请求体
+		} else if hackedBody != nil {
+			finalRequestBody = hackedBody
+			s.logger.Debug("OpenAI user parameter length hack applied")
+		}
 	}
 
 	// 应用请求参数覆盖规则（在格式转换之后，创建HTTP请求之前）
@@ -618,4 +634,69 @@ func (s *Server) applyParameterOverrides(requestBody []byte, parameterOverrides 
 	}
 
 	return modifiedBody, nil
+}
+
+// applyOpenAIUserLengthHack 应用 OpenAI user 参数长度限制 hack
+func (s *Server) applyOpenAIUserLengthHack(requestBody []byte) ([]byte, error) {
+	// 解析JSON请求体
+	var requestData map[string]interface{}
+	if err := json.Unmarshal(requestBody, &requestData); err != nil {
+		// 如果解析失败，记录日志但不返回错误，使用原始请求体
+		s.logger.Debug("Failed to parse request body as JSON for OpenAI user hack, using original body", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return nil, nil
+	}
+
+	// 检查是否存在 user 参数
+	userValue, exists := requestData["user"]
+	if !exists {
+		return nil, nil // 没有 user 参数，无需处理
+	}
+
+	// 转换为字符串
+	userStr, ok := userValue.(string)
+	if !ok {
+		return nil, nil // user 参数不是字符串，无需处理
+	}
+
+	// 检查长度（以字节为单位）
+	if len(userStr) <= 64 {
+		return nil, nil // 长度在限制内，无需处理
+	}
+
+	// 生成 hash
+	hasher := md5.New()
+	hasher.Write([]byte(userStr))
+	hashBytes := hasher.Sum(nil)
+	hashStr := hex.EncodeToString(hashBytes)
+	
+	// 添加前缀标识
+	hashedUser := "hashed-" + hashStr
+
+	// 更新请求数据
+	requestData["user"] = hashedUser
+	
+	s.logger.Info("OpenAI user parameter hashed due to length limit", map[string]interface{}{
+		"original_length": len(userStr),
+		"hashed_length": len(hashedUser),
+		"original_user": userStr[:min(32, len(userStr))] + "...", // 只记录前32个字符用于调试
+	})
+
+	// 重新序列化为JSON
+	modifiedBody, err := json.Marshal(requestData)
+	if err != nil {
+		s.logger.Error("Failed to marshal request body after user hash", err)
+		return nil, err
+	}
+
+	return modifiedBody, nil
+}
+
+// min 返回两个整数中的较小值
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
