@@ -142,6 +142,37 @@ func (s *AdminServer) handleCopyEndpoint(c *gin.Context) {
 	})
 }
 
+// handleResetEndpointStatus 重置端点状态为正常
+func (s *AdminServer) handleResetEndpointStatus(c *gin.Context) {
+	endpointName := c.Param("id") // 端点名称
+
+	// 查找端点
+	var endpoint *config.EndpointConfig
+	for _, ep := range s.config.Endpoints {
+		if ep.Name == endpointName {
+			endpoint = &ep
+			break
+		}
+	}
+
+	if endpoint == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Endpoint not found"})
+		return
+	}
+
+	// 重置端点状态
+	if err := s.endpointManager.ResetEndpointStatus(endpointName); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to reset endpoint status: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Endpoint '%s' status has been reset to normal", endpointName),
+	})
+}
+
 // handleReorderEndpoints 重新排序端点
 func (s *AdminServer) handleReorderEndpoints(c *gin.Context) {
 	var request struct {

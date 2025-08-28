@@ -325,6 +325,30 @@ function toggleEndpointEnabled(endpointName, currentEnabled) {
     });
 }
 
+function resetEndpointStatus(endpointName) {
+    if (!confirm(t('confirm_reset_endpoint_status', '确认要重置端点 "{0}" 的状态吗？这将清除失败记录并将状态重置为正常。').replace('{0}', endpointName))) {
+        return;
+    }
+
+    apiRequest(`/admin/api/endpoints/${encodeURIComponent(endpointName)}/reset-status`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showAlert(data.error, 'danger');
+        } else {
+            showAlert(`端点 "${endpointName}" 状态已重置为正常`, 'success');
+            // 刷新端点状态显示
+            refreshEndpointStatus();
+        }
+    })
+    .catch(error => {
+        console.error('Failed to reset endpoint status:', error);
+        showAlert('重置端点状态失败', 'danger');
+    });
+}
+
 function reorderEndpoints() {
     // Get special endpoint order
     const specialRows = document.querySelectorAll('#special-endpoint-list tr');

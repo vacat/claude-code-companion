@@ -230,6 +230,7 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 		api.DELETE("/endpoints/:id", s.handleDeleteEndpoint)
 		api.POST("/endpoints/:id/copy", s.handleCopyEndpoint)
 		api.POST("/endpoints/:id/toggle", s.handleToggleEndpoint)
+		api.POST("/endpoints/:id/reset-status", s.handleResetEndpointStatus)
 		api.POST("/endpoints/reorder", s.handleReorderEndpoints)
 		
 		// 端点向导路由

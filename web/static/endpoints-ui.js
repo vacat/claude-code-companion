@@ -135,6 +135,11 @@ function rebuildTable(endpoints) {
                             title="复制">
                         <i class="fas fa-copy"></i>
                     </button>
+                    <button class="btn btn-outline-warning btn-sm" 
+                            onclick="event.stopPropagation(); resetEndpointStatus('${escapeHtml(endpoint.name)}')"
+                            title="重置状态">
+                        <i class="fas fa-redo"></i>
+                    </button>
                     <button class="btn btn-outline-danger btn-sm" 
                             onclick="event.stopPropagation(); deleteEndpoint('${escapeHtml(endpoint.name)}')"
                             title="删除">

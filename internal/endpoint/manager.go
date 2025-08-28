@@ -1,6 +1,7 @@
 package endpoint
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -176,6 +177,21 @@ func (m *Manager) SetHealthChecker(checker HealthChecker) {
 	
 	// 启动健康检查
 	m.startHealthChecks()
+}
+
+// ResetEndpointStatus resets an endpoint's status to active and clears failure statistics
+func (m *Manager) ResetEndpointStatus(endpointName string) error {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	for _, endpoint := range m.endpoints {
+		if endpoint.Name == endpointName {
+			endpoint.MarkActive()
+			return nil
+		}
+	}
+
+	return fmt.Errorf("endpoint not found: %s", endpointName)
 }
 
 func (m *Manager) startHealthChecks() {
