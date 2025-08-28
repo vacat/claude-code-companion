@@ -59,6 +59,11 @@ type GormRequestLog struct {
 	FinalResponseHeaders string `gorm:"column:final_response_headers;type:text;default:'{}'"`
 	FinalResponseBody    string `gorm:"column:final_response_body;type:text;default:''"`
 	
+	// 新增：被拉黑端点相关字段
+	BlacklistCausingRequestIDs string     `gorm:"column:blacklist_causing_request_ids;type:text;default:'[]'"`
+	EndpointBlacklistedAt      *time.Time `gorm:"column:endpoint_blacklisted_at"`
+	EndpointBlacklistReason    string     `gorm:"column:endpoint_blacklist_reason;type:text;default:''"`
+	
 	// 创建时间（现有字段）
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
 }
@@ -99,6 +104,9 @@ func ConvertToGormRequestLog(log *RequestLog) *GormRequestLog {
 		FinalRequestURL:         log.FinalRequestURL,
 		FinalRequestBody:        log.FinalRequestBody,
 		FinalResponseBody:       log.FinalResponseBody,
+		BlacklistCausingRequestIDs: marshalTagsToJSON(log.BlacklistCausingRequestIDs),
+		EndpointBlacklistedAt:   log.EndpointBlacklistedAt,
+		EndpointBlacklistReason: log.EndpointBlacklistReason,
 	}
 	
 	// 转换JSON字段
@@ -144,6 +152,9 @@ func ConvertFromGormRequestLog(gormLog *GormRequestLog) *RequestLog {
 		FinalRequestURL:         gormLog.FinalRequestURL,
 		FinalRequestBody:        gormLog.FinalRequestBody,
 		FinalResponseBody:       gormLog.FinalResponseBody,
+		BlacklistCausingRequestIDs: unmarshalTagsFromJSON(gormLog.BlacklistCausingRequestIDs),
+		EndpointBlacklistedAt:   gormLog.EndpointBlacklistedAt,
+		EndpointBlacklistReason: gormLog.EndpointBlacklistReason,
 	}
 	
 	// 转换JSON字段

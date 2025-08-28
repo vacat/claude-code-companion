@@ -2,10 +2,13 @@ package proxy
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
 
+	"claude-code-companion/internal/endpoint"
+	"claude-code-companion/internal/tagging"
 	"claude-code-companion/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -45,6 +48,29 @@ func (s *Server) sendFailureResponse(c *gin.Context, requestID string, startTime
 			// 同时设置RequestBody字段用于向后兼容
 			requestLog.RequestBody = requestLog.OriginalRequestBody
 		}
+	}
+	
+	// 添加被拉黑端点的详细信息
+	allEndpoints := s.endpointManager.GetAllEndpoints()
+	var blacklistedEndpoints []string
+	var blacklistReasons []string
+	
+	for _, ep := range allEndpoints {
+		if !ep.IsAvailable() {
+			blacklistReason := ep.GetBlacklistReason()
+			
+			if blacklistReason != nil {
+				blacklistedEndpoints = append(blacklistedEndpoints, ep.Name)
+				blacklistReasons = append(blacklistReasons, 
+					fmt.Sprintf("caused by requests: %v", 
+						blacklistReason.CausingRequestIDs))
+			}
+		}
+	}
+	
+	if len(blacklistedEndpoints) > 0 {
+		errorMsg += fmt.Sprintf(". Blacklisted endpoints: %v. Reasons: %v", 
+			blacklistedEndpoints, blacklistReasons)
 	}
 	
 	requestLog.Tags = requestTags
@@ -166,5 +192,54 @@ func (s *Server) logSimpleRequest(requestID, endpoint, method, path string, orig
 	// 更新并记录日志
 	s.logger.UpdateRequestLog(requestLog, req, resp, responseBody, duration, err)
 	requestLog.IsStreaming = isStreaming
+	s.logger.LogRequest(requestLog)
+}
+
+// logBlacklistedEndpointRequest 记录对被拉黑端点的请求日志
+func (s *Server) logBlacklistedEndpointRequest(requestID string, ep *endpoint.Endpoint, path string, requestBody []byte, c *gin.Context, duration time.Duration, errorMsg string, causingRequestIDs []string, attemptNumber int, taggedRequest *tagging.TaggedRequest) {
+	requestLog := s.logger.CreateRequestLog(requestID, ep.URL, c.Request.Method, path)
+	requestLog.RequestBodySize = len(requestBody)
+	requestLog.AttemptNumber = attemptNumber
+	requestLog.DurationMs = duration.Nanoseconds() / 1000000
+	requestLog.StatusCode = http.StatusServiceUnavailable
+	requestLog.Error = errorMsg
+	
+	// 设置被拉黑端点相关信息
+	requestLog.BlacklistCausingRequestIDs = causingRequestIDs
+	
+	// 获取失效原因信息（使用安全的访问器方法）
+	blacklistReason := ep.GetBlacklistReason()
+	if blacklistReason != nil {
+		requestLog.EndpointBlacklistedAt = &blacklistReason.BlacklistedAt
+		requestLog.EndpointBlacklistReason = blacklistReason.ErrorSummary
+	}
+	
+	// 设置请求标签
+	if taggedRequest != nil {
+		requestLog.Tags = taggedRequest.Tags
+	}
+	
+	// 记录原始请求数据
+	if c.Request != nil {
+		requestLog.OriginalRequestHeaders = utils.HeadersToMap(c.Request.Header)
+		requestLog.OriginalRequestURL = c.Request.URL.String()
+		requestLog.RequestHeaders = requestLog.OriginalRequestHeaders
+	}
+	
+	// 记录请求体
+	if len(requestBody) > 0 {
+		requestLog.Model = utils.ExtractModelFromRequestBody(string(requestBody))
+		requestLog.SessionID = utils.ExtractSessionIDFromRequestBody(string(requestBody))
+		
+		if s.config.Logging.LogRequestBody != "none" {
+			if s.config.Logging.LogRequestBody == "truncated" {
+				requestLog.OriginalRequestBody = utils.TruncateBody(string(requestBody), 1024)
+			} else {
+				requestLog.OriginalRequestBody = string(requestBody)
+			}
+			requestLog.RequestBody = requestLog.OriginalRequestBody
+		}
+	}
+	
 	s.logger.LogRequest(requestLog)
 }

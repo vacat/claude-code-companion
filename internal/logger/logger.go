@@ -50,6 +50,15 @@ type RequestLog struct {
 	FinalRequestBody        string            `json:"final_request_body,omitempty"`
 	FinalResponseHeaders    map[string]string `json:"final_response_headers,omitempty"`
 	FinalResponseBody       string            `json:"final_response_body,omitempty"`
+	
+	// 新增：导致端点失效的请求ID（如果当前请求是对被拉黑端点的请求）
+	BlacklistCausingRequestIDs []string `json:"blacklist_causing_request_ids,omitempty"`
+	
+	// 新增：端点失效时间（如果适用）
+	EndpointBlacklistedAt *time.Time `json:"endpoint_blacklisted_at,omitempty"`
+	
+	// 新增：端点失效原因摘要
+	EndpointBlacklistReason string `json:"endpoint_blacklist_reason,omitempty"`
 }
 
 // StorageInterface defines the interface for log storage backends

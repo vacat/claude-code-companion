@@ -186,12 +186,12 @@ var Default = DefaultValues{
 		LogDirectory    string
 		BodyTruncateSize int
 	}{
-		Level:           "info",
-		LogRequestTypes: "all",
-		LogRequestBody:  "none",
-		LogResponseBody: "none",
-		LogDirectory:    "./logs",
-		BodyTruncateSize: 1000,
+		Level:                         "info",
+		LogRequestTypes:               "all",
+		LogRequestBody:                "none",
+		LogResponseBody:               "none",
+		LogDirectory:                  "./logs",
+		BodyTruncateSize:              1000,
 	},
 
 	Endpoint: struct {

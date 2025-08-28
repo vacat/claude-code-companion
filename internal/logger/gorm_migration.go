@@ -69,6 +69,9 @@ func validateTableCompatibility(db *gorm.DB) error {
 	// 检查并添加新增的可选列
 	optionalColumns := map[string]string{
 		"session_id": "session_id VARCHAR(100) DEFAULT ''",
+		"blacklist_causing_request_ids": "blacklist_causing_request_ids TEXT DEFAULT '[]'",
+		"endpoint_blacklisted_at": "endpoint_blacklisted_at DATETIME",
+		"endpoint_blacklist_reason": "endpoint_blacklist_reason TEXT DEFAULT ''",
 	}
 	
 	for column, definition := range optionalColumns {

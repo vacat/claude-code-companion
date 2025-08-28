@@ -97,14 +97,14 @@ func (m *Manager) GetAllEndpoints() []*Endpoint {
 	return m.selector.GetAllEndpoints()
 }
 
-func (m *Manager) RecordRequest(endpointID string, success bool) {
+func (m *Manager) RecordRequest(endpointID string, success bool, requestID string) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
 	for _, endpoint := range m.endpoints {
 		if endpoint.ID == endpointID {
 			// Update in-memory statistics
-			endpoint.RecordRequest(success)
+			endpoint.RecordRequest(success, requestID)
 			
 			// Update database statistics if statistics manager is available
 			if m.statisticsManager != nil {
@@ -232,10 +232,10 @@ func (m *Manager) runHealthCheck(endpoint *Endpoint, ticker *time.Ticker) {
 		
 		if err := m.healthChecker.CheckEndpoint(endpoint); err != nil {
 			// 健康检查失败，重置连续成功次数
-			endpoint.RecordRequest(false)
+			endpoint.RecordRequest(false, "health-check")
 		} else {
 			// 健康检查成功，记录成功并检查是否达到恢复阈值
-			endpoint.RecordRequest(true)
+			endpoint.RecordRequest(true, "health-check")
 			if endpoint.GetSuccessiveSuccesses() >= recoveryThreshold {
 				// 达到恢复阈值，恢复为可用状态
 				endpoint.MarkActive()

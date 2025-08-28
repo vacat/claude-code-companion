@@ -22,6 +22,18 @@ const (
 	StatusChecking Status = "checking"
 )
 
+// BlacklistReason 记录端点被拉黑的原因
+type BlacklistReason struct {
+	// 导致失效的请求ID列表
+	CausingRequestIDs []string `json:"causing_request_ids"`
+	
+	// 失效时间
+	BlacklistedAt time.Time `json:"blacklisted_at"`
+	
+	// 失效时的错误信息摘要
+	ErrorSummary string `json:"error_summary"`
+}
+
 // 删除不再需要的 RequestRecord 定义，因为已经移到 utils 包
 
 type Endpoint struct {
@@ -48,6 +60,13 @@ type Endpoint struct {
 	LastFailure         time.Time                `json:"last_failure"`
 	SuccessiveSuccesses int                      `json:"successive_successes"` // 连续成功次数
 	RequestHistory      *utils.CircularBuffer    `json:"-"` // 使用环形缓冲区，不导出到JSON
+	
+	// 新增：被拉黑的原因（内存中，不持久化）
+	BlacklistReason *BlacklistReason `json:"-"`
+	
+	// 新增：保护 BlacklistReason 的互斥锁
+	blacklistMutex sync.RWMutex
+	
 	mutex               sync.RWMutex
 }
 
@@ -207,16 +226,17 @@ func (e *Endpoint) IsAvailable() bool {
 	return enabled && status == StatusActive
 }
 
-func (e *Endpoint) RecordRequest(success bool) {
+func (e *Endpoint) RecordRequest(success bool, requestID string) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
 	now := time.Now()
 	
-	// 添加到环形缓冲区
+	// 添加到环形缓冲区（包含请求ID）
 	record := utils.RequestRecord{
 		Timestamp: now,
 		Success:   success,
+		RequestID: requestID,
 	}
 	e.RequestHistory.Add(record)
 	
@@ -227,7 +247,10 @@ func (e *Endpoint) RecordRequest(success bool) {
 		e.SuccessiveSuccesses++ // 增加连续成功次数
 		// 如果成功且之前是不可用状态，恢复为可用
 		if e.Status == StatusInactive {
-			e.Status = StatusActive
+			// 释放 mutex 以避免死锁，因为 MarkActive 需要获取 mutex
+			e.mutex.Unlock()
+			e.MarkActive()
+			e.mutex.Lock()
 		}
 	} else {
 		e.FailureCount++
@@ -236,7 +259,10 @@ func (e *Endpoint) RecordRequest(success bool) {
 		
 		// 使用环形缓冲区检查是否应该标记为不可用
 		if e.Status == StatusActive && e.RequestHistory.ShouldMarkInactive(now) {
-			e.Status = StatusInactive
+			// 释放 mutex 以避免死锁，因为 MarkInactiveWithReason 需要获取 mutex
+			e.mutex.Unlock()
+			e.MarkInactiveWithReason()
+			e.mutex.Lock()
 		}
 	}
 }
@@ -247,13 +273,41 @@ func (e *Endpoint) MarkInactive() {
 	e.Status = StatusInactive
 }
 
+// MarkInactiveWithReason 标记端点为失效并记录原因
+func (e *Endpoint) MarkInactiveWithReason() {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+	
+	if e.Status == StatusActive {
+		e.Status = StatusInactive
+		
+		// 从循环缓冲区获取导致失效的请求ID
+		failedRequestIDs := e.RequestHistory.GetRecentFailureRequestIDs(time.Now())
+		
+		// 构建失效原因记录
+		e.blacklistMutex.Lock()
+		e.BlacklistReason = &BlacklistReason{
+			BlacklistedAt:     time.Now(),
+			CausingRequestIDs: failedRequestIDs,
+			ErrorSummary:      fmt.Sprintf("Endpoint failed due to %d consecutive failures", len(failedRequestIDs)),
+		}
+		e.blacklistMutex.Unlock()
+	}
+}
+
 func (e *Endpoint) MarkActive() {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	e.Status = StatusActive
 	e.FailureCount = 0
 	e.SuccessiveSuccesses = 0 // 重置连续成功次数
-	// 可选：清理历史记录
+	
+	// 清除失效原因记录
+	e.blacklistMutex.Lock()
+	e.BlacklistReason = nil
+	e.blacklistMutex.Unlock()
+	
+	// 清理历史记录
 	e.RequestHistory.Clear()
 }
 
@@ -418,4 +472,21 @@ func (e *Endpoint) GetAuthHeaderWithRefreshCallback(timeoutConfig config.ProxyTi
 	}
 	
 	return authHeader, err
+}
+
+// GetBlacklistReason 安全地获取被拉黑原因信息
+func (e *Endpoint) GetBlacklistReason() *BlacklistReason {
+	e.blacklistMutex.RLock()
+	defer e.blacklistMutex.RUnlock()
+	
+	if e.BlacklistReason == nil {
+		return nil
+	}
+	
+	// 返回深度拷贝以避免并发修改
+	return &BlacklistReason{
+		CausingRequestIDs: append([]string{}, e.BlacklistReason.CausingRequestIDs...),
+		BlacklistedAt:     e.BlacklistReason.BlacklistedAt,
+		ErrorSummary:      e.BlacklistReason.ErrorSummary,
+	}
 }

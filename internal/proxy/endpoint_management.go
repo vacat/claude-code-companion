@@ -22,11 +22,36 @@ const (
 	RetryBehaviorSwitchEndpoint RetryBehavior = 2 // 切换到下一个端点
 )
 
+// EndpointFilterResult 和相关类型定义不再需要，因为现在直接在尝试时处理被拉黑端点
+
 // MaxEndpointRetries 单个端点最大重试次数
 const MaxEndpointRetries = 2
 
 // tryProxyRequestWithRetry 尝试向端点发送请求，支持单端点重试
 func (s *Server) tryProxyRequestWithRetry(c *gin.Context, ep *endpoint.Endpoint, requestBody []byte, requestID string, startTime time.Time, path string, taggedRequest *tagging.TaggedRequest, globalAttemptNumber int) (success bool, shouldTryNextEndpoint bool) {
+	// 检查端点是否被拉黑，如果是则记录虚拟日志并跳过
+	if !ep.IsAvailable() {
+		duration := time.Since(startTime)
+		blacklistReason := ep.GetBlacklistReason()
+		var errorMsg string
+		var causingRequestIDs []string
+		
+		if blacklistReason != nil {
+			causingRequestIDs = blacklistReason.CausingRequestIDs
+			errorMsg = fmt.Sprintf("Endpoint blacklisted due to previous failures. Causing request IDs: %v. Original error: %s", 
+				causingRequestIDs, blacklistReason.ErrorSummary)
+		} else {
+			errorMsg = "Endpoint is blacklisted (no detailed reason available)"
+		}
+		
+		// 记录被拉黑端点的虚拟请求日志
+		s.logBlacklistedEndpointRequest(requestID, ep, path, requestBody, c, duration, errorMsg, causingRequestIDs, globalAttemptNumber, taggedRequest)
+		
+		// 立即尝试下一个端点
+		s.logger.Debug(fmt.Sprintf("Endpoint %s is blacklisted, skipping to next endpoint", ep.Name))
+		return false, true
+	}
+
 	for endpointAttempt := 1; endpointAttempt <= MaxEndpointRetries; endpointAttempt++ {
 		currentGlobalAttempt := globalAttemptNumber + endpointAttempt - 1
 		s.logger.Debug(fmt.Sprintf("Trying endpoint %s (endpoint attempt %d/%d, global attempt %d)", ep.Name, endpointAttempt, MaxEndpointRetries, currentGlobalAttempt))
@@ -36,7 +61,7 @@ func (s *Server) tryProxyRequestWithRetry(c *gin.Context, ep *endpoint.Endpoint,
 			// 检查是否应该跳过健康统计记录
 			skipHealthRecord, _ := c.Get("skip_health_record")
 			if skipHealthRecord != true {
-				s.endpointManager.RecordRequest(ep.ID, true)
+				s.endpointManager.RecordRequest(ep.ID, true, requestID)
 			}
 			
 			// 尝试提取基准信息用于健康检查
@@ -56,7 +81,7 @@ func (s *Server) tryProxyRequestWithRetry(c *gin.Context, ep *endpoint.Endpoint,
 		isCountTokensRequest := strings.Contains(path, "/count_tokens")
 		shouldSkip := (skipHealthRecord == true) || isCountTokensRequest
 		if !shouldSkip {
-			s.endpointManager.RecordRequest(ep.ID, false)
+			s.endpointManager.RecordRequest(ep.ID, false, requestID)
 		}
 		
 		// 如果明确指示不应重试任何地方，直接返回
@@ -293,7 +318,7 @@ func (s *Server) tryEndpointList(c *gin.Context, endpoints []utils.EndpointSorte
 	return false, totalAttempts
 }
 
-// filterAndSortEndpoints 过滤并排序端点
+// filterAndSortEndpoints 过滤并排序端点（包括被拉黑端点，用于在实际轮到时记录虚拟日志）
 func (s *Server) filterAndSortEndpoints(allEndpoints []*endpoint.Endpoint, failedEndpoint *endpoint.Endpoint, filterFunc func(*endpoint.Endpoint) bool) []utils.EndpointSorter {
 	var filtered []*endpoint.Endpoint
 	
@@ -302,8 +327,8 @@ func (s *Server) filterAndSortEndpoints(allEndpoints []*endpoint.Endpoint, faile
 		if ep.ID == failedEndpoint.ID {
 			continue
 		}
-		// 跳过禁用或不可用的端点
-		if !ep.Enabled || !ep.IsAvailable() {
+		// 跳过禁用的端点，但允许被拉黑端点进入候选列表（用于记录虚拟日志）
+		if !ep.Enabled {
 			continue
 		}
 		
@@ -350,7 +375,7 @@ func (s *Server) fallbackToOtherEndpoints(c *gin.Context, path string, requestBo
 	isCountTokensRequest := strings.Contains(path, "/count_tokens")
 	shouldSkip := (skipHealthRecord == true) || isCountTokensRequest
 	if !shouldSkip {
-		s.endpointManager.RecordRequest(failedEndpoint.ID, false)
+		s.endpointManager.RecordRequest(failedEndpoint.ID, false, requestID)
 	}
 	
 	allEndpoints := s.endpointManager.GetAllEndpoints()

@@ -19,6 +19,9 @@ type CircularBuffer struct {
 type RequestRecord struct {
 	Timestamp time.Time
 	Success   bool
+	
+	// 新增：请求ID（用于追踪失败原因）
+	RequestID string
 }
 
 // NewCircularBuffer creates a new circular buffer with the specified size and time window
@@ -85,4 +88,28 @@ func (cb *CircularBuffer) Clear() {
 	
 	cb.count = 0
 	cb.head = 0
+}
+
+// GetRecentFailureRequestIDs 获取时间窗口内的所有失败请求ID
+func (cb *CircularBuffer) GetRecentFailureRequestIDs(now time.Time) []string {
+	cb.mutex.RLock()
+	defer cb.mutex.RUnlock()
+
+	cutoff := now.Add(-cb.windowDur)
+	var failureRequestIDs []string
+
+	for i := 0; i < cb.count; i++ {
+		idx := (cb.head - 1 - i + cb.size) % cb.size
+		record := cb.records[idx]
+
+		if record.Timestamp.Before(cutoff) {
+			break
+		}
+
+		if !record.Success && record.RequestID != "" {
+			failureRequestIDs = append(failureRequestIDs, record.RequestID)
+		}
+	}
+
+	return failureRequestIDs
 }
