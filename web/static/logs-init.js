@@ -8,12 +8,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Format endpoint cells to show only domain with hover for full URL
     document.querySelectorAll('.endpoint-cell').forEach(function(cell) {
         const fullEndpoint = cell.getAttribute('data-endpoint');
+        
+        // Check if the cell already has error information (preserve it)
+        const existingErrorInfo = cell.querySelector('small.text-danger');
+        
         if (fullEndpoint && fullEndpoint !== 'failed') {
             const urlFormatted = formatUrlDisplay(fullEndpoint);
-            cell.innerHTML = `<small><code title="${escapeHtml(urlFormatted.title)}">${escapeHtml(urlFormatted.display)}</code></small>`;
-        } else {
-            // For 'failed' or other non-URL values, keep as is
-            cell.innerHTML = `<small>${escapeHtml(fullEndpoint)}</small>`;
+            const endpointHtml = `<div><small><code title="${escapeHtml(urlFormatted.title)}">${escapeHtml(urlFormatted.display)}</code></small></div>`;
+            
+            if (existingErrorInfo) {
+                // Preserve existing error information
+                cell.innerHTML = endpointHtml + existingErrorInfo.outerHTML;
+            } else {
+                cell.innerHTML = endpointHtml;
+            }
+        } else if (fullEndpoint === 'failed' || !fullEndpoint) {
+            // For 'failed' or empty endpoint values, check if we should preserve existing content
+            if (!existingErrorInfo) {
+                cell.innerHTML = `<div><small>${escapeHtml(fullEndpoint || '')}</small></div>`;
+            }
+            // If existingErrorInfo exists, keep the current content as is
         }
     });
     

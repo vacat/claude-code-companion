@@ -79,7 +79,28 @@
                                                 {{if .SessionID}}{{.SessionID}}{{else}}--{{end}}
                                             </span>
                                         </td>
-                                        <td class="endpoint-cell" data-endpoint="{{.Endpoint}}">{{.Endpoint}}</td>
+                                        <td class="endpoint-cell" data-endpoint="{{.Endpoint}}">
+                                            <div>{{.Endpoint}}</div>
+                                            {{if or .Error .EndpointBlacklistReason}}
+                                                <small class="text-danger">
+                                                    {{$errorText := ""}}
+                                                    {{if .EndpointBlacklistReason}}
+                                                        {{$errorText = .EndpointBlacklistReason}}
+                                                    {{else if .Error}}
+                                                        {{$errorText = .Error}}
+                                                    {{end}}
+                                                    {{if gt (len $errorText) 20}}
+                                                        <span data-bs-toggle="tooltip" data-bs-placement="top" title="{{$errorText}}">
+                                                            {{slice $errorText 0 20}}...
+                                                        </span>
+                                                    {{else}}
+                                                        <span data-bs-toggle="tooltip" data-bs-placement="top" title="{{$errorText}}">
+                                                            {{$errorText}}
+                                                        </span>
+                                                    {{end}}
+                                                </small>
+                                            {{end}}
+                                        </td>
                                         <td>
                                             <small>
                                                 {{if .Model}}
