@@ -46,7 +46,10 @@ func NewServer(cfg *config.Config, configFilePath string, version string) (*Serv
 		return nil, fmt.Errorf("failed to initialize logger: %v", err)
 	}
 
-	endpointManager := endpoint.NewManager(cfg)
+	endpointManager, err := endpoint.NewManager(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize endpoint manager: %v", err)
+	}
 	responseValidator := validator.NewResponseValidator()
 
 	// 初始化tagging系统

@@ -24,7 +24,7 @@ type Manager struct {
 	statisticsManager statistics.StatisticsManager
 }
 
-func NewManager(cfg *config.Config) *Manager {
+func NewManager(cfg *config.Config) (*Manager, error) {
 	// Initialize statistics manager
 	// Use log directory for statistics database, or current directory as fallback
 	dataDirectory := cfg.Logging.LogDirectory
@@ -34,39 +34,19 @@ func NewManager(cfg *config.Config) *Manager {
 
 	statisticsManager, err := statistics.NewStatisticsManager(dataDirectory)
 	if err != nil {
-		// This should rarely happen now with the fallback mechanism
-		log.Printf("ERROR: Failed to initialize any statistics manager: %v", err)
-		log.Printf("Statistics functionality will be completely disabled")
-		statisticsManager = nil
-	} else {
-		dbPath := statisticsManager.GetDatabasePath()
-		if dbPath == "memory-only (no persistent storage)" {
-			log.Printf("WARNING: Using memory-only statistics (no persistence)")
-			log.Printf("Statistics will reset when the service restarts")
-			log.Printf("This may be due to file permission issues or insufficient disk space")
-			log.Printf("Check logs for specific error details")
-		} else {
-			log.Printf("Statistics persistence initialized successfully (database: %s)", dbPath)
-		}
+		log.Printf("ERROR: Failed to initialize statistics manager: %v", err)
+		return nil, fmt.Errorf("failed to initialize statistics manager: %w", err)
 	}
 
 	endpoints := make([]*Endpoint, 0, len(cfg.Endpoints))
 	for _, endpointConfig := range cfg.Endpoints {
 		endpoint := NewEndpoint(endpointConfig)
 		
-		// Initialize or inherit statistics data if statistics manager is available
-		if statisticsManager != nil {
-			if err := initializeEndpointStatistics(endpoint, statisticsManager); err != nil {
-				log.Printf("WARNING: Failed to initialize statistics for endpoint %s: %v", 
-					endpoint.Name, err)
-				log.Printf("Endpoint %s will start with zero statistics", endpoint.Name)
-			} else {
-				log.Printf("Statistics loaded for endpoint %s: TotalRequests=%d, SuccessRequests=%d", 
-					endpoint.Name, endpoint.TotalRequests, endpoint.SuccessRequests)
-			}
-		} else {
-			log.Printf("Statistics persistence unavailable - endpoint %s will start with zero statistics", 
-				endpoint.Name)
+		// Initialize or inherit statistics data
+		if err := initializeEndpointStatistics(endpoint, statisticsManager); err != nil {
+			log.Printf("ERROR: Failed to initialize statistics for endpoint %s: %v", 
+				endpoint.Name, err)
+			return nil, fmt.Errorf("failed to initialize statistics for endpoint %s: %w", endpoint.Name, err)
 		}
 		
 		endpoints = append(endpoints, endpoint)
@@ -81,7 +61,7 @@ func NewManager(cfg *config.Config) *Manager {
 		statisticsManager: statisticsManager,
 	}
 
-	return manager
+	return manager, nil
 }
 
 func (m *Manager) GetEndpoint() (*Endpoint, error) {
