@@ -110,21 +110,17 @@ function generateEnhancedWindowsScript() {
 REM Claude Code Companion - Windows Launcher
 echo Configuring Claude Code for proxy use...
 
-REM Use embedded Node.js to process settings.json
-node -e "const fs=require('fs');const path=require('path');const os=require('os');const claudeDir=path.join(os.homedir(),'.claude');const settingsFile=path.join(claudeDir,'settings.json');const targetEnv={'ANTHROPIC_BASE_URL':'${baseUrl}','ANTHROPIC_AUTH_TOKEN':'hello','CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC':'1','API_TIMEOUT_MS':'600000'};function processSettings(){if(!fs.existsSync(settingsFile)){console.log('Claude settings file not found, using environment variables only');return true;}try{const content=fs.readFileSync(settingsFile,'utf8');const settings=JSON.parse(content);if(!settings.env)settings.env={};let needsUpdate=false;let backupCreated=false;for(const[key,targetValue]of Object.entries(targetEnv)){const currentValue=settings.env[key];if(currentValue!==targetValue){if(!backupCreated){const timestamp=new Date().toISOString().replace(/[:.]/g,'-');const backupFile=settingsFile+'.backup-'+timestamp;fs.copyFileSync(settingsFile,backupFile);console.log('Backed up settings to: '+backupFile);backupCreated=true;}if(currentValue){console.log('Updating '+key+': '+currentValue+' -> '+targetValue);}else{console.log('Adding '+key+': '+targetValue);}settings.env[key]=targetValue;needsUpdate=true;}}if(needsUpdate){fs.writeFileSync(settingsFile,JSON.stringify(settings,null,2));console.log('Settings updated successfully');}else{console.log('Settings already configured correctly');}return true;}catch(error){console.error('Error processing settings:',error.message);console.log('Using fallback environment variables...');return false;}}process.exit(processSettings()?0:1);"
+REM Set environment variables first (fallback and primary method)
+set ANTHROPIC_BASE_URL=${baseUrl}
+set ANTHROPIC_AUTH_TOKEN=hello
+set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+set API_TIMEOUT_MS=600000
 
-REM Check configuration result
-if %errorlevel% equ 0 (
-    echo Starting Claude...
-    claude %*
-) else (
-    echo Configuration failed, using fallback environment variables...
-    set ANTHROPIC_BASE_URL=${baseUrl}
-    set ANTHROPIC_AUTH_TOKEN=hello
-    set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
-    set API_TIMEOUT_MS=600000
-    claude %*
-)`;
+REM Use embedded Node.js to process settings.json if it exists
+node -e "const fs=require('fs');const path=require('path');const os=require('os');const claudeDir=path.join(os.homedir(),'.claude');const settingsFile=path.join(claudeDir,'settings.json');const targetEnv={'ANTHROPIC_BASE_URL':'${baseUrl}','ANTHROPIC_AUTH_TOKEN':'hello','CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC':'1','API_TIMEOUT_MS':'600000'};function processSettings(){if(!fs.existsSync(settingsFile)){console.log('Claude settings file not found, environment variables already set');return true;}try{const content=fs.readFileSync(settingsFile,'utf8');const settings=JSON.parse(content);if(!settings.env)settings.env={};let needsUpdate=false;let backupCreated=false;for(const[key,targetValue]of Object.entries(targetEnv)){const currentValue=settings.env[key];if(currentValue!==targetValue){if(!backupCreated){const timestamp=new Date().toISOString().replace(/[:.]/g,'-');const backupFile=settingsFile+'.backup-'+timestamp;fs.copyFileSync(settingsFile,backupFile);console.log('Backed up settings to: '+backupFile);backupCreated=true;}if(currentValue){console.log('Updating '+key+': '+currentValue+' -> '+targetValue);}else{console.log('Adding '+key+': '+targetValue);}settings.env[key]=targetValue;needsUpdate=true;}}if(needsUpdate){fs.writeFileSync(settingsFile,JSON.stringify(settings,null,2));console.log('Settings updated successfully');}else{console.log('Settings already configured correctly');}return true;}catch(error){console.error('Error processing settings:',error.message);console.log('Environment variables already set as fallback');return false;}}processSettings();" >nul 2>&1
+
+echo Starting Claude with proxy configuration...
+claude %*`;
 }
 
 // Generate enhanced Unix script (Linux/macOS)
@@ -135,21 +131,17 @@ function generateEnhancedUnixScript(osName) {
 # Claude Code Companion - ${osName} Launcher
 echo "Configuring Claude Code for proxy use..."
 
-# Use embedded Node.js to process settings.json
-node -e "const fs=require('fs');const path=require('path');const os=require('os');const claudeDir=path.join(os.homedir(),'.claude');const settingsFile=path.join(claudeDir,'settings.json');const targetEnv={'ANTHROPIC_BASE_URL':'${baseUrl}','ANTHROPIC_AUTH_TOKEN':'hello','CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC':'1','API_TIMEOUT_MS':'600000'};function processSettings(){if(!fs.existsSync(settingsFile)){console.log('Claude settings file not found, using environment variables only');return true;}try{const content=fs.readFileSync(settingsFile,'utf8');const settings=JSON.parse(content);if(!settings.env)settings.env={};let needsUpdate=false;let backupCreated=false;for(const[key,targetValue]of Object.entries(targetEnv)){const currentValue=settings.env[key];if(currentValue!==targetValue){if(!backupCreated){const timestamp=new Date().toISOString().replace(/[:.]/g,'-');const backupFile=settingsFile+'.backup-'+timestamp;fs.copyFileSync(settingsFile,backupFile);console.log('Backed up settings to: '+backupFile);backupCreated=true;}if(currentValue){console.log('Updating '+key+': '+currentValue+' -> '+targetValue);}else{console.log('Adding '+key+': '+targetValue);}settings.env[key]=targetValue;needsUpdate=true;}}if(needsUpdate){fs.writeFileSync(settingsFile,JSON.stringify(settings,null,2));console.log('Settings updated successfully');}else{console.log('Settings already configured correctly');}return true;}catch(error){console.error('Error processing settings:',error.message);console.log('Using fallback environment variables...');return false;}}process.exit(processSettings()?0:1);"
+# Set environment variables first (fallback and primary method)
+export ANTHROPIC_BASE_URL="${baseUrl}"
+export ANTHROPIC_AUTH_TOKEN="hello"
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1"
+export API_TIMEOUT_MS="600000"
 
-# Check configuration result
-if [ $? -eq 0 ]; then
-    echo "Starting Claude..."
-    exec claude "$@"
-else
-    echo "Configuration failed, using fallback environment variables..."
-    export ANTHROPIC_BASE_URL="${baseUrl}"
-    export ANTHROPIC_AUTH_TOKEN="hello"
-    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1"
-    export API_TIMEOUT_MS="600000"
-    exec claude "$@"
-fi`;
+# Use embedded Node.js to process settings.json if it exists
+node -e "const fs=require('fs');const path=require('path');const os=require('os');const claudeDir=path.join(os.homedir(),'.claude');const settingsFile=path.join(claudeDir,'settings.json');const targetEnv={'ANTHROPIC_BASE_URL':'${baseUrl}','ANTHROPIC_AUTH_TOKEN':'hello','CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC':'1','API_TIMEOUT_MS':'600000'};function processSettings(){if(!fs.existsSync(settingsFile)){console.log('Claude settings file not found, environment variables already set');return true;}try{const content=fs.readFileSync(settingsFile,'utf8');const settings=JSON.parse(content);if(!settings.env)settings.env={};let needsUpdate=false;let backupCreated=false;for(const[key,targetValue]of Object.entries(targetEnv)){const currentValue=settings.env[key];if(currentValue!==targetValue){if(!backupCreated){const timestamp=new Date().toISOString().replace(/[:.]/g,'-');const backupFile=settingsFile+'.backup-'+timestamp;fs.copyFileSync(settingsFile,backupFile);console.log('Backed up settings to: '+backupFile);backupCreated=true;}if(currentValue){console.log('Updating '+key+': '+currentValue+' -> '+targetValue);}else{console.log('Adding '+key+': '+targetValue);}settings.env[key]=targetValue;needsUpdate=true;}}if(needsUpdate){fs.writeFileSync(settingsFile,JSON.stringify(settings,null,2));console.log('Settings updated successfully');}else{console.log('Settings already configured correctly');}return true;}catch(error){console.error('Error processing settings:',error.message);console.log('Environment variables already set as fallback');return false;}}processSettings();" >/dev/null 2>&1
+
+echo "Starting Claude with proxy configuration..."
+exec claude "$@"`;
 }
 
 // Initialize help page on DOM ready
