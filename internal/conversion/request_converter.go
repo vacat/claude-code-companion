@@ -23,7 +23,7 @@ func NewRequestConverter(logger *logger.Logger) *RequestConverter {
 }
 
 // Convert 转换 Anthropic 请求为 OpenAI 格式 - 基于参考实现
-func (c *RequestConverter) Convert(anthropicReq []byte) ([]byte, *ConversionContext, error) {
+func (c *RequestConverter) Convert(anthropicReq []byte, endpointInfo *EndpointInfo) ([]byte, *ConversionContext, error) {
 	// 解析 Anthropic 请求
 	var anthReq AnthropicRequest
 	if err := json.Unmarshal(anthropicReq, &anthReq); err != nil {
@@ -46,9 +46,23 @@ func (c *RequestConverter) Convert(anthropicReq []byte) ([]byte, *ConversionCont
 	// 温控映射
 	out.Temperature = anthReq.Temperature
 	out.TopP = anthReq.TopP
-	// Anthropic 的 max_tokens -> OpenAI 的 max_tokens（使用兼容字段和新字段）
-	out.MaxTokens = anthReq.MaxTokens
-	out.MaxCompletionTokens = anthReq.MaxTokens  // 设置新推荐字段
+	
+	// 根据端点配置处理 max_tokens 字段名转换
+	if endpointInfo != nil && endpointInfo.MaxTokensFieldName != "" {
+		// 根据配置的字段名设置对应字段
+		switch endpointInfo.MaxTokensFieldName {
+		case "max_completion_tokens":
+			out.MaxCompletionTokens = anthReq.MaxTokens
+		case "max_output_tokens":
+			out.MaxOutputTokens = anthReq.MaxTokens
+		default:
+			// 默认或未知值，保持原始字段名
+			out.MaxTokens = anthReq.MaxTokens
+		}
+	} else {
+		// 没有配置时使用默认行为：保持原始字段名
+		out.MaxTokens = anthReq.MaxTokens
+	}
 	out.Stream = anthReq.Stream
 	out.Stop = anthReq.StopSequences
 

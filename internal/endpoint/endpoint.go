@@ -52,6 +52,7 @@ type Endpoint struct {
 	OAuthConfig       *config.OAuthConfig      `json:"oauth_config,omitempty"` // 新增：OAuth配置
 	HeaderOverrides     map[string]string      `json:"header_overrides,omitempty"`     // 新增：HTTP Header覆盖配置
 	ParameterOverrides  map[string]string      `json:"parameter_overrides,omitempty"` // 新增：Request Parameters覆盖配置
+	MaxTokensFieldName  string                 `json:"max_tokens_field_name,omitempty"` // max_tokens 参数名转换选项
 	Status              Status                   `json:"status"`
 	LastCheck           time.Time                `json:"last_check"`
 	FailureCount        int                      `json:"failure_count"`
@@ -90,6 +91,7 @@ func NewEndpoint(cfg config.EndpointConfig) *Endpoint {
 		OAuthConfig:       cfg.OAuthConfig, // 新增：从配置中复制OAuth配置
 		HeaderOverrides:     cfg.HeaderOverrides,     // 新增：从配置中复制HTTP Header覆盖配置
 		ParameterOverrides:  cfg.ParameterOverrides,  // 新增：从配置中复制Request Parameters覆盖配置
+		MaxTokensFieldName:  cfg.MaxTokensFieldName,  // 新增：从配置中复制max_tokens参数名转换选项
 		Status:            StatusActive,
 		LastCheck:         time.Now(),
 		RequestHistory:    utils.NewCircularBuffer(100, 140*time.Second), // 100个记录，140秒窗口

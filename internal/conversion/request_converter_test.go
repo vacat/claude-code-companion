@@ -26,7 +26,7 @@ func TestConvertAnthropicRequestToOpenAI_SimpleText(t *testing.T) {
 	}
 
 	reqBytes, _ := json.Marshal(anthReq)
-	result, ctx, err := converter.Convert(reqBytes)
+	result, ctx, err := converter.Convert(reqBytes, &EndpointInfo{Type: "openai"})
 
 	if err != nil {
 		t.Fatalf("Conversion failed: %v", err)
@@ -103,7 +103,7 @@ func TestConvertAnthropicRequestToOpenAI_WithTools(t *testing.T) {
 	}
 
 	reqBytes, _ := json.Marshal(anthReq)
-	result, ctx, err := converter.Convert(reqBytes)
+	result, ctx, err := converter.Convert(reqBytes, &EndpointInfo{Type: "openai"})
 
 	if err != nil {
 		t.Fatalf("Conversion failed: %v", err)
@@ -183,7 +183,7 @@ func TestConvertAnthropicRequestToOpenAI_WithToolUse(t *testing.T) {
 	}
 
 	reqBytes, _ := json.Marshal(anthReq)
-	result, ctx, err := converter.Convert(reqBytes)
+	result, ctx, err := converter.Convert(reqBytes, &EndpointInfo{Type: "openai"})
 
 	if err != nil {
 		t.Fatalf("Conversion failed: %v", err)
@@ -256,7 +256,7 @@ func TestConvertAnthropicRequestToOpenAI_WithToolResult(t *testing.T) {
 	}
 
 	reqBytes, _ := json.Marshal(anthReq)
-	result, ctx, err := converter.Convert(reqBytes)
+	result, ctx, err := converter.Convert(reqBytes, &EndpointInfo{Type: "openai"})
 
 	if err != nil {
 		t.Fatalf("Conversion failed: %v", err)
@@ -316,7 +316,7 @@ func TestConvertAnthropicRequestToOpenAI_WithImage(t *testing.T) {
 	}
 
 	reqBytes, _ := json.Marshal(anthReq)
-	result, ctx, err := converter.Convert(reqBytes)
+	result, ctx, err := converter.Convert(reqBytes, &EndpointInfo{Type: "openai"})
 
 	if err != nil {
 		t.Fatalf("Conversion failed: %v", err)
@@ -464,7 +464,7 @@ func TestToolChoiceMapping(t *testing.T) {
 			}
 
 			reqBytes, _ := json.Marshal(anthReq)
-			result, _, err := converter.Convert(reqBytes)
+			result, _, err := converter.Convert(reqBytes, &EndpointInfo{Type: "openai"})
 
 			if err != nil {
 				t.Fatalf("Conversion failed: %v", err)
@@ -538,7 +538,7 @@ func TestSystemMessageHandling(t *testing.T) {
 			}
 
 			reqBytes, _ := json.Marshal(anthReq)
-			result, _, err := converter.Convert(reqBytes)
+			result, _, err := converter.Convert(reqBytes, &EndpointInfo{Type: "openai"})
 
 			if err != nil {
 				t.Fatalf("Conversion failed: %v", err)
@@ -593,7 +593,7 @@ func TestToolChoiceOnlyWhenToolsPresent(t *testing.T) {
 		}
 
 		reqBytes, _ := json.Marshal(anthReq)
-		result, _, err := converter.Convert(reqBytes)
+		result, _, err := converter.Convert(reqBytes, &EndpointInfo{Type: "openai"})
 
 		if err != nil {
 			t.Fatalf("Conversion failed: %v", err)
@@ -647,7 +647,7 @@ func TestToolChoiceOnlyWhenToolsPresent(t *testing.T) {
 		}
 
 		reqBytes, _ := json.Marshal(anthReq)
-		result, _, err := converter.Convert(reqBytes)
+		result, _, err := converter.Convert(reqBytes, &EndpointInfo{Type: "openai"})
 
 		if err != nil {
 			t.Fatalf("Conversion failed: %v", err)
@@ -705,7 +705,7 @@ func TestToolChoiceOnlyWhenToolsPresent(t *testing.T) {
 		}
 
 		reqBytes, _ := json.Marshal(anthReq)
-		result, _, err := converter.Convert(reqBytes)
+		result, _, err := converter.Convert(reqBytes, &EndpointInfo{Type: "openai"})
 
 		if err != nil {
 			t.Fatalf("Conversion failed: %v", err)

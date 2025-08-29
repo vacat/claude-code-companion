@@ -33,6 +33,9 @@ function showAddEndpointModal() {
     // Clear parameter override configuration
     loadParameterOverrideConfig(null);
     
+    // Clear max tokens field name configuration
+    document.getElementById('max-tokens-field-name').value = '';
+    
     // Reset to basic configuration tab
     resetModalTabs();
     
@@ -99,6 +102,10 @@ function showEditEndpointModal(endpointName) {
     
     // Load parameter override configuration
     loadParameterOverrideConfig(endpoint.parameter_overrides);
+    
+    // Load max tokens field name configuration
+    const maxTokensFieldName = endpoint.max_tokens_field_name || '';
+    document.getElementById('max-tokens-field-name').value = maxTokensFieldName;
     
     // Reset to basic configuration tab
     resetModalTabs();
@@ -186,6 +193,7 @@ function saveEndpoint() {
         auth_value: authValue,
         enabled: document.getElementById('endpoint-enabled').checked,
         tags: tags,
+        max_tokens_field_name: document.getElementById('max-tokens-field-name').value || '', // New: max tokens field name
         proxy: collectProxyData(), // New: collect proxy configuration
         header_overrides: collectHeaderOverrideData(), // New: collect header override configuration
         parameter_overrides: collectParameterOverrideData() // New: collect parameter override configuration

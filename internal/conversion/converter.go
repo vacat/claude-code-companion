@@ -26,20 +26,20 @@ func (c *DefaultConverter) ShouldConvert(endpointType string) bool {
 }
 
 // ConvertRequest 转换请求
-func (c *DefaultConverter) ConvertRequest(anthropicReq []byte, endpointType string) ([]byte, *ConversionContext, error) {
-	if !c.ShouldConvert(endpointType) {
+func (c *DefaultConverter) ConvertRequest(anthropicReq []byte, endpointInfo *EndpointInfo) ([]byte, *ConversionContext, error) {
+	if endpointInfo == nil || !c.ShouldConvert(endpointInfo.Type) {
 		return anthropicReq, nil, nil
 	}
 
 	c.logger.Debug("Starting request conversion for OpenAI endpoint")
 	
-	convertedReq, ctx, err := c.requestConverter.Convert(anthropicReq)
+	convertedReq, ctx, err := c.requestConverter.Convert(anthropicReq, endpointInfo)
 	if err != nil {
 		c.logger.Error("Request conversion failed", err)
 		return nil, nil, err
 	}
 	
-	ctx.EndpointType = endpointType
+	ctx.EndpointType = endpointInfo.Type
 	c.logger.Debug("Request conversion completed successfully")
 	
 	return convertedReq, ctx, nil

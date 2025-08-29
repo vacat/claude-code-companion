@@ -93,7 +93,13 @@ func (c *Checker) CheckEndpoint(ep *endpoint.Endpoint) error {
 
 	// 格式转换（在模型重写之后）
 	if c.converter.ShouldConvert(ep.EndpointType) {
-		convertedBody, _, err := c.converter.ConvertRequest(finalRequestBody, ep.EndpointType)
+		// 创建端点信息
+		endpointInfo := &conversion.EndpointInfo{
+			Type:               ep.EndpointType,
+			MaxTokensFieldName: ep.MaxTokensFieldName,
+		}
+		
+		convertedBody, _, err := c.converter.ConvertRequest(finalRequestBody, endpointInfo)
 		if err != nil {
 			return fmt.Errorf("request format conversion failed during health check: %v", err)
 		}

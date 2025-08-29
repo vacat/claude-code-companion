@@ -94,7 +94,14 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 	var conversionContext *conversion.ConversionContext
 	if s.converter.ShouldConvert(ep.EndpointType) {
 		s.logger.Info(fmt.Sprintf("Starting request conversion for endpoint type: %s", ep.EndpointType))
-		convertedBody, ctx, err := s.converter.ConvertRequest(finalRequestBody, ep.EndpointType)
+		
+		// 创建端点信息
+		endpointInfo := &conversion.EndpointInfo{
+			Type:               ep.EndpointType,
+			MaxTokensFieldName: ep.MaxTokensFieldName,
+		}
+		
+		convertedBody, ctx, err := s.converter.ConvertRequest(finalRequestBody, endpointInfo)
 		if err != nil {
 			s.logger.Error("Request format conversion failed", err)
 			duration := time.Since(endpointStartTime)
@@ -126,6 +133,18 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 		} else if hackedBody != nil {
 			finalRequestBody = hackedBody
 			s.logger.Debug("OpenAI user parameter length hack applied")
+		}
+		
+		// GPT-5 模型特殊处理 hack
+		gpt5HackedBody, err := s.applyGPT5ModelHack(finalRequestBody)
+		if err != nil {
+			s.logger.Debug("Failed to apply GPT-5 model hack", map[string]interface{}{
+				"error": err.Error(),
+			})
+			// 不返回错误，继续使用原始请求体
+		} else if gpt5HackedBody != nil {
+			finalRequestBody = gpt5HackedBody
+			s.logger.Debug("GPT-5 model hack applied")
 		}
 	}
 
@@ -687,6 +706,83 @@ func (s *Server) applyOpenAIUserLengthHack(requestBody []byte) ([]byte, error) {
 	modifiedBody, err := json.Marshal(requestData)
 	if err != nil {
 		s.logger.Error("Failed to marshal request body after user hash", err)
+		return nil, err
+	}
+
+	return modifiedBody, nil
+}
+
+// applyGPT5ModelHack 应用 GPT-5 模型特殊处理 hack
+// 如果模型名包含 "gpt5" 且端点是 OpenAI 类型，则：
+// 1. 如果 temperature 不是 1 则将其改为 1
+// 2. 如果包含 max_tokens 字段，则将其改名为 max_completion_tokens
+func (s *Server) applyGPT5ModelHack(requestBody []byte) ([]byte, error) {
+	// 解析JSON请求体
+	var requestData map[string]interface{}
+	if err := json.Unmarshal(requestBody, &requestData); err != nil {
+		// 如果解析失败，记录日志但不返回错误，使用原始请求体
+		s.logger.Debug("Failed to parse request body as JSON for GPT-5 hack, using original body", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return nil, nil
+	}
+
+	// 检查是否为 GPT-5 模型
+	modelValue, exists := requestData["model"]
+	if !exists {
+		return nil, nil // 没有 model 参数，无需处理
+	}
+
+	modelStr, ok := modelValue.(string)
+	if !ok {
+		return nil, nil // model 参数不是字符串，无需处理
+	}
+
+	// 检查模型名是否包含 "gpt-5"（不区分大小写）
+	if !strings.Contains(strings.ToLower(modelStr), "gpt-5") {
+		return nil, nil // 不是 GPT-5 模型，无需处理
+	}
+
+	modified := false
+	var hackDetails []string
+
+	// 1. 检查并修改 temperature
+	if tempValue, exists := requestData["temperature"]; exists {
+		if temp, ok := tempValue.(float64); ok && temp != 1.0 {
+			requestData["temperature"] = 1.0
+			modified = true
+			hackDetails = append(hackDetails, fmt.Sprintf("temperature: %.3f → 1.0", temp))
+		}
+	} else {
+		// 如果没有 temperature，设置为 1.0
+		requestData["temperature"] = 1.0
+		modified = true
+		hackDetails = append(hackDetails, "temperature: not set → 1.0")
+	}
+
+	// 2. 检查并重命名 max_tokens 为 max_completion_tokens
+	if maxTokensValue, exists := requestData["max_tokens"]; exists {
+		// 将 max_tokens 改名为 max_completion_tokens
+		requestData["max_completion_tokens"] = maxTokensValue
+		delete(requestData, "max_tokens")
+		modified = true
+		hackDetails = append(hackDetails, fmt.Sprintf("max_tokens → max_completion_tokens: %v", maxTokensValue))
+	}
+
+	// 如果没有修改，返回 nil
+	if !modified {
+		return nil, nil
+	}
+
+	s.logger.Info("GPT-5 model hack applied", map[string]interface{}{
+		"model": modelStr,
+		"changes": hackDetails,
+	})
+
+	// 重新序列化为JSON
+	modifiedBody, err := json.Marshal(requestData)
+	if err != nil {
+		s.logger.Error("Failed to marshal request body after GPT-5 hack", err)
 		return nil, err
 	}
 

@@ -11,6 +11,7 @@ type OpenAIRequest struct {
 	Temperature         *float64    `json:"temperature,omitempty"`
 	TopP                *float64    `json:"top_p,omitempty"`
 	MaxCompletionTokens *int        `json:"max_completion_tokens,omitempty"` // OpenAI: 输出最大 token
+	MaxOutputTokens     *int        `json:"max_output_tokens,omitempty"`     // OpenAI: 新的输出最大 token 字段
 	// 兼容保留：
 	MaxTokens           *int        `json:"max_tokens,omitempty"` // 老字段，有些代理仍在用
 	Stream              *bool       `json:"stream,omitempty"`

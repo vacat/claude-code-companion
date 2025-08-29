@@ -317,6 +317,36 @@
                                 </div>
                             </div>
 
+                            <!-- Max Tokens 字段名配置区域 -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-cogs"></i> <span data-t="max_tokens_field_configuration">Max Tokens 字段名配置</span>
+                                    </h6>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-6">
+                                        <label for="max-tokens-field-name" class="form-label" data-t="max_tokens_field_name">Max Tokens 字段名</label>
+                                        <select class="form-select" id="max-tokens-field-name">
+                                            <option value="" data-t-option="default_max_tokens">默认 (max_tokens)</option>
+                                            <option value="max_completion_tokens" data-t-option="max_completion_tokens_option">max_completion_tokens</option>
+                                            <option value="max_output_tokens" data-t-option="max_output_tokens_option">max_output_tokens</option>
+                                        </select>
+                                        <small class="form-text text-muted" data-t="max_tokens_field_description">指定在 Anthropic → OpenAI 转换时使用的 max_tokens 参数名</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info p-2 mt-3">
+                                    <small class="text-muted">
+                                        <strong data-t="description">说明：</strong><br>
+                                        <!--T:max_tokens_default_description-->• 默认：使用 max_tokens 字段名，保持兼容性<!--/T--><br>
+                                        <!--T:max_completion_tokens_description-->• max_completion_tokens：OpenAI 新推荐的字段名<!--/T--><br>
+                                        <!--T:max_output_tokens_description-->• max_output_tokens：某些端点支持的字段名<!--/T-->
+                                    </small>
+                                </div>
+                            </div>
+
 
                         </div>
 

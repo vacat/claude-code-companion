@@ -60,7 +60,7 @@ func TestFullConversionCycle(t *testing.T) {
 
 	// 2. 转换为 OpenAI 请求
 	anthReqBytes, _ := json.Marshal(anthReq)
-	oaReqBytes, ctx, err := reqConverter.Convert(anthReqBytes)
+	oaReqBytes, ctx, err := reqConverter.Convert(anthReqBytes, &EndpointInfo{Type: "openai"})
 	if err != nil {
 		t.Fatalf("Request conversion failed: %v", err)
 	}

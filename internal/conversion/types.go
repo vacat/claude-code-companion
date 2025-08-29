@@ -1,9 +1,15 @@
 package conversion
 
+// EndpointInfo 包含转换器需要的端点信息
+type EndpointInfo struct {
+	Type               string
+	MaxTokensFieldName string
+}
+
 // Converter 定义转换器接口
 type Converter interface {
 	// 转换请求
-	ConvertRequest(anthropicReq []byte, endpointType string) ([]byte, *ConversionContext, error)
+	ConvertRequest(anthropicReq []byte, endpointInfo *EndpointInfo) ([]byte, *ConversionContext, error)
 	
 	// 转换响应
 	ConvertResponse(openaiResp []byte, ctx *ConversionContext, isStreaming bool) ([]byte, error)
