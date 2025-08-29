@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"claude-code-companion/internal/config"
 
@@ -11,7 +12,12 @@ import (
 
 // handleToggleEndpoint 切换端点启用/禁用状态
 func (s *AdminServer) handleToggleEndpoint(c *gin.Context) {
-	endpointName := c.Param("id") // 端点名称
+	encodedEndpointName := c.Param("id") // 端点名称
+	endpointName, err := url.PathUnescape(encodedEndpointName)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid endpoint name encoding"})
+		return
+	}
 
 	var request struct {
 		Enabled bool `json:"enabled"`
@@ -60,7 +66,12 @@ func (s *AdminServer) handleToggleEndpoint(c *gin.Context) {
 
 // handleCopyEndpoint 复制端点
 func (s *AdminServer) handleCopyEndpoint(c *gin.Context) {
-	endpointName := c.Param("id") // 要复制的端点名称
+	encodedEndpointName := c.Param("id") // 要复制的端点名称
+	endpointName, err := url.PathUnescape(encodedEndpointName)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid endpoint name encoding"})
+		return
+	}
 
 	// 查找源端点
 	var sourceEndpoint *config.EndpointConfig
@@ -144,7 +155,12 @@ func (s *AdminServer) handleCopyEndpoint(c *gin.Context) {
 
 // handleResetEndpointStatus 重置端点状态为正常
 func (s *AdminServer) handleResetEndpointStatus(c *gin.Context) {
-	endpointName := c.Param("id") // 端点名称
+	encodedEndpointName := c.Param("id") // 端点名称
+	endpointName, err := url.PathUnescape(encodedEndpointName)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid endpoint name encoding"})
+		return
+	}
 
 	// 查找端点
 	var endpoint *config.EndpointConfig

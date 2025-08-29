@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"claude-code-companion/internal/config"
 	"claude-code-companion/internal/modelrewrite"
@@ -94,7 +95,12 @@ func (s *AdminServer) validateConfigUpdate(newConfig *config.Config) error {
 
 // handleUpdateEndpointModelRewrite 更新端点模型重写配置
 func (s *AdminServer) handleUpdateEndpointModelRewrite(c *gin.Context) {
-	endpointName := c.Param("id")
+	encodedEndpointName := c.Param("id")
+	endpointName, err := url.PathUnescape(encodedEndpointName)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid endpoint name encoding"})
+		return
+	}
 
 	var request config.ModelRewriteConfig
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -164,7 +170,12 @@ func (s *AdminServer) handleUpdateEndpointModelRewrite(c *gin.Context) {
 
 // handleTestModelRewrite 测试模型重写规则
 func (s *AdminServer) handleTestModelRewrite(c *gin.Context) {
-	endpointName := c.Param("id")
+	encodedEndpointName := c.Param("id")
+	endpointName, err := url.PathUnescape(encodedEndpointName)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid endpoint name encoding"})
+		return
+	}
 
 	var request struct {
 		TestModel string `json:"test_model"`

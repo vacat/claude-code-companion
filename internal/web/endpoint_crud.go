@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"claude-code-companion/internal/config"
 	"claude-code-companion/internal/security"
@@ -171,7 +172,12 @@ func (s *AdminServer) handleCreateEndpoint(c *gin.Context) {
 
 // handleUpdateEndpoint 更新特定端点
 func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
-	endpointName := c.Param("id") // 使用名称作为ID
+	encodedEndpointName := c.Param("id") // 使用名称作为ID
+	endpointName, err := url.PathUnescape(encodedEndpointName)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid endpoint name encoding"})
+		return
+	}
 
 	var request struct {
 		Name              string               `json:"name"`
@@ -339,7 +345,12 @@ func (s *AdminServer) handleUpdateEndpoint(c *gin.Context) {
 
 // handleDeleteEndpoint 删除端点
 func (s *AdminServer) handleDeleteEndpoint(c *gin.Context) {
-	endpointName := c.Param("id") // 使用名称作为ID
+	encodedEndpointName := c.Param("id") // 使用名称作为ID
+	endpointName, err := url.PathUnescape(encodedEndpointName)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid endpoint name encoding"})
+		return
+	}
 
 	// 获取当前所有端点
 	currentEndpoints := s.config.Endpoints
