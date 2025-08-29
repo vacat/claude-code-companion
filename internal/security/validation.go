@@ -48,7 +48,10 @@ func ValidateEndpointName(name string) error {
 		return fmt.Errorf(i18n.T("endpoint_name_validation_failed", "端点名称验证失败: %v"), err)
 	}
 	
-	// 检查端点名称中的特殊字符
+	if strings.Contains(name, "/") || strings.Contains(name, "\\") {
+		return fmt.Errorf(i18n.T("endpoint_name_cannot_contain_slash", "端点名称不能包含 '/' 或 '\\'"))
+	}
+	
 	if strings.ContainsAny(name, "<>&\"'") {
 		return fmt.Errorf(i18n.T("endpoint_name_contains_disallowed_special_chars", "端点名称包含不允许的特殊字符"))
 	}

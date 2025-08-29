@@ -115,6 +115,8 @@ func (s *Server) setupRoutes() {
 
 	s.router = gin.New()
 	s.router.Use(gin.Recovery())
+	s.router.UseRawPath = true
+	s.router.UnescapePathValues = false
 
 	// 注册管理界面路由（不需要认证）
 	s.adminServer.RegisterRoutes(s.router)

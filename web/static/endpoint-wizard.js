@@ -1,4 +1,15 @@
 /* Claude Code Companion - Endpoint Wizard JavaScript */
+function validateWizardNameInput() {
+    const nameInput = document.getElementById('endpoint-name-wizard');
+    if (nameInput) {
+        const v = nameInput.value;
+        if (v.includes('/') || v.includes('\\')) {
+            nameInput.setCustomValidity('端点名称不能包含 / 或 \\');
+        } else {
+            nameInput.setCustomValidity('');
+        }
+    }
+}
 
 class EndpointWizard {
     constructor() {
@@ -16,6 +27,10 @@ class EndpointWizard {
         await this.loadExistingEndpoints();
         this.bindEvents();
         this.renderStep1();
+        const nameInput = document.getElementById('endpoint-name-wizard');
+        if (nameInput) {
+            nameInput.addEventListener('input', validateWizardNameInput);
+        }
     }
 
     async loadProfiles() {

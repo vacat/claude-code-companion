@@ -1,4 +1,19 @@
+document.addEventListener('DOMContentLoaded', function() {
+    const nameInput = document.getElementById('endpoint-name');
+    if (nameInput) {
+        nameInput.addEventListener('input', () => {
+            const v = nameInput.value;
+            if (v.includes('/') || v.includes('\\')) {
+                nameInput.setCustomValidity('端点名称不能包含 / 或 \\');
+            } else {
+                nameInput.setCustomValidity('');
+            }
+        });
+    }
+});
+
 // Endpoints Config JavaScript - 配置管理功能
+
 
 function toggleAuthVisibility() {
     const authValueField = document.getElementById('endpoint-auth-value');
