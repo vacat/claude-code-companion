@@ -8,18 +8,29 @@ let autoRefreshTimer = 5000; // 5 seconds
 document.addEventListener('DOMContentLoaded', function() {
     // Wait for translation system to be ready
     function initAutoRefresh() {
-        if (typeof T === 'function') {
-            // Load auto-refresh state from localStorage
-            const savedState = localStorage.getItem('autoRefreshEnabled');
-            if (savedState === 'true') {
-                autoRefreshEnabled = true;
-                startAutoRefresh();
+        // Check if I18n is available and translations are loaded
+        if (typeof T === 'function' && window.I18n) {
+            const allTranslations = window.I18n.getAllTranslations();
+            const currentLang = window.I18n.getLanguage();
+            
+            // Check if translations for current language are loaded
+            if (allTranslations[currentLang] && Object.keys(allTranslations[currentLang]).length > 0) {
+                console.log('Translations loaded, initializing auto-refresh');
+                
+                // Load auto-refresh state from localStorage
+                const savedState = localStorage.getItem('autoRefreshEnabled');
+                if (savedState === 'true') {
+                    autoRefreshEnabled = true;
+                    startAutoRefresh();
+                }
+                updateAutoRefreshButton();
+                return;
             }
-            updateAutoRefreshButton();
-        } else {
-            // Translation system not ready yet, wait a bit
-            setTimeout(initAutoRefresh, 100);
         }
+        
+        // Translation system not ready yet, wait a bit
+        console.log('Waiting for translations to load...');
+        setTimeout(initAutoRefresh, 100);
     }
     
     initAutoRefresh();
@@ -80,23 +91,15 @@ function updateAutoRefreshButton() {
         return;
     }
 
-    // Debug logging
-    console.log('updateAutoRefreshButton called, autoRefreshEnabled:', autoRefreshEnabled);
-    console.log('Current language:', window.I18n ? window.I18n.getLanguage() : 'I18n not available');
-
     if (autoRefreshEnabled) {
         button.className = 'btn btn-sm btn-success';
         icon.className = 'fas fa-sync';
-        const translatedText = T('auto_refresh_on', '自动刷新中');
-        console.log('Setting text to (enabled):', translatedText);
-        text.textContent = translatedText;
+        text.textContent = T('auto_refresh_on', '自动刷新中');
         // 不设置 data-t 属性，避免双重翻译
     } else {
         button.className = 'btn btn-sm btn-outline-info';
         icon.className = 'fas fa-sync';
-        const translatedText = T('auto_refresh', '自动刷新');
-        console.log('Setting text to (disabled):', translatedText);
-        text.textContent = translatedText;
+        text.textContent = T('auto_refresh', '自动刷新');
         // 不设置 data-t 属性，避免双重翻译
     }
 }
