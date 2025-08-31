@@ -42,11 +42,56 @@ Claude Code 伴侣是一个为 Claude Code 提供的本地 API 代理工具。�
    - 还需要设置 API_TIMEOUT_MS=600000 ，这样才能在号池超时的时候，客户端自己不超时
    - 建议设置 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ，可以避免 claude code 往他们公司报东西
 
+## 🆕 环境变量支持
+
+Claude Code Companion 现在支持在配置文件中使用环境变量，提升安全性：
+
+```yaml
+endpoints:
+  - name: anthropic-prod
+    auth_value: "${ANTHROPIC_API_KEY:sk-ant-your-key-here}"
+  - name: openai-prod  
+    auth_value: "${OPENAI_API_KEY:sk-your-openai-key}"
+```
+
+启动前设置环境变量：
+```bash
+export ANTHROPIC_API_KEY="your-real-key"
+export OPENAI_API_KEY="your-real-key"
+./claude-code-companion -config config.yaml
+```
+
+详细使用方法请参考：[环境变量支持文档.md](./环境变量支持文档.md)
+
 ## 一些文档
 
 [常见端点提供商的参数参考](https://ucn0s6hcz1w1.feishu.cn/sheets/RNPHswfIThqQ1itf1m4cb0mKnrc)
 
 [深入理解TAG系统和一些实际案例](https://ucn0s6hcz1w1.feishu.cn/docx/YTvYdv7kzodpr9xZ2RXcGOc5n3c)
+
+## 使用 Docker 运行
+
+你也可以使用 Docker 来运行本项目。
+
+1. **构建 Docker 镜像**
+
+   ```bash
+   docker build -t claude-code-companion .
+   ```
+
+2. **运行 Docker 容器**
+
+   ```bash
+   docker run -p 8080:8080 -v $(pwd)/config.yaml:/config.yaml -v $(pwd)/logs:/logs claude-code-companion
+   ```
+
+3. **使用 Docker Compose**
+
+   你也可以使用 `docker-compose.yml` 文件来简化启动过程：
+
+   ```bash
+   docker-compose up
+   ```
 
 ## 常见使用场景
 

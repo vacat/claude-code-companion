@@ -3,9 +3,11 @@ package config
 import (
 	"fmt"
 	"os"
+	"regexp"
+
+	"claude-code-companion/internal/i18n"
 
 	"gopkg.in/yaml.v3"
-	"claude-code-companion/internal/i18n"
 )
 
 func LoadConfig(filename string) (*Config, error) {
@@ -31,6 +33,11 @@ func LoadConfig(filename string) (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config file: %v", err)
 	}
 
+	// 展开环境变量
+	if err := expandEnvironmentVariables(&config); err != nil {
+		return nil, fmt.Errorf("failed to expand environment variables: %v", err)
+	}
+
 	if err := validateConfig(&config); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %v", err)
 	}
@@ -51,7 +58,7 @@ func generateDefaultConfig(filename string) error {
 				URL:          "https://api.anthropic.com",
 				EndpointType: "anthropic",
 				AuthType:     "api_key",
-				AuthValue:    "YOUR_ANTHROPIC_API_KEY_HERE",
+				AuthValue:    "${ANTHROPIC_API_KEY:YOUR_ANTHROPIC_API_KEY_HERE}",
 				Enabled:      false, // 默认禁用，需要用户配置
 				Priority:     1,
 				Tags:         []string{},
@@ -62,7 +69,7 @@ func generateDefaultConfig(filename string) error {
 				EndpointType: "openai",
 				PathPrefix:   "/v1/chat/completions",
 				AuthType:     "auth_token",
-				AuthValue:    "YOUR_OPENAI_API_KEY_HERE",
+				AuthValue:    "${OPENAI_API_KEY:YOUR_OPENAI_API_KEY_HERE}",
 				Enabled:      false, // 默认禁用，需要用户配置
 				Priority:     2,
 				Tags:         []string{},
@@ -100,7 +107,7 @@ func generateDefaultConfig(filename string) error {
 		},
 		Timeouts: TimeoutConfig{
 			TLSHandshake:       "10s",
-			ResponseHeader:     "60s", 
+			ResponseHeader:     "60s",
 			IdleConnection:     "90s",
 			HealthCheckTimeout: "30s",
 			CheckInterval:      "30s",
@@ -117,6 +124,12 @@ func generateDefaultConfig(filename string) error {
 	header := i18n.T("default_config_header", `# Claude Code Companion 默认配置文件
 # 这是自动生成的默认配置文件，请根据需要修改各项配置
 # 注意：endpoints 中的示例端点默认为禁用状态，需要配置正确的 API 密钥并启用
+#
+# 环境变量支持:
+# - 您可以使用 ${ENV_VAR_NAME} 格式从环境变量加载配置值
+# - 支持默认值语法: ${ENV_VAR_NAME:default_value}
+# - 示例: auth_value: "${ANTHROPIC_API_KEY:sk-ant-your-key-here}"
+# - 这样可以避免在配置文件中硬编码敏感信息
 
 `)
 
@@ -129,6 +142,83 @@ func generateDefaultConfig(filename string) error {
 
 	fmt.Printf(i18n.T("default_config_generated", "默认配置文件已生成: %s\n"), filename)
 	fmt.Println(i18n.T("config_edit_instruction", "请编辑配置文件，设置正确的端点信息和 API 密钥后重新启动服务"))
+
+	return nil
+}
+
+// expandEnvironmentVariables 展开配置中的环境变量
+// 支持格式: ${VAR_NAME} 和 ${VAR_NAME:default_value}
+func expandEnvironmentVariables(config *Config) error {
+	// 环境变量正则表达式，支持默认值
+	envVarRegex := regexp.MustCompile(`\$\{([^}:]+)(?::([^}]*))?\}`)
+
+	// 展开字符串中的环境变量
+	expandString := func(str string) string {
+		return envVarRegex.ReplaceAllStringFunc(str, func(match string) string {
+			submatches := envVarRegex.FindStringSubmatch(match)
+			if len(submatches) < 2 {
+				return match // 如果正则匹配失败，返回原字符串
+			}
+
+			envName := submatches[1]
+			defaultValue := ""
+			if len(submatches) > 2 {
+				defaultValue = submatches[2]
+			}
+
+			// 尝试从环境变量获取值
+			if envValue, exists := os.LookupEnv(envName); exists {
+				return envValue
+			}
+			// 如果环境变量不存在，返回默认值
+			return defaultValue
+		})
+	}
+
+	// 展开所有端点的相关字段
+	for i := range config.Endpoints {
+		endpoint := &config.Endpoints[i]
+
+		// 展开基本字段
+		endpoint.AuthValue = expandString(endpoint.AuthValue)
+		endpoint.URL = expandString(endpoint.URL)
+		endpoint.Name = expandString(endpoint.Name)
+
+		// 展开OAuth配置字段
+		if endpoint.OAuthConfig != nil {
+			oauth := endpoint.OAuthConfig
+			oauth.AccessToken = expandString(oauth.AccessToken)
+			oauth.RefreshToken = expandString(oauth.RefreshToken)
+			oauth.TokenURL = expandString(oauth.TokenURL)
+			oauth.ClientID = expandString(oauth.ClientID)
+		}
+
+		// 展开代理配置字段
+		if endpoint.Proxy != nil {
+			proxy := endpoint.Proxy
+			proxy.Address = expandString(proxy.Address)
+			proxy.Username = expandString(proxy.Username)
+			proxy.Password = expandString(proxy.Password)
+		}
+
+		// 展开Header覆盖配置
+		if endpoint.HeaderOverrides != nil {
+			for key, value := range endpoint.HeaderOverrides {
+				endpoint.HeaderOverrides[key] = expandString(value)
+			}
+		}
+
+		// 展开参数覆盖配置
+		if endpoint.ParameterOverrides != nil {
+			for key, value := range endpoint.ParameterOverrides {
+				endpoint.ParameterOverrides[key] = expandString(value)
+			}
+		}
+	}
+
+	// 展开其他配置字段
+	config.Server.Host = expandString(config.Server.Host)
+	config.Logging.LogDirectory = expandString(config.Logging.LogDirectory)
 
 	return nil
 }
