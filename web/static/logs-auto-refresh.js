@@ -68,12 +68,12 @@ function updateAutoRefreshButton() {
         button.className = 'btn btn-sm btn-success';
         icon.className = 'fas fa-sync';
         text.textContent = T('auto_refresh_on', '自动刷新中');
-        text.setAttribute('data-t', 'auto_refresh_on');
+        // 不设置 data-t 属性，避免双重翻译
     } else {
         button.className = 'btn btn-sm btn-outline-info';
         icon.className = 'fas fa-sync';
         text.textContent = T('auto_refresh', '自动刷新');
-        text.setAttribute('data-t', 'auto_refresh');
+        // 不设置 data-t 属性，避免双重翻译
     }
 }
 
