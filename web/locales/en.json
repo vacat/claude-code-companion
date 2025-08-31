@@ -522,6 +522,12 @@
     "faq_restore_settings_answer": "Find the settings.json.backup-* file in the ~/.claude/ directory and rename it to settings.json to restore.",
     "prerequisite_notice": "Prerequisites",
     "prerequisite_description": "Please ensure that you have the official Claude Code installed on your system",
-    "script_guide": "Script Guide"
+    "script_guide": "Script Guide",
+    "session": "Session",
+    "expires_at_help": "Fill in 0 to trigger automatic refresh to get correct expiration time",
+    "advanced_configuration1": "Advanced Config 1",
+    "advanced_configuration2": "Advanced Config 2",
+    "recovery_threshold_placeholder": "1",
+    "claude_code_companion_link": "Claude Code Companion"
   }
 }

@@ -504,6 +504,12 @@
     "faq_restore_settings_answer": "在 ~/.claude/ 目录中找到 settings.json.backup-* 文件，将其重命名为 settings.json 即可恢复。",
     "prerequisite_notice": "前置要求",
     "prerequisite_description": "请先保证系统上已经安装了官方版的 Claude Code",
-    "script_guide": "脚本指南"
+    "script_guide": "脚本指南",
+    "session": "会话",
+    "expires_at_help": "填0可触发自动刷新获取正确的过期时间",
+    "advanced_configuration1": "高级参数1",
+    "advanced_configuration2": "高级参数2",
+    "recovery_threshold_placeholder": "1",
+    "claude_code_companion_link": "Claude Code Companion"
   }
 }
