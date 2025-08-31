@@ -248,7 +248,7 @@ function safeBase64Decode(str) {
         try {
             return decodeURIComponent(str);
         } catch (e) {
-            console.error('所有解码方法都失败:', e);
+            console.error('All decode methods failed:', e);
             return str;
         }
     }
@@ -274,7 +274,7 @@ function saveAsFileFromButton(button) {
     const encodedContent = button.getAttribute('data-content');
     
     if (!encodedContent || encodedContent.trim() === '') {
-        alert('内容为空，无法保存');
+        alert(T('content_empty_cannot_save', '内容为空，无法保存'));
         return;
     }
 
@@ -297,22 +297,22 @@ function saveAsFileFromButton(button) {
             URL.revokeObjectURL(url);
         }, 100);
     } catch (error) {
-        console.error('保存文件失败:', error);
-        alert('保存文件失败，请检查浏览器控制台');
+        console.error('Save file failed:', error);
+        alert(T('save_file_failed_check_console', '保存文件失败，请检查浏览器控制台'));
     }
 }
 
 // Copy to clipboard functionality
 function copyToClipboard(content) {
     if (!content || content.trim() === '') {
-        showAlert('内容为空，无法复制', 'warning');
+        showAlert(T('content_empty_cannot_copy', '内容为空，无法复制'), 'warning');
         return;
     }
 
     // Try to use modern clipboard API first
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(content).then(() => {
-            showAlert('已复制到剪贴板', 'success');
+            showAlert(T('copied_to_clipboard', '已复制到剪贴板'), 'success');
         }).catch(err => {
             console.error('Clipboard API failed:', err);
             fallbackCopyToClipboard(content);
@@ -372,20 +372,20 @@ function fallbackCopyToClipboard(content) {
         document.body.removeChild(textarea);
         
         if (successful) {
-            showAlert('已复制到剪贴板', 'success');
+            showAlert(T('copied_to_clipboard', '已复制到剪贴板'), 'success');
         } else {
-            showAlert('复制失败，请手动复制', 'danger');
+            showAlert(T('copy_failed_manual', '复制失败，请手动复制'), 'danger');
         }
     } catch (err) {
         console.error('Fallback copy failed:', err);
-        showAlert('复制失败，请手动复制', 'danger');
+        showAlert(T('copy_failed_manual', '复制失败，请手动复制'), 'danger');
     }
 }
 
 function copyFromButton(button) {
     const encodedContent = button.getAttribute('data-content');
     if (!encodedContent) {
-        showAlert('无内容可复制', 'warning');
+        showAlert(T('no_content_to_copy', '无内容可复制'), 'warning');
         return;
     }
     
@@ -393,8 +393,8 @@ function copyFromButton(button) {
         const content = safeBase64Decode(encodedContent);
         copyToClipboard(content);
     } catch (error) {
-        console.error('解码内容失败:', error);
-        showAlert('内容解码失败', 'danger');
+        console.error('Decode content failed:', error);
+        showAlert(T('content_decode_failed', '内容解码失败'), 'danger');
     }
 }
 
@@ -665,7 +665,7 @@ function showUpdateBadge(latestVersion) {
         githubLink.appendChild(badge);
         
         // Update tooltip
-        githubLink.title = `${t('version_found')}: ${latestVersion} - ${t('click_to_view_github')}`;
+        githubLink.title = `${T('version_found', '发现版本')}: ${latestVersion} - ${T('click_to_view_github', '点击查看 GitHub')}`;
     } catch (error) {
         console.debug('Failed to show update badge, ignoring:', error.name || 'Unknown error');
     }

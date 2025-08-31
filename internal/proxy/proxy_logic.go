@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -377,6 +378,13 @@ func (s *Server) proxyToEndpoint(c *gin.Context, ep *endpoint.Endpoint, path str
 			for _, value := range values {
 				c.Header(key, value)
 			}
+		}
+	}
+	
+	// 监控Anthropic rate limit headers
+	if ep.ShouldMonitorRateLimit() {
+		if err := s.processRateLimitHeaders(ep, resp.Header, requestID); err != nil {
+			s.logger.Error("Failed to process rate limit headers", err)
 		}
 	}
 	
@@ -795,4 +803,65 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// processRateLimitHeaders 处理Anthropic rate limit headers
+func (s *Server) processRateLimitHeaders(ep *endpoint.Endpoint, headers http.Header, requestID string) error {
+	resetHeader := headers.Get("Anthropic-Ratelimit-Unified-Reset")
+	statusHeader := headers.Get("Anthropic-Ratelimit-Unified-Status")
+	
+	// 转换reset为int64
+	var resetValue *int64
+	if resetHeader != "" {
+		if parsed, err := strconv.ParseInt(resetHeader, 10, 64); err == nil {
+			resetValue = &parsed
+		} else {
+			s.logger.Debug("Failed to parse Anthropic-Ratelimit-Unified-Reset header", map[string]interface{}{
+				"value": resetHeader,
+				"error": err.Error(),
+				"endpoint": ep.Name,
+				"request_id": requestID,
+			})
+		}
+	}
+	
+	var statusValue *string
+	if statusHeader != "" {
+		statusValue = &statusHeader
+	}
+	
+	// 更新endpoint状态
+	changed, err := ep.UpdateRateLimitState(resetValue, statusValue)
+	if err != nil {
+		return err
+	}
+	
+	// 如果状态发生变化，持久化到配置文件
+	if changed {
+		s.logger.Info("Rate limit state changed, persisting to config", map[string]interface{}{
+			"endpoint": ep.Name,
+			"reset": resetValue,
+			"status": statusValue,
+			"request_id": requestID,
+		})
+		
+		// 持久化到配置文件
+		if err := s.persistRateLimitState(ep.ID, resetValue, statusValue); err != nil {
+			s.logger.Error("Failed to persist rate limit state", err)
+			return err
+		}
+	}
+	
+	// 检查增强保护：如果启用了增强保护且状态为allowed_warning，则禁用端点
+	if ep.ShouldDisableOnAllowedWarning() && ep.IsAvailable() {
+		s.logger.Info("Enhanced protection triggered: disabling endpoint due to allowed_warning status", map[string]interface{}{
+			"endpoint": ep.Name,
+			"status": statusValue,
+			"enhanced_protection": true,
+			"request_id": requestID,
+		})
+		ep.MarkInactive()
+	}
+	
+	return nil
 }

@@ -23,7 +23,8 @@ function openRequestInspector() {
     }
     
     if (!requestBody) {
-        alert('未找到请求数据');
+        const alertText = typeof T === 'function' ? T('request_data_not_found', '未找到请求数据') : '未找到请求数据';
+        alert(alertText);
         return;
     }
 
@@ -45,7 +46,8 @@ function openRequestInspector() {
         }
     } catch (error) {
         console.error('Failed to open request inspector:', error);
-        alert('打开请求检查器时出错: ' + error.message);
+        const alertText = typeof T === 'function' ? T('open_inspector_error', '打开请求检查器时出错') : '打开请求检查器时出错';
+        alert(alertText + ': ' + error.message);
     }
 }
 
@@ -90,7 +92,8 @@ window.inspectorToggleCollapse = function(elementId) {
 // 导出分析功能
 function exportAnalysis() {
     if (!currentParser) {
-        alert('没有可导出的分析数据');
+        const alertText = typeof T === 'function' ? T('no_data_to_export', '没有可导出的分析数据') : '没有可导出的分析数据';
+        alert(alertText);
         return;
     }
     
@@ -132,7 +135,8 @@ function exportAnalysis() {
         URL.revokeObjectURL(url);
     } catch (error) {
         console.error('Export failed:', error);
-        alert('导出失败: ' + error.message);
+        const alertText = typeof T === 'function' ? T('export_failed_error', '导出失败') : '导出失败';
+        alert(alertText + ': ' + error.message);
     }
 }
 
@@ -211,13 +215,18 @@ document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'f' && 
         !document.getElementById('requestInspectorModal')?.classList.contains('d-none-custom')) {
         e.preventDefault();
-        const query = prompt('搜索内容:');
+        const promptText = typeof T === 'function' ? T('search_content_prompt', '搜索内容:') : '搜索内容:';
+        const query = prompt(promptText);
         if (query) {
             const results = searchInInspector(query);
             if (results.length > 0) {
-                alert(`找到 ${results.length} 个结果:\n${results.map(r => r.content).join('\n')}`);
+                const successText = typeof T === 'function' ? 
+                    T('search_results_found', '找到 {0} 个结果:\n{1}').replace('{0}', results.length).replace('{1}', results.map(r => r.content).join('\n')) :
+                    `找到 ${results.length} 个结果:\n${results.map(r => r.content).join('\n')}`;
+                alert(successText);
             } else {
-                alert('未找到匹配的内容');
+                const noResultText = typeof T === 'function' ? T('no_matching_content', '未找到匹配的内容') : '未找到匹配的内容';
+                alert(noResultText);
             }
         }
     }
@@ -252,13 +261,13 @@ window.inspectorToggleMessageOrder = function() {
         orderedMessages = [...messages];
         toggleBtn.setAttribute('data-reversed', 'false');
         icon.textContent = '↑';
-        text.textContent = '正向排列';
+        text.textContent = T('normal_order', '正向排列');
     } else {
         // 当前是正序，切换到逆序
         orderedMessages = [...messages].reverse();
         toggleBtn.setAttribute('data-reversed', 'true');
         icon.textContent = '↓';
-        text.textContent = '逆向排列';
+        text.textContent = T('reverse_order', '逆向排列');
     }
     
     // 重新渲染消息容器内容

@@ -210,6 +210,26 @@ func (m *Manager) runHealthCheck(endpoint *Endpoint, ticker *time.Ticker) {
 			continue
 		}
 		
+		// Anthropic官方端点特例：在rate limit reset时间之前跳过健康检查
+		if endpoint.ShouldSkipHealthCheckUntilReset() {
+			// 只在合适的时机记录日志，避免过于频繁
+			if endpoint.ShouldLogSkipHealthCheck() {
+				remaining := endpoint.GetRateLimitResetTimeRemaining()
+				log.Printf("DEBUG: Skipping health check for Anthropic official endpoint %s until rate limit reset (remaining: %d seconds)", 
+					endpoint.Name, remaining)
+			}
+			continue
+		}
+		
+		// 如果是Anthropic官方端点且曾经有rate limit信息，记录恢复健康检查的信息
+		if endpoint.IsAnthropicEndpoint() {
+			resetTime, _ := endpoint.GetRateLimitState()
+			if resetTime != nil {
+				log.Printf("DEBUG: Performing health check for Anthropic official endpoint %s (rate limit reset time has passed)", 
+					endpoint.Name)
+			}
+		}
+		
 		if err := m.healthChecker.CheckEndpoint(endpoint); err != nil {
 			// 健康检查失败，重置连续成功次数
 			endpoint.RecordRequest(false, "health-check")
@@ -299,3 +319,4 @@ func (m *Manager) cleanupRemovedEndpoints(newConfigs []config.EndpointConfig) {
 		}
 	}
 }
+

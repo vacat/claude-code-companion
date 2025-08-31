@@ -5,7 +5,7 @@ function showAddEndpointModal() {
     originalAuthValue = '';
     isAuthVisible = false;
     
-    document.getElementById('endpointModalTitle').textContent = '添加端点';
+    document.getElementById('endpointModalTitle').textContent = T('add_endpoint', '添加端点');
     document.getElementById('endpointForm').reset();
     document.getElementById('endpoint-enabled').checked = true;
     document.getElementById('endpoint-type').value = 'anthropic'; // Default to Anthropic
@@ -36,6 +36,12 @@ function showAddEndpointModal() {
     // Clear max tokens field name configuration
     document.getElementById('max-tokens-field-name').value = '';
     
+    // Clear enhanced protection configuration
+    document.getElementById('enhanced-protection-enabled').checked = false;
+    
+    // Check enhanced protection availability based on URL (will be checked again when URL changes)
+    checkEnhancedProtectionAvailability();
+    
     // Reset to basic configuration tab
     resetModalTabs();
     
@@ -53,7 +59,7 @@ function showEditEndpointModal(endpointName) {
     originalAuthValue = endpoint.auth_value;
     isAuthVisible = false;
     
-    document.getElementById('endpointModalTitle').textContent = '编辑端点';
+    document.getElementById('endpointModalTitle').textContent = T('edit_endpoint', '编辑端点');
     
     // Populate form
     document.getElementById('endpoint-name').value = endpoint.name;
@@ -106,6 +112,13 @@ function showEditEndpointModal(endpointName) {
     // Load max tokens field name configuration
     const maxTokensFieldName = endpoint.max_tokens_field_name || '';
     document.getElementById('max-tokens-field-name').value = maxTokensFieldName;
+    
+    // Load enhanced protection configuration
+    const enhancedProtection = endpoint.enhanced_protection || false;
+    document.getElementById('enhanced-protection-enabled').checked = enhancedProtection;
+    
+    // Check enhanced protection availability based on URL
+    checkEnhancedProtectionAvailability();
     
     // Reset to basic configuration tab
     resetModalTabs();
@@ -196,7 +209,8 @@ function saveEndpoint() {
         max_tokens_field_name: document.getElementById('max-tokens-field-name').value || '', // New: max tokens field name
         proxy: collectProxyData(), // New: collect proxy configuration
         header_overrides: collectHeaderOverrideData(), // New: collect header override configuration
-        parameter_overrides: collectParameterOverrideData() // New: collect parameter override configuration
+        parameter_overrides: collectParameterOverrideData(), // New: collect parameter override configuration
+        enhanced_protection: document.getElementById('enhanced-protection-enabled').checked // New: enhanced protection for official accounts
     };
     
     // Add OAuth config if present
@@ -238,7 +252,7 @@ function saveEndpoint() {
                 })
                 .catch(error => {
                     console.error('Failed to save model rewrite config:', error);
-                    showAlert('端点保存成功，但模型重写配置保存失败: ' + error.message, 'warning');
+                    showAlert(T('endpoint_save_success_rewrite_failed', '端点保存成功，但模型重写配置保存失败') + ': ' + error.message, 'warning');
                     endpointModal.hide();
                     loadEndpoints();
                 });
@@ -246,12 +260,12 @@ function saveEndpoint() {
     })
     .catch(error => {
         console.error('Failed to save endpoint:', error);
-        showAlert('Failed to save endpoint', 'danger');
+        showAlert(T('failed_to_save_endpoint', 'Failed to save endpoint'), 'danger');
     });
 }
 
 function deleteEndpoint(endpointName) {
-    if (!confirm(t('confirm_delete_endpoint').replace('{0}', endpointName))) {
+    if (!confirm(T('confirm_delete_endpoint', '确定要删除端点 "{0}" 吗？').replace('{0}', endpointName))) {
         return;
     }
 
@@ -269,12 +283,12 @@ function deleteEndpoint(endpointName) {
     })
     .catch(error => {
         console.error('Failed to delete endpoint:', error);
-        showAlert('Failed to delete endpoint', 'danger');
+        showAlert(T('failed_to_delete_endpoint', 'Failed to delete endpoint'), 'danger');
     });
 }
 
 function copyEndpoint(endpointName) {
-    if (!confirm(t('confirm_copy_endpoint').replace('{0}', endpointName))) {
+    if (!confirm(T('confirm_copy_endpoint', '确定要复制端点 "{0}" 吗？').replace('{0}', endpointName))) {
         return;
     }
 
@@ -292,7 +306,7 @@ function copyEndpoint(endpointName) {
     })
     .catch(error => {
         console.error('Failed to copy endpoint:', error);
-        showAlert('Failed to copy endpoint', 'danger');
+        showAlert(T('failed_to_copy_endpoint', 'Failed to copy endpoint'), 'danger');
     });
 }
 
@@ -318,7 +332,7 @@ function toggleEndpointEnabled(endpointName, currentEnabled) {
         if (data.error) {
             showAlert(data.error, 'danger');
         } else {
-            showAlert(`端点 "${endpointName}" 已${actionText}`, 'success');
+            showAlert(T('endpoint_action_success', '端点 "{0}" 已{1}').replace('{0}', endpointName).replace('{1}', actionText), 'success');
             // 更新按钮状态而不重新加载整个表格
             updateEndpointToggleButton(endpointName, newEnabled);
             // 更新启用状态显示
@@ -329,12 +343,12 @@ function toggleEndpointEnabled(endpointName, currentEnabled) {
     })
     .catch(error => {
         console.error('Failed to toggle endpoint:', error);
-        showAlert(`${actionText}端点失败`, 'danger');
+        showAlert(T('endpoint_action_failed', '{0}端点失败').replace('{0}', actionText), 'danger');
     });
 }
 
 function resetEndpointStatus(endpointName) {
-    if (!confirm(t('confirm_reset_endpoint_status', '确认要重置端点 "{0}" 的状态吗？这将清除失败记录并将状态重置为正常。').replace('{0}', endpointName))) {
+    if (!confirm(T('confirm_reset_endpoint_status', '确认要重置端点 "{0}" 的状态吗？这将清除失败记录并将状态重置为正常。').replace('{0}', endpointName))) {
         return;
     }
 
@@ -346,14 +360,14 @@ function resetEndpointStatus(endpointName) {
         if (data.error) {
             showAlert(data.error, 'danger');
         } else {
-            showAlert(`端点 "${endpointName}" 状态已重置为正常`, 'success');
+            showAlert(T('endpoint_status_reset_success', '端点 "{0}" 状态已重置为正常').replace('{0}', endpointName), 'success');
             // 刷新端点状态显示
             refreshEndpointStatus();
         }
     })
     .catch(error => {
         console.error('Failed to reset endpoint status:', error);
-        showAlert('重置端点状态失败', 'danger');
+        showAlert(T('reset_endpoint_status_failed', '重置端点状态失败'), 'danger');
     });
 }
 
@@ -411,3 +425,40 @@ function reorderEndpoints() {
         loadEndpoints(); // Reload to restore order
     });
 }
+
+// Check if URL is api.anthropic.com and enable/disable enhanced protection accordingly
+function checkEnhancedProtectionAvailability() {
+    const urlInput = document.getElementById('endpoint-url');
+    const enhancedProtectionCheckbox = document.getElementById('enhanced-protection-enabled');
+    
+    if (!urlInput || !enhancedProtectionCheckbox) {
+        return;
+    }
+    
+    const url = urlInput.value.toLowerCase().trim();
+    const isAnthropicOfficial = url.includes('api.anthropic.com');
+    
+    if (isAnthropicOfficial) {
+        // Enable enhanced protection option for api.anthropic.com
+        enhancedProtectionCheckbox.disabled = false;
+        enhancedProtectionCheckbox.parentElement.parentElement.style.opacity = '1';
+    } else {
+        // Disable enhanced protection option for non-anthropic endpoints
+        enhancedProtectionCheckbox.disabled = true;
+        enhancedProtectionCheckbox.checked = false;
+        enhancedProtectionCheckbox.parentElement.parentElement.style.opacity = '0.5';
+    }
+}
+
+// Add event listener for URL input changes
+document.addEventListener('DOMContentLoaded', function() {
+    const urlInput = document.getElementById('endpoint-url');
+    if (urlInput) {
+        // Add event listener for input events (real-time typing)
+        urlInput.addEventListener('input', checkEnhancedProtectionAvailability);
+        // Add event listener for change events (when user leaves the field)
+        urlInput.addEventListener('change', checkEnhancedProtectionAvailability);
+        // Add event listener for blur events (when field loses focus)
+        urlInput.addEventListener('blur', checkEnhancedProtectionAvailability);
+    }
+});

@@ -8,7 +8,7 @@ function openResponseInspector(buttonElement) {
     const finalResponse = responseBtn.getAttribute('data-final-response');
 
     if (!responseBody) {
-        alert('未找到响应数据');
+        alert(T('response_data_not_found', '未找到响应数据'));
         return;
     }
 
@@ -29,7 +29,7 @@ function openResponseInspector(buttonElement) {
         }
     } catch (error) {
         console.error('Failed to open response inspector:', error);
-        alert('打开响应检查器时出错: ' + error.message);
+        alert(T('open_response_inspector_error', '打开响应检查器时出错') + ': ' + error.message);
     }
 }
 

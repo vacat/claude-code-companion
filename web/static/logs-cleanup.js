@@ -10,7 +10,7 @@ function showCleanupModal() {
 function confirmCleanup() {
     const selectedRange = document.querySelector('input[name="cleanupRange"]:checked');
     if (!selectedRange) {
-        alert('请选择清理范围');
+        alert(T('select_cleanup_range', '请选择清理范围'));
         return;
     }
 
@@ -18,9 +18,9 @@ function confirmCleanup() {
     let confirmMessage;
     
     if (days === 0) {
-        confirmMessage = '确定要清除所有日志吗？此操作不可撤销！';
+        confirmMessage = T('confirm_clear_all_logs', '确定要清除所有日志吗？此操作不可撤销！');
     } else {
-        confirmMessage = `确定要清除 ${days} 天前的日志吗？此操作不可撤销！`;
+        confirmMessage = T('confirm_clear_old_logs', '确定要清除 {0} 天前的日志吗？此操作不可撤销！').replace('{0}', days);
     }
 
     if (!confirm(confirmMessage)) {
@@ -31,7 +31,7 @@ function confirmCleanup() {
     const confirmBtn = document.querySelector('#cleanupModal .btn-danger');
     const originalText = confirmBtn.innerHTML;
     confirmBtn.disabled = true;
-    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 清理中...';
+    confirmBtn.innerHTML = T('cleaning_logs', '<i class="fas fa-spinner fa-spin"></i> 清理中...');
 
     // 发送清理请求
     apiRequest('/admin/api/logs/cleanup', {
@@ -60,8 +60,8 @@ function confirmCleanup() {
         window.location.reload();
     })
     .catch(error => {
-        console.error('清理日志失败:', error);
-        alert('清理日志失败: ' + error.message);
+        console.error('Cleanup logs failed:', error);
+        alert(T('cleanup_failed_error', '清理日志失败') + ': ' + error.message);
     })
     .finally(() => {
         // 恢复按钮状态

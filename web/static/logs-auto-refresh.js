@@ -6,13 +6,34 @@ let autoRefreshTimer = 5000; // 5 seconds
 
 // Initialize auto-refresh state on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Load auto-refresh state from localStorage
-    const savedState = localStorage.getItem('autoRefreshEnabled');
-    if (savedState === 'true') {
-        autoRefreshEnabled = true;
-        startAutoRefresh();
+    // Wait for translation system to be ready
+    function initAutoRefresh() {
+        // Check if I18n is available and translations are loaded
+        if (typeof T === 'function' && window.I18n) {
+            const allTranslations = window.I18n.getAllTranslations();
+            const currentLang = window.I18n.getLanguage();
+            
+            // Check if translations for current language are loaded
+            if (allTranslations[currentLang] && Object.keys(allTranslations[currentLang]).length > 0) {
+                console.log('Translations loaded, initializing auto-refresh');
+                
+                // Load auto-refresh state from localStorage
+                const savedState = localStorage.getItem('autoRefreshEnabled');
+                if (savedState === 'true') {
+                    autoRefreshEnabled = true;
+                    startAutoRefresh();
+                }
+                updateAutoRefreshButton();
+                return;
+            }
+        }
+        
+        // Translation system not ready yet, wait a bit
+        console.log('Waiting for translations to load...');
+        setTimeout(initAutoRefresh, 100);
     }
-    updateAutoRefreshButton();
+    
+    initAutoRefresh();
 });
 
 function toggleAutoRefresh() {
@@ -64,16 +85,22 @@ function updateAutoRefreshButton() {
     const icon = document.getElementById('autoRefreshIcon');
     const text = document.getElementById('autoRefreshText');
     
+    // Check if elements exist and T function is available
+    if (!button || !icon || !text || typeof T !== 'function') {
+        console.warn('Auto-refresh button elements not found or T function not available');
+        return;
+    }
+
     if (autoRefreshEnabled) {
         button.className = 'btn btn-sm btn-success';
         icon.className = 'fas fa-sync';
-        text.textContent = t('auto_refresh_on', '自动刷新中');
-        text.setAttribute('data-t', 'auto_refresh_on');
+        text.textContent = T('auto_refresh_on', '自动刷新中');
+        // 不设置 data-t 属性，避免双重翻译
     } else {
         button.className = 'btn btn-sm btn-outline-info';
         icon.className = 'fas fa-sync';
-        text.textContent = t('auto_refresh', '自动刷新');
-        text.setAttribute('data-t', 'auto_refresh');
+        text.textContent = T('auto_refresh', '自动刷新');
+        // 不设置 data-t 属性，避免双重翻译
     }
 }
 

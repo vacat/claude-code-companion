@@ -128,7 +128,7 @@
                         <!-- macOS Script -->
                         <div class="tab-pane fade" id="macos-script" role="tabpanel" aria-labelledby="macos-script-tab">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5><span data-t="macOS Script">macOS 脚本</span> (ccc.command)</h5>
+                                <h5><span data-t="macos_script">macOS 脚本</span> (ccc.command)</h5>
                                 <button class="btn btn-success" onclick="downloadScript('macos')">
                                     <i class="fas fa-download"></i> <span data-t="download_script">下载脚本</span>
                                 </button>
@@ -167,7 +167,7 @@
                         <!-- Linux Script -->
                         <div class="tab-pane fade" id="linux-script" role="tabpanel" aria-labelledby="linux-script-tab">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5><span data-t="Linux Script">Linux 脚本</span> (ccc.sh)</h5>
+                                <h5><span data-t="linux_script">Linux 脚本</span> (ccc.sh)</h5>
                                 <button class="btn btn-success" onclick="downloadScript('linux')">
                                     <i class="fas fa-download"></i> <span data-t="download_script">下载脚本</span>
                                 </button>
@@ -213,21 +213,21 @@
                 <div class="card-header">
                     <h2 class="h4 mb-0">
                         <i class="fas fa-play text-info"></i> 
-                        <span data-t="Usage Instructions">使用说明</span>
+                        <span data-t="usage_instructions">使用说明</span>
                     </h2>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <h5><span data-t="How to Use">如何使用</span></h5>
+                            <h5><span data-t="how_to_use">如何使用</span></h5>
                             <ol>
-                                <li><span data-t="Download and save script">下载并保存上述脚本到您的系统</span></li>
-                                <li><span data-t="Make script executable">使脚本可执行（Linux/macOS）：</span>
+                                <li><span data-t="download_and_save_script">下载并保存上述脚本到您的系统</span></li>
+                                <li><span data-t="make_script_executable">使脚本可执行（Linux/macOS）：</span>
                                     <div class="code-block mt-2">chmod +x ccc.sh  # <span data-t="or">或</span> chmod +x ccc.command</div>
                                 </li>
-                                <li><span data-t="Use script instead of claude">使用脚本代替直接调用 claude：</span>
+                                <li><span data-t="use_script_instead_of_claude">使用脚本代替直接调用 claude：</span>
                                     <div class="code-block mt-2">
-                                        # <span data-t="Windows">Windows</span><br>
+                                        # <span data-t="windows">Windows</span><br>
                                         ccc.bat --help<br>
                                         ccc.bat interactive<br><br>
                                         # Linux/macOS<br>
@@ -244,7 +244,7 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <h5><span data-t="Enhanced Features">增强功能</span></h5>
+                            <h5><span data-t="enhanced_features">增强功能</span></h5>
                             <ul>
                                 <li><i class="fas fa-check-circle text-success"></i> <span data-t="auto_settings_modification">自动修改 settings.json 文件</span></li>
                                 <li><i class="fas fa-check-circle text-success"></i> <span data-t="automatic_backup">冲突时自动备份原始配置</span></li>
@@ -252,12 +252,12 @@
                                 <li><i class="fas fa-check-circle text-success"></i> <span data-t="preserve_custom_settings">保留用户自定义设置</span></li>
                             </ul>
                             
-                            <h5 class="mt-4"><span data-t="Environment Variables">环境变量说明</span></h5>
+                            <h5 class="mt-4"><span data-t="environment_variables">环境变量说明</span></h5>
                             <ul>
-                                <li><strong>ANTHROPIC_BASE_URL:</strong> <span data-t="Proxy server URL">代理服务器 URL</span></li>
-                                <li><strong>ANTHROPIC_AUTH_TOKEN:</strong> <span data-t="Authentication token">认证令牌</span></li>
-                                <li><strong>CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:</strong> <span data-t="Disable non-essential traffic">禁用非必要流量</span></li>
-                                <li><strong>API_TIMEOUT_MS:</strong> <span data-t="API timeout in milliseconds">API 超时时间（毫秒）</span></li>
+                                <li><strong>ANTHROPIC_BASE_URL:</strong> <span data-t="proxy_server_url">代理服务器 URL</span></li>
+                                <li><strong>ANTHROPIC_AUTH_TOKEN:</strong> <span data-t="authentication_token">认证令牌</span></li>
+                                <li><strong>CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:</strong> <span data-t="disable_non_essential_traffic">禁用非必要流量</span></li>
+                                <li><strong>API_TIMEOUT_MS:</strong> <span data-t="api_timeout_milliseconds">API 超时时间（毫秒）</span></li>
                             </ul>
                         </div>
                     </div>
@@ -316,6 +316,7 @@
     {{template "footer.html" .}}
 
     <script src="/static/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="/static/i18n.js"></script>
     <script src="/static/shared.js"></script>
     <script src="/static/help.js"></script>
 </body>

@@ -30,29 +30,37 @@ function addRewriteRule(sourcePattern = '', targetModel = '') {
     
     const ruleDiv = document.createElement('div');
     ruleDiv.className = 'row mb-2 rewrite-rule';
+    
+    // 检查翻译系统是否可用
+    const selectPresetText = typeof T === 'function' ? T('select_preset_model', '选择预设模型') : '选择预设模型';
+    const customWildcardText = typeof T === 'function' ? T('custom_wildcard', '自定义通配符') : '自定义通配符';
+    const wildcardPatternText = typeof T === 'function' ? T('wildcard_pattern', '通配符模式') : '通配符模式';
+    const targetModelPlaceholderText = typeof T === 'function' ? T('target_model_placeholder', '目标模型 (如: deepseek-chat)') : '目标模型 (如: deepseek-chat)';
+    const testRuleText = typeof T === 'function' ? T('test_rule', '测试规则') : '测试规则';
+    
     ruleDiv.innerHTML = `
         <div class="col-5">
             <select class="form-select source-model-select" onchange="updateSourcePattern(${ruleIndex})">
-                <option value="">选择预设模型</option>
+                <option value="">${selectPresetText}</option>
                 <option value="claude-*haiku*">Haiku 系列</option>
                 <option value="claude-*sonnet*">Sonnet 系列</option>
                 <option value="claude-*opus*">Opus 系列</option>
                 <option value="claude-*">所有 Claude</option>
-                <option value="custom">自定义通配符</option>
+                <option value="custom">${customWildcardText}</option>
             </select>
             <input type="text" class="form-control mt-1 source-pattern-input" 
-                   placeholder="通配符模式" value="${escapeHtml(sourcePattern)}" readonly>
+                   placeholder="${wildcardPatternText}" value="${escapeHtml(sourcePattern)}" readonly>
         </div>
         <div class="col-5">
             <input type="text" class="form-control target-model-input" 
-                   placeholder="目标模型 (如: deepseek-chat)" value="${escapeHtml(targetModel)}" 
+                   placeholder="${targetModelPlaceholderText}" value="${escapeHtml(targetModel)}" 
                    oninput="onRewriteRuleTargetChange()">
         </div>
         <div class="col-2">
             <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRewriteRule(this)">
                 <i class="fas fa-trash"></i>
             </button>
-            <button type="button" class="btn btn-outline-info btn-sm mt-1" onclick="testRewriteRule(${ruleIndex})" title="测试规则">
+            <button type="button" class="btn btn-outline-info btn-sm mt-1" onclick="testRewriteRule(${ruleIndex})" title="${testRuleText}">
                 <i class="fas fa-play"></i>
             </button>
         </div>
@@ -109,11 +117,13 @@ function removeRewriteRule(button) {
 
 // Test rewrite rule
 function testRewriteRule(ruleIndex) {
-    const testModel = prompt('请输入要测试的模型名称:', 'claude-3-haiku-20240307');
+    const promptText = typeof T === 'function' ? T('enter_test_model_name', '请输入要测试的模型名称:') : '请输入要测试的模型名称:';
+    const testModel = prompt(promptText, 'claude-3-haiku-20240307');
     if (!testModel) return;
 
     if (!editingEndpointName) {
-        alert('请先保存端点后再测试规则');
+        const alertText = typeof T === 'function' ? T('save_endpoint_before_test', '请先保存端点后再测试规则') : '请先保存端点后再测试规则';
+        alert(alertText);
         return;
     }
 
@@ -125,17 +135,23 @@ function testRewriteRule(ruleIndex) {
     .then(response => response.json())
     .then(data => {
         if (data.error) {
-            alert(`测试失败: ${data.error}`);
+            const errorText = typeof T === 'function' ? T('test_failed_error', '测试失败') : '测试失败';
+            alert(errorText + `: ${data.error}`);
         } else {
-            const message = data.rewrite_applied 
-                ? `✅ 重写生效!\\n原模型: ${data.original_model}\\n重写为: ${data.rewritten_model}\\n匹配规则: ${data.matched_rule}`
-                : `❌ 无重写\\n模型: ${data.original_model}\\n未匹配任何规则`;
+            const successText = typeof T === 'function' ? 
+                T('rewrite_success_message', '✅ 重写生效!\\n原模型: {0}\\n重写为: {1}\\n匹配规则: {2}').replace('{0}', data.original_model).replace('{1}', data.rewritten_model).replace('{2}', data.matched_rule) : 
+                `✅ 重写生效!\n原模型: ${data.original_model}\n重写为: ${data.rewritten_model}\n匹配规则: ${data.matched_rule}`;
+            const noRewriteText = typeof T === 'function' ? 
+                T('no_rewrite_message', '❌ 无重写\\n模型: {0}\\n未匹配任何规则').replace('{0}', data.original_model) : 
+                `❌ 无重写\n模型: ${data.original_model}\n未匹配任何规则`;
+            const message = data.rewrite_applied ? successText : noRewriteText;
             alert(message);
         }
     })
     .catch(error => {
         console.error('Test failed:', error);
-        alert('测试失败，请检查网络连接');
+        const networkErrorText = typeof T === 'function' ? T('test_failed_network', '测试失败，请检查网络连接') : '测试失败，请检查网络连接';
+        alert(networkErrorText);
     });
 }
 
@@ -310,7 +326,8 @@ function updateDefaultModelState() {
         } else {
             // Multiple rules or non-"*" rules - disable default model
             defaultModelInput.disabled = true;
-            defaultModelInput.title = 'Model Rewrite中有和默认模型不兼容的设置';
+            const titleText = typeof T === 'function' ? T('model_rewrite_incompatible_settings', 'Model Rewrite中有和默认模型不兼容的设置') : 'Model Rewrite中有和默认模型不兼容的设置';
+            defaultModelInput.title = titleText;
             StyleUtils.show(defaultModelHint);
         }
     }
@@ -384,14 +401,19 @@ function addHeaderOverrideRule(headerName = '', headerValue = '') {
     
     const ruleDiv = document.createElement('div');
     ruleDiv.className = 'row mb-2 header-override-rule';
+    
+    // 检查翻译系统是否可用
+    const headerNamePlaceholder = typeof T === 'function' ? T('header_name_placeholder', 'Header名称 (如: User-Agent)') : 'Header名称 (如: User-Agent)';
+    const headerValuePlaceholder = typeof T === 'function' ? T('header_value_placeholder', 'Header值 (留空删除)') : 'Header值 (留空删除)';
+    
     ruleDiv.innerHTML = `
         <div class="col-4">
             <input type="text" class="form-control header-name-input" 
-                   placeholder="Header名称 (如: User-Agent)" value="${escapeHtml(headerName)}">
+                   placeholder="${headerNamePlaceholder}" value="${escapeHtml(headerName)}">
         </div>
         <div class="col-6">
             <input type="text" class="form-control header-value-input" 
-                   placeholder="Header值 (留空删除)" value="${escapeHtml(headerValue)}">
+                   placeholder="${headerValuePlaceholder}" value="${escapeHtml(headerValue)}">
         </div>
         <div class="col-2">
             <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeHeaderOverrideRule(this)">

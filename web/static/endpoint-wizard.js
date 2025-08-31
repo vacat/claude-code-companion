@@ -4,7 +4,12 @@ function validateWizardNameInput() {
     if (nameInput) {
         const v = nameInput.value;
         if (v.includes('/') || v.includes('\\')) {
-            nameInput.setCustomValidity('端点名称不能包含 / 或 \\');
+            // 检查翻译系统是否可用
+            if (typeof T === 'function') {
+                nameInput.setCustomValidity(T('endpoint_name_invalid_chars', '端点名称不能包含 / 或 \\'));
+            } else {
+                nameInput.setCustomValidity('端点名称不能包含 / 或 \\');
+            }
         } else {
             nameInput.setCustomValidity('');
         }
@@ -41,11 +46,13 @@ class EndpointWizard {
                 this.profiles = data.profiles || [];
             } else {
                 console.error('Failed to load endpoint profiles:', response.statusText);
-                showAlert(T('load_endpoint_profiles_failed', '加载端点预设配置失败'), 'danger');
+                const message = typeof T === 'function' ? T('load_endpoint_profiles_failed', '加载端点预设配置失败') : '加载端点预设配置失败';
+                showAlert(message, 'danger');
             }
         } catch (error) {
             console.error('Error loading profiles:', error);
-            showAlert(T('load_endpoint_profiles_failed', '加载端点预设配置失败'), 'danger');
+            const message = typeof T === 'function' ? T('load_endpoint_profiles_failed', '加载端点预设配置失败') : '加载端点预设配置失败';
+            showAlert(message, 'danger');
         }
     }
 
@@ -115,8 +122,9 @@ class EndpointWizard {
         
         if (saveBtn) {
             saveBtn.disabled = false;
+            const saveText = typeof T === 'function' ? T('save_endpoint', '保存端点') : '保存端点';
             saveBtn.textContent = saveBtn.getAttribute('data-t') ? 
-                document.querySelector('[data-t="save_endpoint"]')?.textContent || T('save_endpoint', '保存端点') : T('save_endpoint', '保存端点');
+                document.querySelector('[data-t="save_endpoint"]')?.textContent || saveText : saveText;
         }
         if (cancelBtn) cancelBtn.disabled = false;
         if (prevBtn) prevBtn.disabled = false;
@@ -141,7 +149,8 @@ class EndpointWizard {
 
     renderStep1() {
         const select = document.getElementById('profile-select');
-        select.innerHTML = `<option value="">${T('select_endpoint_type', '请选择端点类型...')}</option>`;
+        const selectText = typeof T === 'function' ? T('select_endpoint_type', '请选择端点类型...') : '请选择端点类型...';
+        select.innerHTML = `<option value="">${selectText}</option>`;
         
         this.profiles.forEach(profile => {
             const option = document.createElement('option');
@@ -217,10 +226,12 @@ class EndpointWizard {
         
         if (this.selectedProfile.auth_type === 'api_key') {
             authLabel.innerHTML = '<i class="fas fa-key form-label-icon"></i>API Key <span class="text-danger">*</span>';
-            authHelp.textContent = T('enter_api_key_hint', '请输入您的 API Key（如：sk-ant-api03-...）');
+            const hintText = typeof T === 'function' ? T('enter_api_key_hint', '请输入您的 API Key（如：sk-ant-api03-...）') : '请输入您的 API Key（如：sk-ant-api03-...）';
+            authHelp.textContent = hintText;
         } else {
             authLabel.innerHTML = '<i class="fas fa-key form-label-icon"></i>API Token <span class="text-danger">*</span>';
-            authHelp.textContent = T('enter_api_token_hint', '请输入您的 API Token（如：sk-...）');
+            const hintText = typeof T === 'function' ? T('enter_api_token_hint', '请输入您的 API Token（如：sk-...）') : '请输入您的 API Token（如：sk-...）';
+            authHelp.textContent = hintText;
         }
     }
 
@@ -377,7 +388,8 @@ class EndpointWizard {
 
     nextStep() {
         if (!this.validateCurrentStep()) {
-            this.showError(T('complete_required_fields', '请完成当前步骤的所有必填项'));
+            const message = typeof T === 'function' ? T('complete_required_fields', '请完成当前步骤的所有必填项') : '请完成当前步骤的所有必填项';
+            this.showError(message);
             return;
         }
 
@@ -392,7 +404,8 @@ class EndpointWizard {
 
     async saveEndpoint() {
         if (!this.validateCurrentStep()) {
-            this.showError(T('config_validation_failed', '配置验证失败，请检查所有必填项'));
+            const message = typeof T === 'function' ? T('config_validation_failed', '配置验证失败，请检查所有必填项') : '配置验证失败，请检查所有必填项';
+            this.showError(message);
             return;
         }
 
@@ -404,7 +417,8 @@ class EndpointWizard {
             // 禁用所有按钮并显示加载状态
             saveBtn.disabled = true;
             cancelBtn.disabled = true;
-            saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${T('saving', '保存中...')}`;
+            const savingText = typeof T === 'function' ? T('saving', '保存中...') : '保存中...';
+            saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${savingText}`;
             this.clearAlerts();
 
             const requestData = {
@@ -427,7 +441,10 @@ class EndpointWizard {
                 this.modal.hide();
                 
                 // 使用全局的 showAlert 函数显示成功消息
-                showAlert(T('endpoint_created_success', `端点 "${data.endpoint.Name}" 创建成功！`, { name: data.endpoint.Name }), 'success');
+                const successMessage = typeof T === 'function' ? 
+                    T('endpoint_created_success', '端点 "{0}" 创建成功！').replace('{0}', data.endpoint.Name) : 
+                    `端点 "${data.endpoint.Name}" 创建成功！`;
+                showAlert(successMessage, 'success');
                 
                 // 刷新端点列表
                 if (window.loadEndpointData) {
@@ -435,7 +452,8 @@ class EndpointWizard {
                 }
             } else {
                 const errorData = await response.json();
-                this.showError(errorData.error || T('create_endpoint_failed', '创建端点失败'));
+                const errorMessage = typeof T === 'function' ? T('create_endpoint_failed', '创建端点失败') : '创建端点失败';
+                this.showError(errorData.error || errorMessage);
                 
                 // 失败：恢复按钮状态，保持对话框打开
                 saveBtn.disabled = false;
@@ -444,7 +462,8 @@ class EndpointWizard {
             }
         } catch (error) {
             console.error('Error saving endpoint:', error);
-            this.showError(T('save_endpoint_error', '保存端点时发生错误'));
+            const errorMessage = typeof T === 'function' ? T('save_endpoint_error', '保存端点时发生错误') : '保存端点时发生错误';
+            this.showError(errorMessage);
             
             // 错误：恢复按钮状态，保持对话框打开
             saveBtn.disabled = false;
@@ -502,11 +521,37 @@ let endpointWizard = null;
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', async function() {
-    if (document.getElementById('endpointWizardModal')) {
-        endpointWizard = new EndpointWizard();
-        await endpointWizard.init();
+    // 等待翻译系统加载完成
+    function waitForTranslationSystem() {
+        // Check if translation system is ready
+        if (typeof T !== 'function' || !window.I18n) {
+            console.log('Translation system not ready for endpoint wizard, waiting...');
+            setTimeout(waitForTranslationSystem, 100);
+            return;
+        }
         
-        // 将实例绑定到window对象以供外部调用
-        window.endpointWizard = endpointWizard;
+        // Check if translations are loaded
+        const allTranslations = window.I18n.getAllTranslations();
+        const currentLang = window.I18n.getLanguage();
+        if (!allTranslations[currentLang] || Object.keys(allTranslations[currentLang]).length === 0) {
+            console.log('Translations not loaded yet for endpoint wizard, waiting...');
+            setTimeout(waitForTranslationSystem, 100);
+            return;
+        }
+        
+        console.log('Translations loaded, initializing endpoint wizard...');
+        
+        // 初始化endpoint wizard
+        if (document.getElementById('endpointWizardModal')) {
+            endpointWizard = new EndpointWizard();
+            endpointWizard.init().then(() => {
+                // 将实例绑定到window对象以供外部调用
+                window.endpointWizard = endpointWizard;
+            }).catch(error => {
+                console.error('Failed to initialize endpoint wizard:', error);
+            });
+        }
     }
+    
+    waitForTranslationSystem();
 });

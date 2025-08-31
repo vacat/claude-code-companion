@@ -10,10 +10,10 @@ function displayLogDetails(log) {
     modalBody.innerHTML = `
         <div class="mb-3">
             <div class="d-flex justify-content-between align-items-center">
-                <h6 data-t="request_details">Request Details</h6>
+                <h6>${T('request_details', 'Request Details')}</h6>
                 <button class="btn btn-sm btn-outline-success" onclick="exportDebugInfo('${escapeHtml(log.request_id)}')" 
-                        data-t="export_debug_info" data-t-title="export_debug_info_tooltip">
-                    <i class="fas fa-download"></i> <span data-t="export_debug_info">Export Debug Info</span>
+                        ${T('export_debug_info', 'Export Debug Info')} title="${T('export_debug_info_tooltip', '导出调试信息')}">
+                    <i class="fas fa-download"></i> ${T('export_debug_info', 'Export Debug Info')}
                 </button>
             </div>
         </div>
@@ -21,38 +21,38 @@ function displayLogDetails(log) {
         <div class="mb-3">
             <div class="collapsible-header" onclick="toggleCollapsible('basicInfo')">
                 <span class="collapsible-toggle collapsed">▼</span>
-                <h6 class="mb-0" data-t="basic_info">Basic Information</h6>
+                <h6 class="mb-0">${T('basic_info', 'Basic Information')}</h6>
             </div>
             <div class="collapsible-content collapsed" id="basicInfo">
                 <table class="table table-sm">
-                    <tr><th data-t="request_id">请求ID:</th><td>${escapeHtml(log.request_id)}</td></tr>
-                    <tr><th data-t="timestamp">时间戳:</th><td>${new Date(log.timestamp).toLocaleString()}</td></tr>
-                    <tr><th data-t="endpoint">端点:</th><td>${escapeHtml(log.endpoint)}</td></tr>
-                    <tr><th data-t="request_method">请求方法:</th><td>${escapeHtml(log.method)}</td></tr>
-                    <tr><th data-t="path">路径:</th><td>${escapeHtml(log.path)}</td></tr>
-                    <tr><th data-t="status_code">状态码:</th><td>${log.status_code}</td></tr>
-                    <tr><th data-t="retry_count">重试次数:</th><td>
+                    <tr><th>${T('request_id', '请求ID')}:</th><td>${escapeHtml(log.request_id)}</td></tr>
+                    <tr><th>${T('timestamp', '时间戳')}:</th><td>${new Date(log.timestamp).toLocaleString()}</td></tr>
+                    <tr><th>${T('endpoint', '端点')}:</th><td>${escapeHtml(log.endpoint)}</td></tr>
+                    <tr><th>${T('request_method', '请求方法')}:</th><td>${escapeHtml(log.method)}</td></tr>
+                    <tr><th>${T('path', '路径')}:</th><td>${escapeHtml(log.path)}</td></tr>
+                    <tr><th>${T('status_code', '状态码')}:</th><td>${log.status_code}</td></tr>
+                    <tr><th>${T('retry_count', '重试次数')}:</th><td>
                         ${log.attempt_number && log.attempt_number > 1 ? 
                             `<span class="badge bg-warning text-dark">#${log.attempt_number - 1}</span>` : 
-                            `<span class="text-muted" data-t="no_retry">无重试</span>`
+                            `<span class="text-muted">${T('no_retry', '无重试')}</span>`
                         }
                     </td></tr>
-                    <tr><th data-t="model">模型:</th><td>
+                    <tr><th>${T('model', '模型')}:</th><td>
                         ${log.model ? 
                             (log.model_rewrite_applied ? 
                                 `<span class="model-rewritten" title="→ ${escapeHtml(log.rewritten_model)}">${escapeHtml(log.model)}</span>` : 
                                 `<span class="model-original">${escapeHtml(log.model)}</span>`
                             ) : 
-                            `<small class="text-muted" data-t="none">无</small>`
+                            `<small class="text-muted">${T('none', '无')}</small>`
                         }
                     </td></tr>
-                    <tr><th data-t="duration">耗时:</th><td>${log.duration_ms}ms</td></tr>
-                    <tr><th data-t="request_body_size">请求体大小:</th><td>${log.request_body_size} <span data-t="bytes">字节</span></td></tr>
-                    <tr><th data-t="response_body_size">响应体大小:</th><td>${log.response_body_size} <span data-t="bytes">字节</span></td></tr>
-                    <tr><th data-t="streaming_response">流式响应:</th><td>${log.is_streaming ? `<span data-t="yes_sse">是 (SSE)</span>` : `<span data-t="no">否</span>`}</td></tr>
-                    <tr><th data-t="tags">标签:</th><td>${log.tags && log.tags.length > 0 ? log.tags.map(tag => `<span class="badge bg-primary me-1">${escapeHtml(tag)}</span>`).join('') : `<small class="text-muted" data-t="none">无</small>`}</td></tr>
-                    <tr><th data-t="content_type_override">Content-Type覆盖:</th><td>${log.content_type_override ? `<span class="badge bg-warning text-dark">${escapeHtml(log.content_type_override)}</span>` : `<small class="text-muted" data-t="none">无</small>`}</td></tr>
-                    ${log.error ? `<tr><th data-t="error">错误:</th><td class="text-danger">${escapeHtml(log.error)}</td></tr>` : ''}
+                    <tr><th>${T('duration', '耗时')}:</th><td>${log.duration_ms}ms</td></tr>
+                    <tr><th>${T('request_body_size', '请求体大小')}:</th><td>${log.request_body_size} ${T('bytes', '字节')}</td></tr>
+                    <tr><th>${T('response_body_size', '响应体大小')}:</th><td>${log.response_body_size} ${T('bytes', '字节')}</td></tr>
+                    <tr><th>${T('streaming_response', '流式响应')}:</th><td>${log.is_streaming ? `${T('yes_sse', '是 (SSE)')}` : `${T('no', '否')}`}</td></tr>
+                    <tr><th>${T('tags', '标签')}:</th><td>${log.tags && log.tags.length > 0 ? log.tags.map(tag => `<span class="badge bg-primary me-1">${escapeHtml(tag)}</span>`).join('') : `<small class="text-muted">${T('none', '无')}</small>`}</td></tr>
+                    <tr><th>${T('content_type_override', 'Content-Type覆盖')}:</th><td>${log.content_type_override ? `<span class="badge bg-warning text-dark">${escapeHtml(log.content_type_override)}</span>` : `<small class="text-muted">${T('none', '无')}</small>`}</td></tr>
+                    ${log.error ? `<tr><th>${T('error', '错误')}:</th><td class="text-danger">${escapeHtml(log.error)}</td></tr>` : ''}
                 </table>
             </div>
         </div>
@@ -61,12 +61,12 @@ function displayLogDetails(log) {
         <ul class="nav nav-tabs before-after-tabs" id="singleLogTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="single-request-tab" data-bs-toggle="tab" data-bs-target="#single-request" type="button" role="tab">
-                    <span data-t="request_data">请求数据</span> ${requestChanges ? `<span class="comparison-badge badge bg-warning" data-t="modified">修改</span>` : ''}
+                    ${T('request_data', '请求数据')} ${requestChanges ? `<span class="comparison-badge badge bg-warning">${T('modified', '修改')}</span>` : ''}
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="single-response-tab" data-bs-toggle="tab" data-bs-target="#single-response" type="button" role="tab">
-                    <span data-t="response_data">Response Data</span> ${responseChanges ? `<span class="comparison-badge badge bg-warning" data-t="modified">Modified</span>` : ''}
+                    ${T('response_data', 'Response Data')} ${responseChanges ? `<span class="comparison-badge badge bg-warning">${T('modified', 'Modified')}</span>` : ''}
                 </button>
             </li>
         </ul>
@@ -118,7 +118,7 @@ function toggleCollapsible(id) {
 
 // Helper function to create content box with floating actions
 function createContentBoxWithActions(content, filename, encodedContent, maxHeight = '400px') {
-    if (!content) content = t('no_content', '无内容');
+    if (!content) content = T('no_content', '无内容');
     if (!encodedContent) encodedContent = '';
     
     return `
@@ -128,7 +128,7 @@ function createContentBoxWithActions(content, filename, encodedContent, maxHeigh
                 <button class="floating-action-btn" 
                         data-content="${encodedContent}"
                         onclick="copyFromButton(this)"
-                        data-t-title="copy_to_clipboard">
+                        title="${T('copy_to_clipboard', '复制到剪贴板')}">
                     <i class="fas fa-copy"></i>
                 </button>
                 <button class="floating-action-btn" 
@@ -136,7 +136,7 @@ function createContentBoxWithActions(content, filename, encodedContent, maxHeigh
                         data-content="${encodedContent}"
                         onclick="saveAsFileFromButton(this)"
                         ${!encodedContent ? 'disabled' : ''}
-                        data-t-title="save_to_file">
+                        title="${T('save_to_file', '保存到文件')}">
                     <i class="fas fa-download"></i>
                 </button>
             </div>
@@ -172,7 +172,7 @@ function exportDebugInfo(requestId) {
     const exportButton = document.querySelector(`button[onclick="exportDebugInfo('${requestId}')"]`);
     if (exportButton) {
         const originalText = exportButton.innerHTML;
-        exportButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span data-t="exporting">导出中...</span>`;
+        exportButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${T('exporting', '导出中...')}`;
         exportButton.disabled = true;
 
         // 导出完成后恢复按钮状态
@@ -198,7 +198,7 @@ function exportDebugInfo(requestId) {
         setTimeout(restoreButton, 2000);
         
         // 显示成功提示
-        showToast(t('export_debug_success', '导出调试信息成功，文件将开始下载'), 'success');
+        showToast(T('export_debug_success', '导出调试信息成功，文件将开始下载'), 'success');
     }
 }
 

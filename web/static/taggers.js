@@ -10,11 +10,49 @@ document.addEventListener('DOMContentLoaded', function() {
     loadTaggers();
     loadTags();
     
-    // Event listeners
-    document.getElementById('addTaggerBtn').addEventListener('click', showAddTaggerModal);
-    document.getElementById('saveTaggerBtn').addEventListener('click', saveTagger);
-    document.getElementById('taggerType').addEventListener('change', onTypeChange);
-    document.getElementById('builtinType').addEventListener('change', onBuiltinTypeChange);
+    // Wait for elements and translation system to be ready
+    function initializeEventListeners() {
+        // Check if all required elements exist and translation system is ready
+        const addBtn = document.getElementById('addTaggerBtn');
+        const saveBtn = document.getElementById('saveTaggerBtn');
+        const typeSelect = document.getElementById('taggerType');
+        const builtinSelect = document.getElementById('builtinType');
+        
+        if (!addBtn || !saveBtn || !typeSelect || !builtinSelect) {
+            console.log('Tagger elements not ready, waiting...');
+            setTimeout(initializeEventListeners, 100);
+            return;
+        }
+        
+        // Check if translation system is ready
+        if (typeof T !== 'function' || !window.I18n) {
+            console.log('Translation system not ready, waiting...');
+            setTimeout(initializeEventListeners, 100);
+            return;
+        }
+        
+        // Check if translations are loaded
+        const allTranslations = window.I18n.getAllTranslations();
+        const currentLang = window.I18n.getLanguage();
+        if (!allTranslations[currentLang] || Object.keys(allTranslations[currentLang]).length === 0) {
+            console.log('Translations not loaded yet, waiting...');
+            setTimeout(initializeEventListeners, 100);
+            return;
+        }
+        
+        console.log('Initializing tagger event listeners...');
+        
+        // Event listeners
+        addBtn.addEventListener('click', function() {
+            console.log('Add tagger button clicked');
+            showAddTaggerModal();
+        });
+        saveBtn.addEventListener('click', saveTagger);
+        typeSelect.addEventListener('change', onTypeChange);
+        builtinSelect.addEventListener('change', onBuiltinTypeChange);
+    }
+    
+    initializeEventListeners();
 });
 
 // Load taggers from API
@@ -24,7 +62,7 @@ async function loadTaggers() {
         const data = await response.json();
         
         if (data.enabled) {
-            document.getElementById('systemStatus').textContent = '已启用';
+            document.getElementById('systemStatus').textContent = T('enabled_status', '已启用');
             document.getElementById('systemStatus').className = 'fs-4 fw-bold text-success';
             document.getElementById('pipelineTimeout').textContent = data.timeout || '5s';
             
@@ -33,14 +71,14 @@ async function loadTaggers() {
             
             renderTaggers();
         } else {
-            document.getElementById('systemStatus').textContent = '已禁用';
+            document.getElementById('systemStatus').textContent = T('disabled_status', '已禁用');
             document.getElementById('systemStatus').className = 'fs-4 fw-bold text-warning';
             taggers = [];
             renderTaggers();
         }
     } catch (error) {
         console.error('Failed to load taggers:', error);
-        showAlert('加载 Tagger 失败', 'danger');
+        showAlert(T('load_tagger_failed', '加载 Tagger 失败'), 'danger');
     }
 }
 
@@ -87,7 +125,7 @@ function renderTaggers() {
             <td>${tagger.priority}</td>
             <td>
                 <span class="badge ${tagger.enabled ? 'bg-success' : 'bg-warning'}">
-                    ${tagger.enabled ? '已启用' : '已禁用'}
+                    ${tagger.enabled ? T('enabled', '已启用') : T('disabled', '已禁用')}
                 </span>
             </td>
             <td>
@@ -109,7 +147,7 @@ function renderTags() {
     container.innerHTML = '';
     
     if (tags.length === 0) {
-        container.innerHTML = '<p class="text-muted" data-t="no_tags_registered">No tags registered</p>';
+        container.innerHTML = '<p class="text-muted">' + T('no_tags_registered', 'No tags registered') + '</p>';
         // Process translation for dynamic content
         if (window.I18n && window.I18n.processDataTElements) {
             window.I18n.processDataTElements();
@@ -131,8 +169,14 @@ function renderTags() {
 
 // Show add tagger modal
 function showAddTaggerModal() {
+    // Check if translation system is ready
+    if (typeof T !== 'function') {
+        console.warn('Translation system not ready for showAddTaggerModal');
+        return;
+    }
+    
     editingTagger = null;
-    document.getElementById('taggerModalTitle').textContent = '添加 Tagger';
+    document.getElementById('taggerModalTitle').textContent = T('add_tagger', '添加 Tagger');
     document.getElementById('taggerForm').reset();
     document.getElementById('taggerEnabled').checked = true;
     clearConfigFields();
@@ -144,7 +188,7 @@ function editTagger(name) {
     editingTagger = taggers.find(t => t.name === name);
     if (!editingTagger) return;
     
-    document.getElementById('taggerModalTitle').textContent = '编辑 Tagger';
+    document.getElementById('taggerModalTitle').textContent = T('edit_tagger', '编辑 Tagger');
     document.getElementById('taggerName').value = editingTagger.name;
     document.getElementById('taggerType').value = editingTagger.type;
     document.getElementById('taggerTag').value = editingTagger.tag;
@@ -164,7 +208,7 @@ function editTagger(name) {
 
 // Delete tagger
 async function deleteTagger(name) {
-    if (!confirm(`确定要删除 Tagger "${name}" 吗？`)) {
+    if (!confirm(T('confirm_delete_tagger', '确定要删除 Tagger "{0}" 吗？').replace('{0}', name))) {
         return;
     }
     
@@ -176,15 +220,15 @@ async function deleteTagger(name) {
         const data = await response.json();
         
         if (response.ok) {
-            showAlert('Tagger deleted successfully', 'success');
+            showAlert(T('tagger_deleted_successfully', 'Tagger deleted successfully'), 'success');
             loadTaggers();
             loadTags();
         } else {
-            showAlert(data.error || '删除 Tagger 失败', 'danger');
+            showAlert(data.error || T('delete_tagger_failed', '删除 Tagger 失败'), 'danger');
         }
     } catch (error) {
         console.error('Failed to delete tagger:', error);
-        showAlert('删除 Tagger 失败', 'danger');
+        showAlert(T('delete_tagger_failed', '删除 Tagger 失败'), 'danger');
     }
 }
 
@@ -197,7 +241,7 @@ async function saveTagger() {
     const enabled = document.getElementById('taggerEnabled').checked;
     
     if (!name || !type || !tag) {
-        showAlert('Please fill in all required fields', 'warning');
+        showAlert(T('please_fill_required_fields', 'Please fill in all required fields'), 'warning');
         return;
     }
     
@@ -213,7 +257,7 @@ async function saveTagger() {
     if (type === 'builtin') {
         const builtinType = document.getElementById('builtinType').value;
         if (!builtinType) {
-            showAlert('Please select a built-in type', 'warning');
+            showAlert(T('please_select_builtin_type', 'Please select a built-in type'), 'warning');
             return;
         }
         taggerData.builtin_type = builtinType;
@@ -236,16 +280,16 @@ async function saveTagger() {
         const data = await response.json();
         
         if (response.ok) {
-            showAlert(editingTagger ? 'Tagger updated successfully' : 'Tagger created successfully', 'success');
+            showAlert(editingTagger ? T('tagger_updated_successfully', 'Tagger updated successfully') : T('tagger_created_successfully', 'Tagger created successfully'), 'success');
             bootstrap.Modal.getInstance(document.getElementById('taggerModal')).hide();
             loadTaggers();
             loadTags();
         } else {
-            showAlert(data.error || '保存 Tagger 失败', 'danger');
+            showAlert(data.error || T('save_tagger_failed', '保存 Tagger 失败'), 'danger');
         }
     } catch (error) {
         console.error('Failed to save tagger:', error);
-        showAlert('保存 Tagger 失败', 'danger');
+        showAlert(T('save_tagger_failed', '保存 Tagger 失败'), 'danger');
     }
 }
 
@@ -273,28 +317,28 @@ function onBuiltinTypeChange() {
     
     switch (builtinType) {
         case 'path':
-            addConfigField('path_pattern', 'text', '路径(支持通配符)', '/v1/*');
+            addConfigField('path_pattern', 'text', T('path_pattern_label', '路径(支持通配符)'), '/v1/*');
             break;
         case 'header':
-            addConfigField('header_name', 'text', 'HTTP 头名称', 'Content-Type');
-            addConfigField('expected_value', 'text', 'HTTP 头内容(支持通配符)', 'application/json');
+            addConfigField('header_name', 'text', T('http_header_name', 'HTTP 头名称'), 'Content-Type');
+            addConfigField('expected_value', 'text', T('http_header_content', 'HTTP 头内容(支持通配符)'), 'application/json');
             break;
         case 'query':
-            addConfigField('param_name', 'text', 'HTTP 参数名', 'beta');
-            addConfigField('expected_value', 'text', 'HTTP 参数内容(支持通配符)', 'true');
+            addConfigField('param_name', 'text', T('http_param_name', 'HTTP 参数名'), 'beta');
+            addConfigField('expected_value', 'text', T('http_param_content', 'HTTP 参数内容(支持通配符)'), 'true');
             break;
         case 'body-json':
-            addConfigField('json_path', 'text', 'JSON 路径', 'messages[0].text');
-            addConfigField('expected_value', 'text', '字段内容(支持通配符)', 'claude-3*');
+            addConfigField('json_path', 'text', T('json_path_label', 'JSON 路径'), 'messages[0].text');
+            addConfigField('expected_value', 'text', T('field_content_wildcards', '字段内容(支持通配符)'), 'claude-3*');
             break;
         case 'user-message':
-            addConfigField('expected_value', 'text', 'Prompt内容(支持通配符)', '*#use-claude*');
+            addConfigField('expected_value', 'text', T('prompt_content_wildcards', 'Prompt内容(支持通配符)'), '*#use-claude*');
             break;
         case 'model':
-            addConfigField('expected_value', 'text', '模型名(支持通配符)', 'claude-3*');
+            addConfigField('expected_value', 'text', T('model_name_wildcards', '模型名(支持通配符)'), 'claude-3*');
             break;
         case 'thinking':
-            addConfigField('min_budget_tokens', 'number', '最小 Budget Tokens (optional, default: 0)', '0');
+            addConfigField('min_budget_tokens', 'number', T('min_budget_tokens_label', '最小 Budget Tokens (optional, default: 0)'), '0');
             break;
     }
 }
