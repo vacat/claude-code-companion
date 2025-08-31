@@ -3,7 +3,7 @@
     "version": "1.1",
     "language": "zh-cn",
     "last_updated": "2025-01-22T00:00:00Z",
-    "total_keys": 680
+    "total_keys": 665
   },
   "translations": {
     "claude_proxy_admin_title": "Claude Code 伴侣管理后台",
