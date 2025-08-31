@@ -274,7 +274,7 @@ function saveAsFileFromButton(button) {
     const encodedContent = button.getAttribute('data-content');
     
     if (!encodedContent || encodedContent.trim() === '') {
-        alert('内容为空，无法保存');
+        alert(T('content_empty_cannot_save', '内容为空，无法保存'));
         return;
     }
 
@@ -298,21 +298,21 @@ function saveAsFileFromButton(button) {
         }, 100);
     } catch (error) {
         console.error('保存文件失败:', error);
-        alert('保存文件失败，请检查浏览器控制台');
+        alert(T('save_file_failed_check_console', '保存文件失败，请检查浏览器控制台'));
     }
 }
 
 // Copy to clipboard functionality
 function copyToClipboard(content) {
     if (!content || content.trim() === '') {
-        showAlert('内容为空，无法复制', 'warning');
+        showAlert(T('content_empty_cannot_copy', '内容为空，无法复制'), 'warning');
         return;
     }
 
     // Try to use modern clipboard API first
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(content).then(() => {
-            showAlert('已复制到剪贴板', 'success');
+            showAlert(T('copied_to_clipboard', '已复制到剪贴板'), 'success');
         }).catch(err => {
             console.error('Clipboard API failed:', err);
             fallbackCopyToClipboard(content);
@@ -372,20 +372,20 @@ function fallbackCopyToClipboard(content) {
         document.body.removeChild(textarea);
         
         if (successful) {
-            showAlert('已复制到剪贴板', 'success');
+            showAlert(T('copied_to_clipboard', '已复制到剪贴板'), 'success');
         } else {
-            showAlert('复制失败，请手动复制', 'danger');
+            showAlert(T('copy_failed_manual', '复制失败，请手动复制'), 'danger');
         }
     } catch (err) {
         console.error('Fallback copy failed:', err);
-        showAlert('复制失败，请手动复制', 'danger');
+        showAlert(T('copy_failed_manual', '复制失败，请手动复制'), 'danger');
     }
 }
 
 function copyFromButton(button) {
     const encodedContent = button.getAttribute('data-content');
     if (!encodedContent) {
-        showAlert('无内容可复制', 'warning');
+        showAlert(T('no_content_to_copy', '无内容可复制'), 'warning');
         return;
     }
     
@@ -394,7 +394,7 @@ function copyFromButton(button) {
         copyToClipboard(content);
     } catch (error) {
         console.error('解码内容失败:', error);
-        showAlert('内容解码失败', 'danger');
+        showAlert(T('content_decode_failed', '内容解码失败'), 'danger');
     }
 }
 

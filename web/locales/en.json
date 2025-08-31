@@ -223,6 +223,7 @@
     "endpoint_save_success_model_rewrite_failed": "Endpoint saved successfully, but model rewrite configuration failed",
     "confirm_delete_endpoint": "Delete this endpoint? This action cannot be undone.",
     "confirm_copy_endpoint": "Duplicate this endpoint configuration?",
+    "confirm_reset_endpoint_status": "Reset endpoint \"{0}\" status? This will clear failure records and restore the endpoint to normal operation.",
     "endpoint_enabled": "Endpoint enabled",
     "endpoint_disabled": "Endpoint disabled",
     "enable_endpoint_failed": "Failed to enable endpoint",

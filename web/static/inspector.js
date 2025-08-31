@@ -23,7 +23,7 @@ function openRequestInspector() {
     }
     
     if (!requestBody) {
-        alert('未找到请求数据');
+        alert(T('request_data_not_found', '未找到请求数据'));
         return;
     }
 
@@ -45,7 +45,7 @@ function openRequestInspector() {
         }
     } catch (error) {
         console.error('Failed to open request inspector:', error);
-        alert('打开请求检查器时出错: ' + error.message);
+        alert(T('open_inspector_error', '打开请求检查器时出错') + ': ' + error.message);
     }
 }
 
@@ -90,7 +90,7 @@ window.inspectorToggleCollapse = function(elementId) {
 // 导出分析功能
 function exportAnalysis() {
     if (!currentParser) {
-        alert('没有可导出的分析数据');
+        alert(T('no_data_to_export', '没有可导出的分析数据'));
         return;
     }
     
@@ -132,7 +132,7 @@ function exportAnalysis() {
         URL.revokeObjectURL(url);
     } catch (error) {
         console.error('Export failed:', error);
-        alert('导出失败: ' + error.message);
+        alert(T('export_failed_error', '导出失败') + ': ' + error.message);
     }
 }
 
@@ -211,13 +211,13 @@ document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'f' && 
         !document.getElementById('requestInspectorModal')?.classList.contains('d-none-custom')) {
         e.preventDefault();
-        const query = prompt('搜索内容:');
+        const query = prompt(T('search_content_prompt', '搜索内容:'));
         if (query) {
             const results = searchInInspector(query);
             if (results.length > 0) {
-                alert(`找到 ${results.length} 个结果:\n${results.map(r => r.content).join('\n')}`);
+                alert(T('search_results_found', '找到 {0} 个结果:\n{1}').replace('{0}', results.length).replace('{1}', results.map(r => r.content).join('\n')));
             } else {
-                alert('未找到匹配的内容');
+                alert(T('no_matching_content', '未找到匹配的内容'));
             }
         }
     }

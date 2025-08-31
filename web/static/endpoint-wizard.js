@@ -4,7 +4,7 @@ function validateWizardNameInput() {
     if (nameInput) {
         const v = nameInput.value;
         if (v.includes('/') || v.includes('\\')) {
-            nameInput.setCustomValidity('端点名称不能包含 / 或 \\');
+            nameInput.setCustomValidity(T('endpoint_name_invalid_chars', '端点名称不能包含 / 或 \\'));
         } else {
             nameInput.setCustomValidity('');
         }
@@ -427,7 +427,7 @@ class EndpointWizard {
                 this.modal.hide();
                 
                 // 使用全局的 showAlert 函数显示成功消息
-                showAlert(T('endpoint_created_success', `端点 "${data.endpoint.Name}" 创建成功！`, { name: data.endpoint.Name }), 'success');
+                showAlert(T('endpoint_created_success', '端点 "{0}" 创建成功！').replace('{0}', data.endpoint.Name), 'success');
                 
                 // 刷新端点列表
                 if (window.loadEndpointData) {

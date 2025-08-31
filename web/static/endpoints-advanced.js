@@ -109,11 +109,11 @@ function removeRewriteRule(button) {
 
 // Test rewrite rule
 function testRewriteRule(ruleIndex) {
-    const testModel = prompt('请输入要测试的模型名称:', 'claude-3-haiku-20240307');
+    const testModel = prompt(T('enter_test_model_name', '请输入要测试的模型名称:'), 'claude-3-haiku-20240307');
     if (!testModel) return;
 
     if (!editingEndpointName) {
-        alert('请先保存端点后再测试规则');
+        alert(T('save_endpoint_before_test', '请先保存端点后再测试规则'));
         return;
     }
 
@@ -125,17 +125,17 @@ function testRewriteRule(ruleIndex) {
     .then(response => response.json())
     .then(data => {
         if (data.error) {
-            alert(`测试失败: ${data.error}`);
+            alert(T('test_failed_error', '测试失败') + `: ${data.error}`);
         } else {
             const message = data.rewrite_applied 
-                ? `✅ 重写生效!\\n原模型: ${data.original_model}\\n重写为: ${data.rewritten_model}\\n匹配规则: ${data.matched_rule}`
-                : `❌ 无重写\\n模型: ${data.original_model}\\n未匹配任何规则`;
+                ? T('rewrite_success_message', '✅ 重写生效!\\n原模型: {0}\\n重写为: {1}\\n匹配规则: {2}').replace('{0}', data.original_model).replace('{1}', data.rewritten_model).replace('{2}', data.matched_rule)
+                : T('no_rewrite_message', '❌ 无重写\\n模型: {0}\\n未匹配任何规则').replace('{0}', data.original_model);
             alert(message);
         }
     })
     .catch(error => {
         console.error('Test failed:', error);
-        alert('测试失败，请检查网络连接');
+        alert(T('test_failed_network', '测试失败，请检查网络连接'));
     });
 }
 

@@ -26,7 +26,7 @@ function generateLogAttemptHtml(log, attemptNum) {
                     }
                     ${log.is_streaming ? '<span class="badge bg-info">SSE</span>' : ''}
                     ${log.content_type_override ? `<span class="badge bg-warning text-dark" title="Content-Type覆盖: ${escapeHtml(log.content_type_override)}">${escapeHtml(log.content_type_override)}</span>` : ''}
-                    ${requestChanges || responseChanges ? '<span class="badge bg-info">有修改</span>' : ''}
+                    ${requestChanges || responseChanges ? `<span class="badge bg-info">${T('has_modifications', '有修改')}</span>` : ''}
                 </h6>
             </div>
             <div class="card-body">
@@ -77,7 +77,7 @@ function generateLogAttemptContentHtml(log, attemptNum) {
         
         <div class="mb-3">
             <h6 class="mb-2">
-                ${displayAttemptNum > 1 ? `重试 #${displayAttemptNum - 1}` : '首次尝试'}: ${escapeHtml(log.endpoint)} 
+                ${displayAttemptNum > 1 ? T('retry_attempt', '重试 #{0}').replace('{0}', displayAttemptNum - 1) : T('first_attempt', '首次尝试')}: ${escapeHtml(log.endpoint)} 
                 <span class="badge ${badgeClass}">${log.status_code}</span>
                 <span class="badge bg-secondary">${log.duration_ms}ms</span>
                 ${log.model ? 
@@ -88,7 +88,7 @@ function generateLogAttemptContentHtml(log, attemptNum) {
                 }
                 ${log.is_streaming ? '<span class="badge bg-info">SSE</span>' : ''}
                 ${log.content_type_override ? `<span class="badge bg-warning text-dark" title="Content-Type覆盖: ${escapeHtml(log.content_type_override)}">${escapeHtml(log.content_type_override)}</span>` : ''}
-                ${requestChanges || responseChanges ? '<span class="badge bg-info">有修改</span>' : ''}
+                ${requestChanges || responseChanges ? `<span class="badge bg-info">${T('has_modifications', '有修改')}</span>` : ''}
             </h6>
         </div>
         

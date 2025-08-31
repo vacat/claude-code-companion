@@ -252,7 +252,7 @@ function saveEndpoint() {
                 })
                 .catch(error => {
                     console.error('Failed to save model rewrite config:', error);
-                    showAlert('端点保存成功，但模型重写配置保存失败: ' + error.message, 'warning');
+                    showAlert(T('endpoint_save_success_rewrite_failed', '端点保存成功，但模型重写配置保存失败') + ': ' + error.message, 'warning');
                     endpointModal.hide();
                     loadEndpoints();
                 });
@@ -260,12 +260,12 @@ function saveEndpoint() {
     })
     .catch(error => {
         console.error('Failed to save endpoint:', error);
-        showAlert('Failed to save endpoint', 'danger');
+        showAlert(T('failed_to_save_endpoint', 'Failed to save endpoint'), 'danger');
     });
 }
 
 function deleteEndpoint(endpointName) {
-    if (!confirm(t('confirm_delete_endpoint').replace('{0}', endpointName))) {
+    if (!confirm(T('confirm_delete_endpoint', '确定要删除端点 "{0}" 吗？').replace('{0}', endpointName))) {
         return;
     }
 
@@ -283,12 +283,12 @@ function deleteEndpoint(endpointName) {
     })
     .catch(error => {
         console.error('Failed to delete endpoint:', error);
-        showAlert('Failed to delete endpoint', 'danger');
+        showAlert(T('failed_to_delete_endpoint', 'Failed to delete endpoint'), 'danger');
     });
 }
 
 function copyEndpoint(endpointName) {
-    if (!confirm(t('confirm_copy_endpoint').replace('{0}', endpointName))) {
+    if (!confirm(T('confirm_copy_endpoint', '确定要复制端点 "{0}" 吗？').replace('{0}', endpointName))) {
         return;
     }
 
@@ -306,7 +306,7 @@ function copyEndpoint(endpointName) {
     })
     .catch(error => {
         console.error('Failed to copy endpoint:', error);
-        showAlert('Failed to copy endpoint', 'danger');
+        showAlert(T('failed_to_copy_endpoint', 'Failed to copy endpoint'), 'danger');
     });
 }
 
@@ -332,7 +332,7 @@ function toggleEndpointEnabled(endpointName, currentEnabled) {
         if (data.error) {
             showAlert(data.error, 'danger');
         } else {
-            showAlert(`端点 "${endpointName}" 已${actionText}`, 'success');
+            showAlert(T('endpoint_action_success', '端点 "{0}" 已{1}').replace('{0}', endpointName).replace('{1}', actionText), 'success');
             // 更新按钮状态而不重新加载整个表格
             updateEndpointToggleButton(endpointName, newEnabled);
             // 更新启用状态显示
@@ -343,12 +343,12 @@ function toggleEndpointEnabled(endpointName, currentEnabled) {
     })
     .catch(error => {
         console.error('Failed to toggle endpoint:', error);
-        showAlert(`${actionText}端点失败`, 'danger');
+        showAlert(T('endpoint_action_failed', '{0}端点失败').replace('{0}', actionText), 'danger');
     });
 }
 
 function resetEndpointStatus(endpointName) {
-    if (!confirm(t('confirm_reset_endpoint_status', '确认要重置端点 "{0}" 的状态吗？这将清除失败记录并将状态重置为正常。').replace('{0}', endpointName))) {
+    if (!confirm(T('confirm_reset_endpoint_status', '确认要重置端点 "{0}" 的状态吗？这将清除失败记录并将状态重置为正常。').replace('{0}', endpointName))) {
         return;
     }
 
@@ -360,14 +360,14 @@ function resetEndpointStatus(endpointName) {
         if (data.error) {
             showAlert(data.error, 'danger');
         } else {
-            showAlert(`端点 "${endpointName}" 状态已重置为正常`, 'success');
+            showAlert(T('endpoint_status_reset_success', '端点 "{0}" 状态已重置为正常').replace('{0}', endpointName), 'success');
             // 刷新端点状态显示
             refreshEndpointStatus();
         }
     })
     .catch(error => {
         console.error('Failed to reset endpoint status:', error);
-        showAlert('重置端点状态失败', 'danger');
+        showAlert(T('reset_endpoint_status_failed', '重置端点状态失败'), 'danger');
     });
 }
 
