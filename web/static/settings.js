@@ -65,7 +65,7 @@ function saveSettings() {
     }
     
     const originalText = saveBtn.innerHTML;
-    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+    saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${T('saving', '保存中...')}`;
     saveBtn.disabled = true;
     
     console.log('Sending API request to /admin/api/settings'); // Debug log

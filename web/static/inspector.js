@@ -252,13 +252,13 @@ window.inspectorToggleMessageOrder = function() {
         orderedMessages = [...messages];
         toggleBtn.setAttribute('data-reversed', 'false');
         icon.textContent = '↑';
-        text.textContent = '正向排列';
+        text.textContent = T('normal_order', '正向排列');
     } else {
         // 当前是正序，切换到逆序
         orderedMessages = [...messages].reverse();
         toggleBtn.setAttribute('data-reversed', 'true');
         icon.textContent = '↓';
-        text.textContent = '逆向排列';
+        text.textContent = T('reverse_order', '逆向排列');
     }
     
     // 重新渲染消息容器内容

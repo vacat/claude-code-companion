@@ -33,26 +33,26 @@ function addRewriteRule(sourcePattern = '', targetModel = '') {
     ruleDiv.innerHTML = `
         <div class="col-5">
             <select class="form-select source-model-select" onchange="updateSourcePattern(${ruleIndex})">
-                <option value="">选择预设模型</option>
+                <option value="">${T('select_preset_model', '选择预设模型')}</option>
                 <option value="claude-*haiku*">Haiku 系列</option>
                 <option value="claude-*sonnet*">Sonnet 系列</option>
                 <option value="claude-*opus*">Opus 系列</option>
                 <option value="claude-*">所有 Claude</option>
-                <option value="custom">自定义通配符</option>
+                <option value="custom">${T('custom_wildcard', '自定义通配符')}</option>
             </select>
             <input type="text" class="form-control mt-1 source-pattern-input" 
-                   placeholder="通配符模式" value="${escapeHtml(sourcePattern)}" readonly>
+                   placeholder="${T('wildcard_pattern', '通配符模式')}" value="${escapeHtml(sourcePattern)}" readonly>
         </div>
         <div class="col-5">
             <input type="text" class="form-control target-model-input" 
-                   placeholder="目标模型 (如: deepseek-chat)" value="${escapeHtml(targetModel)}" 
+                   placeholder="${T('target_model_placeholder', '目标模型 (如: deepseek-chat)')}" value="${escapeHtml(targetModel)}" 
                    oninput="onRewriteRuleTargetChange()">
         </div>
         <div class="col-2">
             <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRewriteRule(this)">
                 <i class="fas fa-trash"></i>
             </button>
-            <button type="button" class="btn btn-outline-info btn-sm mt-1" onclick="testRewriteRule(${ruleIndex})" title="测试规则">
+            <button type="button" class="btn btn-outline-info btn-sm mt-1" onclick="testRewriteRule(${ruleIndex})" title="${T('test_rule', '测试规则')}">
                 <i class="fas fa-play"></i>
             </button>
         </div>
@@ -310,7 +310,7 @@ function updateDefaultModelState() {
         } else {
             // Multiple rules or non-"*" rules - disable default model
             defaultModelInput.disabled = true;
-            defaultModelInput.title = 'Model Rewrite中有和默认模型不兼容的设置';
+            defaultModelInput.title = T('model_rewrite_incompatible_settings', 'Model Rewrite中有和默认模型不兼容的设置');
             StyleUtils.show(defaultModelHint);
         }
     }
@@ -387,11 +387,11 @@ function addHeaderOverrideRule(headerName = '', headerValue = '') {
     ruleDiv.innerHTML = `
         <div class="col-4">
             <input type="text" class="form-control header-name-input" 
-                   placeholder="Header名称 (如: User-Agent)" value="${escapeHtml(headerName)}">
+                   placeholder="${T('header_name_placeholder', 'Header名称 (如: User-Agent)')}" value="${escapeHtml(headerName)}">
         </div>
         <div class="col-6">
             <input type="text" class="form-control header-value-input" 
-                   placeholder="Header值 (留空删除)" value="${escapeHtml(headerValue)}">
+                   placeholder="${T('header_value_placeholder', 'Header值 (留空删除)')}" value="${escapeHtml(headerValue)}">
         </div>
         <div class="col-2">
             <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeHeaderOverrideRule(this)">

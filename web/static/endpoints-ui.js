@@ -89,7 +89,7 @@ function rebuildTable(endpoints) {
         if (endpoint.proxy && endpoint.proxy.type && endpoint.proxy.address) {
             const proxyType = endpoint.proxy.type.toUpperCase();
             const hasAuth = endpoint.proxy.username ? ' 🔐' : '';
-            proxyDisplay = `<span class="badge bg-warning" title="${t('proxy_with_auth', '代理')}: ${endpoint.proxy.type}://${endpoint.proxy.address}">${proxyType}${hasAuth}</span>`;
+            proxyDisplay = `<span class="badge bg-warning" title="${T('proxy_with_auth', '代理')}: ${endpoint.proxy.type}://${endpoint.proxy.address}">${proxyType}${hasAuth}</span>`;
         } else {
             proxyDisplay = `<span class="text-muted" data-t="no_proxy">无</span>`;
         }

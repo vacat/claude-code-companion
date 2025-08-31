@@ -4,7 +4,7 @@
 function openRequestInspectorFromFloating(button) {
     const encodedContent = button.getAttribute('data-request-body');
     if (!encodedContent) {
-        alert(t('request_data_not_found', '未找到请求数据'));
+        alert(T('request_data_not_found', '未找到请求数据'));
         return;
     }
     
@@ -26,7 +26,7 @@ function openRequestInspectorFromFloating(button) {
         openRequestInspector();
     } catch (e) {
         console.error('Failed to decode request body:', e);
-        alert(t('request_decode_failed', '请求数据解码失败'));
+        alert(T('request_decode_failed', '请求数据解码失败'));
     }
 }
 
@@ -34,7 +34,7 @@ function openRequestInspectorFromFloating(button) {
 function openRequestInspectorFromMain(button) {
     const encodedContent = button.getAttribute('data-request-body');
     if (!encodedContent) {
-        alert(t('request_data_not_found', '未找到请求数据'));
+        alert(T('request_data_not_found', '未找到请求数据'));
         return;
     }
     
@@ -56,7 +56,7 @@ function openRequestInspectorFromMain(button) {
         openRequestInspector();
     } catch (e) {
         console.error('Failed to decode request body:', e);
-        alert(t('request_decode_failed', '请求数据解码失败'));
+        alert(T('request_decode_failed', '请求数据解码失败'));
     }
 }
 

@@ -118,7 +118,7 @@ function toggleCollapsible(id) {
 
 // Helper function to create content box with floating actions
 function createContentBoxWithActions(content, filename, encodedContent, maxHeight = '400px') {
-    if (!content) content = t('no_content', '无内容');
+    if (!content) content = T('no_content', '无内容');
     if (!encodedContent) encodedContent = '';
     
     return `
@@ -172,7 +172,7 @@ function exportDebugInfo(requestId) {
     const exportButton = document.querySelector(`button[onclick="exportDebugInfo('${requestId}')"]`);
     if (exportButton) {
         const originalText = exportButton.innerHTML;
-        exportButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span data-t="exporting">导出中...</span>`;
+        exportButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span data-t="exporting">${T('exporting', '导出中...')}</span>`;
         exportButton.disabled = true;
 
         // 导出完成后恢复按钮状态
@@ -198,7 +198,7 @@ function exportDebugInfo(requestId) {
         setTimeout(restoreButton, 2000);
         
         // 显示成功提示
-        showToast(t('export_debug_success', '导出调试信息成功，文件将开始下载'), 'success');
+        showToast(T('export_debug_success', '导出调试信息成功，文件将开始下载'), 'success');
     }
 }
 

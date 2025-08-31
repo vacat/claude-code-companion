@@ -30,7 +30,7 @@ function generateLogAttemptHtml(log, attemptNum) {
                 </h6>
             </div>
             <div class="card-body">
-                ${log.error ? `<div class="alert alert-danger mb-3"><strong data-t="error">错误:</strong> ${escapeHtml(log.error)}</div>` : ''}
+                ${log.error ? `<div class="alert alert-danger mb-3"><strong data-t="error">${T('error', '错误')}:</strong> ${escapeHtml(log.error)}</div>` : ''}
                 <!-- Request/Response Tabs -->
                 <ul class="nav nav-tabs before-after-tabs" id="logTabs${attemptNum}" role="tablist">
                     <li class="nav-item" role="presentation">
@@ -73,7 +73,7 @@ function generateLogAttemptContentHtml(log, attemptNum) {
     const displayAttemptNum = log.attempt_number || attemptNum;
     
     return `
-        ${log.error ? `<div class="alert alert-danger mb-3"><strong data-t="error">错误:</strong> ${escapeHtml(log.error)}</div>` : ''}
+        ${log.error ? `<div class="alert alert-danger mb-3"><strong data-t="error">${T('error', '错误')}:</strong> ${escapeHtml(log.error)}</div>` : ''}
         
         <div class="mb-3">
             <h6 class="mb-2">

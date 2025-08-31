@@ -5,7 +5,7 @@ function showAddEndpointModal() {
     originalAuthValue = '';
     isAuthVisible = false;
     
-    document.getElementById('endpointModalTitle').textContent = '添加端点';
+    document.getElementById('endpointModalTitle').textContent = T('add_endpoint', '添加端点');
     document.getElementById('endpointForm').reset();
     document.getElementById('endpoint-enabled').checked = true;
     document.getElementById('endpoint-type').value = 'anthropic'; // Default to Anthropic
@@ -59,7 +59,7 @@ function showEditEndpointModal(endpointName) {
     originalAuthValue = endpoint.auth_value;
     isAuthVisible = false;
     
-    document.getElementById('endpointModalTitle').textContent = '编辑端点';
+    document.getElementById('endpointModalTitle').textContent = T('edit_endpoint', '编辑端点');
     
     // Populate form
     document.getElementById('endpoint-name').value = endpoint.name;

@@ -248,7 +248,7 @@ function safeBase64Decode(str) {
         try {
             return decodeURIComponent(str);
         } catch (e) {
-            console.error('所有解码方法都失败:', e);
+            console.error('All decode methods failed:', e);
             return str;
         }
     }
@@ -297,7 +297,7 @@ function saveAsFileFromButton(button) {
             URL.revokeObjectURL(url);
         }, 100);
     } catch (error) {
-        console.error('保存文件失败:', error);
+        console.error('Save file failed:', error);
         alert(T('save_file_failed_check_console', '保存文件失败，请检查浏览器控制台'));
     }
 }
@@ -393,7 +393,7 @@ function copyFromButton(button) {
         const content = safeBase64Decode(encodedContent);
         copyToClipboard(content);
     } catch (error) {
-        console.error('解码内容失败:', error);
+        console.error('Decode content failed:', error);
         showAlert(T('content_decode_failed', '内容解码失败'), 'danger');
     }
 }
@@ -665,7 +665,7 @@ function showUpdateBadge(latestVersion) {
         githubLink.appendChild(badge);
         
         // Update tooltip
-        githubLink.title = `${t('version_found')}: ${latestVersion} - ${t('click_to_view_github')}`;
+        githubLink.title = `${T('version_found', '发现版本')}: ${latestVersion} - ${T('click_to_view_github', '点击查看 GitHub')}`;
     } catch (error) {
         console.debug('Failed to show update badge, ignoring:', error.name || 'Unknown error');
     }

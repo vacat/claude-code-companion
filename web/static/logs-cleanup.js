@@ -60,7 +60,7 @@ function confirmCleanup() {
         window.location.reload();
     })
     .catch(error => {
-        console.error('清理日志失败:', error);
+        console.error('Cleanup logs failed:', error);
         alert(T('cleanup_failed_error', '清理日志失败') + ': ' + error.message);
     })
     .finally(() => {
