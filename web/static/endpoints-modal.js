@@ -36,6 +36,12 @@ function showAddEndpointModal() {
     // Clear max tokens field name configuration
     document.getElementById('max-tokens-field-name').value = '';
     
+    // Clear enhanced protection configuration
+    document.getElementById('enhanced-protection-enabled').checked = false;
+    
+    // Check enhanced protection availability based on URL (will be checked again when URL changes)
+    checkEnhancedProtectionAvailability();
+    
     // Reset to basic configuration tab
     resetModalTabs();
     
@@ -106,6 +112,13 @@ function showEditEndpointModal(endpointName) {
     // Load max tokens field name configuration
     const maxTokensFieldName = endpoint.max_tokens_field_name || '';
     document.getElementById('max-tokens-field-name').value = maxTokensFieldName;
+    
+    // Load enhanced protection configuration
+    const enhancedProtection = endpoint.enhanced_protection || false;
+    document.getElementById('enhanced-protection-enabled').checked = enhancedProtection;
+    
+    // Check enhanced protection availability based on URL
+    checkEnhancedProtectionAvailability();
     
     // Reset to basic configuration tab
     resetModalTabs();
@@ -196,7 +209,8 @@ function saveEndpoint() {
         max_tokens_field_name: document.getElementById('max-tokens-field-name').value || '', // New: max tokens field name
         proxy: collectProxyData(), // New: collect proxy configuration
         header_overrides: collectHeaderOverrideData(), // New: collect header override configuration
-        parameter_overrides: collectParameterOverrideData() // New: collect parameter override configuration
+        parameter_overrides: collectParameterOverrideData(), // New: collect parameter override configuration
+        enhanced_protection: document.getElementById('enhanced-protection-enabled').checked // New: enhanced protection for official accounts
     };
     
     // Add OAuth config if present
@@ -411,3 +425,40 @@ function reorderEndpoints() {
         loadEndpoints(); // Reload to restore order
     });
 }
+
+// Check if URL is api.anthropic.com and enable/disable enhanced protection accordingly
+function checkEnhancedProtectionAvailability() {
+    const urlInput = document.getElementById('endpoint-url');
+    const enhancedProtectionCheckbox = document.getElementById('enhanced-protection-enabled');
+    
+    if (!urlInput || !enhancedProtectionCheckbox) {
+        return;
+    }
+    
+    const url = urlInput.value.toLowerCase().trim();
+    const isAnthropicOfficial = url.includes('api.anthropic.com');
+    
+    if (isAnthropicOfficial) {
+        // Enable enhanced protection option for api.anthropic.com
+        enhancedProtectionCheckbox.disabled = false;
+        enhancedProtectionCheckbox.parentElement.parentElement.style.opacity = '1';
+    } else {
+        // Disable enhanced protection option for non-anthropic endpoints
+        enhancedProtectionCheckbox.disabled = true;
+        enhancedProtectionCheckbox.checked = false;
+        enhancedProtectionCheckbox.parentElement.parentElement.style.opacity = '0.5';
+    }
+}
+
+// Add event listener for URL input changes
+document.addEventListener('DOMContentLoaded', function() {
+    const urlInput = document.getElementById('endpoint-url');
+    if (urlInput) {
+        // Add event listener for input events (real-time typing)
+        urlInput.addEventListener('input', checkEnhancedProtectionAvailability);
+        // Add event listener for change events (when user leaves the field)
+        urlInput.addEventListener('change', checkEnhancedProtectionAvailability);
+        // Add event listener for blur events (when field loses focus)
+        urlInput.addEventListener('blur', checkEnhancedProtectionAvailability);
+    }
+});

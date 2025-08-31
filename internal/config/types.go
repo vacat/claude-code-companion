@@ -40,6 +40,7 @@ type EndpointConfig struct {
 	MaxTokensFieldName  string            `yaml:"max_tokens_field_name,omitempty" json:"max_tokens_field_name,omitempty"` // max_tokens 参数名转换选项
 	RateLimitReset      *int64            `yaml:"rate_limit_reset,omitempty" json:"rate_limit_reset,omitempty"`       // Anthropic-Ratelimit-Unified-Reset
 	RateLimitStatus     *string           `yaml:"rate_limit_status,omitempty" json:"rate_limit_status,omitempty"`     // Anthropic-Ratelimit-Unified-Status
+	EnhancedProtection  bool              `yaml:"enhanced_protection,omitempty" json:"enhanced_protection,omitempty"` // 官方帐号增强保护：allowed_warning时即禁用端点
 }
 
 // 新增：代理配置结构

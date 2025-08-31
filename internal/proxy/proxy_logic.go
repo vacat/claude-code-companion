@@ -852,5 +852,16 @@ func (s *Server) processRateLimitHeaders(ep *endpoint.Endpoint, headers http.Hea
 		}
 	}
 	
+	// 检查增强保护：如果启用了增强保护且状态为allowed_warning，则禁用端点
+	if ep.ShouldDisableOnAllowedWarning() && ep.IsAvailable() {
+		s.logger.Info("Enhanced protection triggered: disabling endpoint due to allowed_warning status", map[string]interface{}{
+			"endpoint": ep.Name,
+			"status": statusValue,
+			"enhanced_protection": true,
+			"request_id": requestID,
+		})
+		ep.MarkInactive()
+	}
+	
 	return nil
 }

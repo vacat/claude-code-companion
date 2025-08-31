@@ -56,6 +56,7 @@ type Endpoint struct {
 	MaxTokensFieldName  string                 `json:"max_tokens_field_name,omitempty"` // max_tokens 参数名转换选项
 	RateLimitReset      *int64                 `json:"rate_limit_reset,omitempty"`      // Anthropic-Ratelimit-Unified-Reset
 	RateLimitStatus     *string                `json:"rate_limit_status,omitempty"`     // Anthropic-Ratelimit-Unified-Status
+	EnhancedProtection  bool                   `json:"enhanced_protection,omitempty"`   // 官方帐号增强保护：allowed_warning时即禁用端点
 	Status              Status                   `json:"status"`
 	LastCheck           time.Time                `json:"last_check"`
 	FailureCount        int                      `json:"failure_count"`
@@ -100,6 +101,7 @@ func NewEndpoint(cfg config.EndpointConfig) *Endpoint {
 		MaxTokensFieldName:  cfg.MaxTokensFieldName,  // 新增：从配置中复制max_tokens参数名转换选项
 		RateLimitReset:      cfg.RateLimitReset,      // 新增：从配置加载rate limit reset状态
 		RateLimitStatus:     cfg.RateLimitStatus,     // 新增：从配置加载rate limit status状态
+		EnhancedProtection:  cfg.EnhancedProtection,  // 新增：从配置加载官方帐号增强保护设置
 		Status:            StatusActive,
 		LastCheck:         time.Now(),
 		RequestHistory:    utils.NewCircularBuffer(100, 140*time.Second), // 100个记录，140秒窗口
@@ -618,4 +620,31 @@ func (e *Endpoint) ShouldLogSkipHealthCheck() bool {
 		return true
 	}
 	return false
+}
+
+// ShouldDisableOnAllowedWarning 检查是否应该在allowed_warning状态下禁用端点
+// 只有同时满足以下条件时才返回true：
+// 1. 启用了增强保护 (EnhancedProtection = true)
+// 2. 是Anthropic官方端点 (api.anthropic.com)
+// 3. 当前rate limit状态为allowed_warning
+func (e *Endpoint) ShouldDisableOnAllowedWarning() bool {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	
+	// 必须启用增强保护
+	if !e.EnhancedProtection {
+		return false
+	}
+	
+	// 必须是Anthropic官方端点
+	if !strings.Contains(strings.ToLower(e.URL), "api.anthropic.com") {
+		return false
+	}
+	
+	// 必须有rate limit status信息且为allowed_warning
+	if e.RateLimitStatus == nil || *e.RateLimitStatus != "allowed_warning" {
+		return false
+	}
+	
+	return true
 }
