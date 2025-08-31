@@ -299,3 +299,4 @@ func (m *Manager) cleanupRemovedEndpoints(newConfigs []config.EndpointConfig) {
 		}
 	}
 }
+

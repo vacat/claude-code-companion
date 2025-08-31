@@ -3,6 +3,7 @@ package endpoint
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -53,6 +54,8 @@ type Endpoint struct {
 	HeaderOverrides     map[string]string      `json:"header_overrides,omitempty"`     // 新增：HTTP Header覆盖配置
 	ParameterOverrides  map[string]string      `json:"parameter_overrides,omitempty"` // 新增：Request Parameters覆盖配置
 	MaxTokensFieldName  string                 `json:"max_tokens_field_name,omitempty"` // max_tokens 参数名转换选项
+	RateLimitReset      *int64                 `json:"rate_limit_reset,omitempty"`      // Anthropic-Ratelimit-Unified-Reset
+	RateLimitStatus     *string                `json:"rate_limit_status,omitempty"`     // Anthropic-Ratelimit-Unified-Status
 	Status              Status                   `json:"status"`
 	LastCheck           time.Time                `json:"last_check"`
 	FailureCount        int                      `json:"failure_count"`
@@ -92,6 +95,8 @@ func NewEndpoint(cfg config.EndpointConfig) *Endpoint {
 		HeaderOverrides:     cfg.HeaderOverrides,     // 新增：从配置中复制HTTP Header覆盖配置
 		ParameterOverrides:  cfg.ParameterOverrides,  // 新增：从配置中复制Request Parameters覆盖配置
 		MaxTokensFieldName:  cfg.MaxTokensFieldName,  // 新增：从配置中复制max_tokens参数名转换选项
+		RateLimitReset:      cfg.RateLimitReset,      // 新增：从配置加载rate limit reset状态
+		RateLimitStatus:     cfg.RateLimitStatus,     // 新增：从配置加载rate limit status状态
 		Status:            StatusActive,
 		LastCheck:         time.Now(),
 		RequestHistory:    utils.NewCircularBuffer(100, 140*time.Second), // 100个记录，140秒窗口
@@ -491,4 +496,68 @@ func (e *Endpoint) GetBlacklistReason() *BlacklistReason {
 		BlacklistedAt:     e.BlacklistReason.BlacklistedAt,
 		ErrorSummary:      e.BlacklistReason.ErrorSummary,
 	}
+}
+
+// UpdateRateLimitState 更新endpoint的rate limit状态（线程安全）
+func (e *Endpoint) UpdateRateLimitState(reset *int64, status *string) (bool, error) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+	
+	// 检查是否有变化
+	changed := false
+	
+	// 比较reset值
+	if (e.RateLimitReset == nil) != (reset == nil) {
+		changed = true
+	} else if e.RateLimitReset != nil && reset != nil && *e.RateLimitReset != *reset {
+		changed = true
+	}
+	
+	// 比较status值
+	if (e.RateLimitStatus == nil) != (status == nil) {
+		changed = true
+	} else if e.RateLimitStatus != nil && status != nil && *e.RateLimitStatus != *status {
+		changed = true
+	}
+	
+	// 如果有变化，更新状态
+	if changed {
+		e.RateLimitReset = reset
+		e.RateLimitStatus = status
+	}
+	
+	return changed, nil
+}
+
+// GetRateLimitState 安全地获取rate limit状态
+func (e *Endpoint) GetRateLimitState() (*int64, *string) {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	
+	var reset *int64
+	var status *string
+	
+	if e.RateLimitReset != nil {
+		resetCopy := *e.RateLimitReset
+		reset = &resetCopy
+	}
+	
+	if e.RateLimitStatus != nil {
+		statusCopy := *e.RateLimitStatus
+		status = &statusCopy
+	}
+	
+	return reset, status
+}
+
+// IsAnthropicEndpoint 检查是否为api.anthropic.com端点
+func (e *Endpoint) IsAnthropicEndpoint() bool {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	return strings.Contains(strings.ToLower(e.URL), "api.anthropic.com")
+}
+
+// ShouldMonitorRateLimit 检查是否应该监控此端点的rate limit
+func (e *Endpoint) ShouldMonitorRateLimit() bool {
+	return e.IsAnthropicEndpoint()
 }

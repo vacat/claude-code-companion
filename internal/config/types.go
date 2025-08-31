@@ -38,6 +38,8 @@ type EndpointConfig struct {
 	HeaderOverrides     map[string]string `yaml:"header_overrides,omitempty" json:"header_overrides,omitempty"`         // 新增：HTTP Header覆盖配置
 	ParameterOverrides  map[string]string `yaml:"parameter_overrides,omitempty" json:"parameter_overrides,omitempty"` // 新增：Request Parameters覆盖配置
 	MaxTokensFieldName  string            `yaml:"max_tokens_field_name,omitempty" json:"max_tokens_field_name,omitempty"` // max_tokens 参数名转换选项
+	RateLimitReset      *int64            `yaml:"rate_limit_reset,omitempty" json:"rate_limit_reset,omitempty"`       // Anthropic-Ratelimit-Unified-Reset
+	RateLimitStatus     *string           `yaml:"rate_limit_status,omitempty" json:"rate_limit_status,omitempty"`     // Anthropic-Ratelimit-Unified-Status
 }
 
 // 新增：代理配置结构

@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"fmt"
+	"sync"
 
 	"claude-code-companion/internal/config"
 	"claude-code-companion/internal/conversion"
@@ -10,6 +11,7 @@ import (
 	"claude-code-companion/internal/i18n"
 	"claude-code-companion/internal/logger"
 	"claude-code-companion/internal/modelrewrite"
+	"claude-code-companion/internal/statistics"
 	"claude-code-companion/internal/tagging"
 	"claude-code-companion/internal/validator"
 	"claude-code-companion/internal/web"
@@ -30,6 +32,7 @@ type Server struct {
 	i18nManager     *i18n.Manager          // 新增：国际化管理器
 	router          *gin.Engine
 	configFilePath  string
+	configMutex     sync.Mutex             // 新增：保护配置文件操作的互斥锁
 }
 
 func NewServer(cfg *config.Config, configFilePath string, version string) (*Server, error) {
@@ -173,8 +176,10 @@ func (s *Server) HotUpdateConfig(newConfig *config.Config) error {
 	// 更新验证器配置
 	s.updateValidatorConfig(newConfig.Validation)
 
-	// 更新内存中的配置
+	// 更新内存中的配置（需要锁保护，因为可能与其他配置更新并发）
+	s.configMutex.Lock()
 	s.config = newConfig
+	s.configMutex.Unlock()
 
 	s.logger.Info("Configuration hot update completed successfully")
 	return nil
@@ -226,24 +231,66 @@ func (s *Server) updateValidatorConfig(newValidation config.ValidationConfig) {
 	s.config.Validation = newValidation
 }
 
-// saveConfigToFile 将当前配置保存到文件
+// saveConfigToFile 将当前配置保存到文件（线程安全）
 func (s *Server) saveConfigToFile() error {
+	// 注意：这个方法假设调用者已经持有 configMutex
 	return config.SaveConfig(s.config, s.configFilePath)
+}
+
+// updateEndpointConfig 安全地更新指定端点的配置并持久化
+func (s *Server) updateEndpointConfig(endpointName string, updateFunc func(*config.EndpointConfig) error) error {
+	s.configMutex.Lock()
+	defer s.configMutex.Unlock()
+	
+	// 查找对应的端点配置
+	for i, cfgEndpoint := range s.config.Endpoints {
+		if cfgEndpoint.Name == endpointName {
+			// 应用更新函数
+			if err := updateFunc(&s.config.Endpoints[i]); err != nil {
+				return err
+			}
+			
+			// 保存到配置文件
+			return s.saveConfigToFile()
+		}
+	}
+	
+	return fmt.Errorf("endpoint not found: %s", endpointName)
 }
 
 // createOAuthTokenRefreshCallback 创建 OAuth token 刷新后的回调函数
 func (s *Server) createOAuthTokenRefreshCallback() func(*endpoint.Endpoint) error {
 	return func(ep *endpoint.Endpoint) error {
-		// 更新内存中的配置
-		for i, cfgEndpoint := range s.config.Endpoints {
-			if cfgEndpoint.Name == ep.Name {
-				s.config.Endpoints[i].OAuthConfig = ep.OAuthConfig
-				break
-			}
-		}
-		
-		// 保存到配置文件
-		return s.saveConfigToFile()
+		// 使用统一的配置更新机制
+		return s.updateEndpointConfig(ep.Name, func(cfg *config.EndpointConfig) error {
+			cfg.OAuthConfig = ep.OAuthConfig
+			return nil
+		})
 	}
+}
+
+// persistRateLimitState 持久化endpoint的rate limit状态到配置文件
+func (s *Server) persistRateLimitState(endpointID string, reset *int64, status *string) error {
+	// 首先根据endpoint ID找到对应的endpoint名称
+	var endpointName string
+	s.configMutex.Lock()
+	for _, cfgEndpoint := range s.config.Endpoints {
+		if statistics.GenerateEndpointID(cfgEndpoint.Name) == endpointID {
+			endpointName = cfgEndpoint.Name
+			break
+		}
+	}
+	s.configMutex.Unlock()
+	
+	if endpointName == "" {
+		return fmt.Errorf("endpoint with ID %s not found", endpointID)
+	}
+	
+	// 使用统一的配置更新机制
+	return s.updateEndpointConfig(endpointName, func(cfg *config.EndpointConfig) error {
+		cfg.RateLimitReset = reset
+		cfg.RateLimitStatus = status
+		return nil
+	})
 }
 
