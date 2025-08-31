@@ -71,6 +71,9 @@ type Endpoint struct {
 	// 新增：保护 BlacklistReason 的互斥锁
 	blacklistMutex sync.RWMutex
 	
+	// 新增：上次记录跳过健康检查日志的时间（用于减少日志频率）
+	lastSkipLogTime time.Time `json:"-"`
+	
 	mutex               sync.RWMutex
 }
 
@@ -313,6 +316,9 @@ func (e *Endpoint) MarkActive() {
 	e.blacklistMutex.Lock()
 	e.BlacklistReason = nil
 	e.blacklistMutex.Unlock()
+	
+	// 重置跳过健康检查日志时间，确保下次rate limit时能立即记录
+	e.lastSkipLogTime = time.Time{}
 	
 	// 清理历史记录
 	e.RequestHistory.Clear()
@@ -560,4 +566,56 @@ func (e *Endpoint) IsAnthropicEndpoint() bool {
 // ShouldMonitorRateLimit 检查是否应该监控此端点的rate limit
 func (e *Endpoint) ShouldMonitorRateLimit() bool {
 	return e.IsAnthropicEndpoint()
+}
+
+// ShouldSkipHealthCheckUntilReset 检查是否应跳过健康检查直到rate limit reset时间
+func (e *Endpoint) ShouldSkipHealthCheckUntilReset() bool {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	
+	// 1. 必须是Anthropic官方端点
+	if !strings.Contains(strings.ToLower(e.URL), "api.anthropic.com") {
+		return false
+	}
+	
+	// 2. 必须有rate limit reset信息
+	if e.RateLimitReset == nil {
+		return false
+	}
+	
+	// 3. 当前时间必须小于reset时间
+	currentTime := time.Now().Unix()
+	return currentTime < *e.RateLimitReset
+}
+
+// GetRateLimitResetTimeRemaining 获取距离rate limit reset还有多长时间（秒）
+func (e *Endpoint) GetRateLimitResetTimeRemaining() int64 {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	
+	if e.RateLimitReset == nil {
+		return 0
+	}
+	
+	currentTime := time.Now().Unix()
+	remaining := *e.RateLimitReset - currentTime
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
+// ShouldLogSkipHealthCheck 判断是否应该记录跳过健康检查的日志
+// 策略：首次跳过时记录，然后每5分钟记录一次，避免日志过多
+func (e *Endpoint) ShouldLogSkipHealthCheck() bool {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+	
+	now := time.Now()
+	// 如果从未记录过，或者距离上次记录超过5分钟，则应该记录
+	if e.lastSkipLogTime.IsZero() || now.Sub(e.lastSkipLogTime) >= 5*time.Minute {
+		e.lastSkipLogTime = now
+		return true
+	}
+	return false
 }
