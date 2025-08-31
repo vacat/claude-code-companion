@@ -60,6 +60,8 @@
     "pagination_info_page": "/",
     "pagination_info_records": ", total records:",
     "pagination_info_per_page": ", per page",
+    "total_count_prefix": "(Total: ",
+    "total_count_suffix": ")",
     "cleanup_logs_title": "Clean Up Logs",
     "cleanup_logs_warning": "Select the retention period for log cleanup. This action is permanent and cannot be undone.",
     "cleanup_range": "Cleanup Range",

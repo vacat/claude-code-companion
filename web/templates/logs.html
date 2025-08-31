@@ -20,7 +20,7 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
-                            <h5 class="mb-0 me-3"><span data-t="request_logs_with_count">请求日志</span> (共 {{.Total}} 条){{if .FailedOnly}} - <span data-t="failed_requests_only">仅失败请求</span>{{end}}</h5>
+                            <h5 class="mb-0 me-3"><span data-t="request_logs_with_count">请求日志</span> <span data-t="total_count_prefix">(共 </span>{{.Total}}<span data-t="total_count_suffix"> 条)</span>{{if .FailedOnly}} - <span data-t="failed_requests_only">仅失败请求</span>{{end}}</h5>
                             <button class="btn btn-sm btn-outline-danger" data-action="show-cleanup-modal">
                                 <i class="fas fa-trash"></i> <span data-t="cleanup_logs">清理日志</span>
                             </button>

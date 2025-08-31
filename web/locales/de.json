@@ -60,6 +60,8 @@
     "pagination_info_page": "/",
     "pagination_info_records": ", Datensätze gesamt:",
     "pagination_info_per_page": ", pro Seite",
+    "total_count_prefix": "(Gesamt: ",
+    "total_count_suffix": ")",
     "cleanup_logs_title": "Protokolle bereinigen",
     "cleanup_logs_warning": "Wählen Sie die Aufbewahrungsdauer für die Protokollbereinigung. Diese Aktion ist dauerhaft und kann nicht rückgängig gemacht werden.",
     "cleanup_range": "Bereinigungsbereich",

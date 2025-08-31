@@ -60,6 +60,8 @@
     "pagination_info_page": "/",
     "pagination_info_records": ", registros totales:",
     "pagination_info_per_page": ", por página",
+    "total_count_prefix": "(Total: ",
+    "total_count_suffix": ")",
     "cleanup_logs_title": "Limpiar Registros",
     "cleanup_logs_warning": "Selecciona el período de retención para la limpieza de registros. Esta acción es permanente y no se puede deshacer.",
     "cleanup_range": "Rango de Limpieza",

@@ -60,6 +60,8 @@
     "pagination_info_page": "/",
     "pagination_info_records": ", record totali:",
     "pagination_info_per_page": ", per pagina",
+    "total_count_prefix": "(Totale: ",
+    "total_count_suffix": ")",
     "cleanup_logs_title": "Pulisci Log",
     "cleanup_logs_warning": "Seleziona il periodo di conservazione per la pulizia dei log. Questa azione è permanente e non può essere annullata.",
     "cleanup_range": "Range di Pulizia",

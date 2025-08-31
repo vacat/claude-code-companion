@@ -60,6 +60,8 @@
     "pagination_info_page": "/",
     "pagination_info_records": ", 총 레코드:",
     "pagination_info_per_page": ", 페이지당",
+    "total_count_prefix": "(총 ",
+    "total_count_suffix": "건)",
     "cleanup_logs_title": "로그 정리",
     "cleanup_logs_warning": "로그 정리를 위한 보존 기간을 선택하세요. 이 작업은 영구적이며 취소할 수 없습니다.",
     "cleanup_range": "정리 범위",

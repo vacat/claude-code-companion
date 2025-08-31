@@ -60,6 +60,8 @@
     "pagination_info_page": "页，共",
     "pagination_info_records": "条记录，每页显示",
     "pagination_info_per_page": "条",
+    "total_count_prefix": "(共 ",
+    "total_count_suffix": " 条)",
     "cleanup_logs_title": "清理日志",
     "cleanup_logs_warning": "请选择要清理的日志范围。此操作不可撤销！",
     "cleanup_range": "清理范围",

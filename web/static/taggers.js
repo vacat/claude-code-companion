@@ -10,11 +10,49 @@ document.addEventListener('DOMContentLoaded', function() {
     loadTaggers();
     loadTags();
     
-    // Event listeners
-    document.getElementById('addTaggerBtn').addEventListener('click', showAddTaggerModal);
-    document.getElementById('saveTaggerBtn').addEventListener('click', saveTagger);
-    document.getElementById('taggerType').addEventListener('change', onTypeChange);
-    document.getElementById('builtinType').addEventListener('change', onBuiltinTypeChange);
+    // Wait for elements and translation system to be ready
+    function initializeEventListeners() {
+        // Check if all required elements exist and translation system is ready
+        const addBtn = document.getElementById('addTaggerBtn');
+        const saveBtn = document.getElementById('saveTaggerBtn');
+        const typeSelect = document.getElementById('taggerType');
+        const builtinSelect = document.getElementById('builtinType');
+        
+        if (!addBtn || !saveBtn || !typeSelect || !builtinSelect) {
+            console.log('Tagger elements not ready, waiting...');
+            setTimeout(initializeEventListeners, 100);
+            return;
+        }
+        
+        // Check if translation system is ready
+        if (typeof T !== 'function' || !window.I18n) {
+            console.log('Translation system not ready, waiting...');
+            setTimeout(initializeEventListeners, 100);
+            return;
+        }
+        
+        // Check if translations are loaded
+        const allTranslations = window.I18n.getAllTranslations();
+        const currentLang = window.I18n.getLanguage();
+        if (!allTranslations[currentLang] || Object.keys(allTranslations[currentLang]).length === 0) {
+            console.log('Translations not loaded yet, waiting...');
+            setTimeout(initializeEventListeners, 100);
+            return;
+        }
+        
+        console.log('Initializing tagger event listeners...');
+        
+        // Event listeners
+        addBtn.addEventListener('click', function() {
+            console.log('Add tagger button clicked');
+            showAddTaggerModal();
+        });
+        saveBtn.addEventListener('click', saveTagger);
+        typeSelect.addEventListener('change', onTypeChange);
+        builtinSelect.addEventListener('change', onBuiltinTypeChange);
+    }
+    
+    initializeEventListeners();
 });
 
 // Load taggers from API
@@ -131,6 +169,12 @@ function renderTags() {
 
 // Show add tagger modal
 function showAddTaggerModal() {
+    // Check if translation system is ready
+    if (typeof T !== 'function') {
+        console.warn('Translation system not ready for showAddTaggerModal');
+        return;
+    }
+    
     editingTagger = null;
     document.getElementById('taggerModalTitle').textContent = T('add_tagger', '添加 Tagger');
     document.getElementById('taggerForm').reset();

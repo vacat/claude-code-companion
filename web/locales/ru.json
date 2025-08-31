@@ -60,6 +60,8 @@
     "pagination_info_page": "/",
     "pagination_info_records": ", записей всего:",
     "pagination_info_per_page": ", на странице",
+    "total_count_prefix": "(Всего: ",
+    "total_count_suffix": ")",
     "cleanup_logs_title": "Очистить журналы",
     "cleanup_logs_warning": "Выберите период хранения для очистки журналов. Это действие необратимо и не может быть отменено.",
     "cleanup_range": "Диапазон очистки",

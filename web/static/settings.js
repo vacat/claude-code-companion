@@ -2,9 +2,37 @@
 
 let originalConfig = null;
 
-// Save original configuration when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    initializeCommonFeatures();
+// Initialize settings page after translations are loaded
+function initializeSettingsPage() {
+    // Check if required elements are ready
+    const saveBtn = document.querySelector('[data-action="save-settings"]');
+    const resetBtn = document.querySelector('[data-action="reset-settings"]');
+    
+    if (!saveBtn || !resetBtn) {
+        console.log('Settings buttons not ready, waiting...');
+        setTimeout(initializeSettingsPage, 100);
+        return;
+    }
+    
+    // Check if translation system is ready
+    if (typeof T !== 'function' || !window.I18n) {
+        console.log('Translation system not ready, waiting...');
+        setTimeout(initializeSettingsPage, 100);
+        return;
+    }
+    
+    // Check if translations are loaded
+    const allTranslations = window.I18n.getAllTranslations();
+    const currentLang = window.I18n.getLanguage();
+    if (!allTranslations[currentLang] || Object.keys(allTranslations[currentLang]).length === 0) {
+        console.log('Translations not loaded yet, waiting...');
+        setTimeout(initializeSettingsPage, 100);
+        return;
+    }
+    
+    console.log('Initializing settings page...');
+    
+    // Collect original configuration
     originalConfig = collectFormData();
     
     // Add event listeners for action buttons
@@ -23,6 +51,12 @@ document.addEventListener('DOMContentLoaded', function() {
             saveSettings();
         }
     });
+}
+
+// Save original configuration when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCommonFeatures();
+    initializeSettingsPage();
 });
 
 function collectFormData() {
@@ -53,6 +87,13 @@ function collectFormData() {
 
 function saveSettings() {
     console.log('saveSettings called'); // Debug log
+    
+    // Check if translation system is ready before using T() function
+    if (typeof T !== 'function') {
+        console.error('Translation system not ready');
+        showAlert('系统未准备好，请稍后再试', 'warning');
+        return;
+    }
     
     const config = collectFormData();
     console.log('Collected config:', config); // Debug log

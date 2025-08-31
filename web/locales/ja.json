@@ -60,6 +60,8 @@
     "pagination_info_page": "/",
     "pagination_info_records": "、合計レコード:",
     "pagination_info_per_page": "、、1ページあたり",
+    "total_count_prefix": "(合計: ",
+    "total_count_suffix": "件)",
     "cleanup_logs_title": "ログクリーンアップ",
     "cleanup_logs_warning": "ログクリーンアップの保持期間を選択してください。この操作は永続的で、元に戻せません。",
     "cleanup_range": "クリーンアップ範囲",
