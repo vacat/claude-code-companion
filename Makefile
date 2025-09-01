@@ -78,7 +78,7 @@ docker-run:
 	@echo "Running Docker container"
 	docker run -d --name $(BINARY_NAME) \
 		-p 8080:8080 \
-		-v $(PWD)/config.docker.yaml:/app/config/config.yaml:ro \
+		-v $(PWD)/config.docker.yaml:/app/config/config.yaml \
 		-v $(PWD)/logs:/app/logs \
 		$(BINARY_NAME):latest
 

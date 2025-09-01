@@ -117,7 +117,7 @@ start_service() {
         # 启动新容器
         docker run -d --name claude-code-companion \
             -p 8080:8080 \
-            -v "$(pwd)/config.docker.yaml:/app/config/config.yaml:ro" \
+            -v "$(pwd)/config.docker.yaml:/app/config/config.yaml" \
             -v "$(pwd)/logs:/app/logs" \
             -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
             -e OPENAI_API_KEY="${OPENAI_API_KEY:-}" \

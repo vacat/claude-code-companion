@@ -132,7 +132,7 @@ docker run --log-driver=json-file --log-opt max-size=10m --log-opt max-file=3 ..
 ### 3. 持久化存储
 
 重要目录已配置卷挂载：
-- `./config:/app/config:ro` - 配置文件（只读）
+- `./config.docker.yaml:/app/config/config.yaml` - 配置文件（读写，支持Admin Console修改）
 - `./logs:/app/logs` - 日志文件
 - SQLite 数据库文件在日志目录中
 

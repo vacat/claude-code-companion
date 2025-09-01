@@ -13,12 +13,12 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      # 配置文件挂载
-      - ./config.docker.yaml:/app/config/config.yaml:ro
+      # 配置文件挂载（读写模式，支持Admin Console修改）
+      - ./config.docker.yaml:/app/config/config.yaml
       # 日志目录挂载
       - ./logs:/app/logs
       # 可选：挂载自定义配置目录
-      - ./config:/app/config:ro
+      - ./config:/app/config
     environment:
       # 环境变量示例，可以在配置文件中使用 ${ENV_VAR} 语法
       - TZ=Asia/Shanghai
