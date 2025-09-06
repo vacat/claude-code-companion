@@ -69,29 +69,131 @@ export OPENAI_API_KEY="your-real-key"
 
 [深入理解TAG系统和一些实际案例](https://ucn0s6hcz1w1.feishu.cn/docx/YTvYdv7kzodpr9xZ2RXcGOc5n3c)
 
-## 使用 Docker 运行
+## Docker 部署
 
-你也可以使用 Docker 来运行本项目。
+Claude Code Companion 提供完整的 Docker 支持，方便在容器环境中部署和管理。
+
+### 🚀 快速启动（推荐新手）
+
+项目提供了一键启动脚本，让 Docker 部署变得更简单：
+
+```bash
+# 一键启动（推荐）
+./docker-start.sh start
+
+# 查看状态
+./docker-start.sh status
+
+# 查看实时日志
+./docker-start.sh logs
+
+# 停止服务
+./docker-start.sh stop
+```
+
+### 方式一：使用 Docker
 
 1. **构建 Docker 镜像**
 
    ```bash
+   # 使用默认配置构建
+   make docker-build
+   
+   # 或者手动构建
    docker build -t claude-code-companion .
    ```
 
 2. **运行 Docker 容器**
 
    ```bash
-   docker run -p 8080:8080 -v $(pwd)/config.yaml:/config.yaml -v $(pwd)/logs:/logs claude-code-companion
+   # 使用 Makefile 命令（推荐）
+   make docker-run
+   
+   # 或者手动运行
+   docker run -d --name claude-code-companion \
+     -p 8080:8080 \
+     -v $(pwd)/config.docker.yaml:/app/config/config.yaml:ro \
+     -v $(pwd)/logs:/app/logs \
+     -e ANTHROPIC_API_KEY="your-api-key" \
+     claude-code-companion:latest
    ```
 
-3. **使用 Docker Compose**
+3. **访问服务**
+   - 代理服务：http://localhost:8080/
+   - 管理界面：http://localhost:8080/admin/
 
-   你也可以使用 `docker-compose.yml` 文件来简化启动过程：
+### 方式二：使用 Docker Compose（推荐）
+
+1. **启动服务**
 
    ```bash
-   docker-compose up
+   # 使用 Makefile 命令
+   make docker-compose-up
+   
+   # 或者直接使用 docker-compose
+   docker-compose up -d
    ```
+
+2. **查看服务状态**
+
+   ```bash
+   docker-compose ps
+   docker-compose logs -f claude-code-companion
+   ```
+
+3. **停止服务**
+
+   ```bash
+   # 使用 Makefile 命令
+   make docker-compose-down
+   
+   # 或者直接使用 docker-compose
+   docker-compose down
+   ```
+
+### Docker 环境配置
+
+项目包含专门为 Docker 环境优化的配置文件 `config.docker.yaml`，主要特点：
+
+- **容器网络优化**：监听所有接口 (`0.0.0.0:8080`)
+- **日志格式**：使用 JSON 格式便于日志收集
+- **环境变量支持**：支持通过环境变量传递 API 密钥
+- **健康检查**：内置健康检查端点
+- **持久化存储**：日志和数据库文件挂载到主机
+- **配置文件可写**：支持通过 Admin Console 在线修改配置
+
+### 环境变量配置
+
+在 Docker 环境中，你可以通过环境变量传递敏感信息：
+
+```bash
+# 设置环境变量
+export ANTHROPIC_API_KEY="your-anthropic-key"
+export OPENAI_API_KEY="your-openai-key"
+
+# 启动服务
+docker-compose up -d
+```
+
+### 生产环境部署建议
+
+1. **资源限制**：`docker-compose.yml` 已配置合理的资源限制
+2. **日志管理**：使用 Docker 的日志驱动或外部日志收集系统
+3. **监控**：可以添加 Prometheus 等监控服务（配置文件中已有示例）
+4. **备份**：定期备份配置文件和日志数据
+5. **安全**：在生产环境中更改默认的 CSRF 密钥
+
+### Docker 相关命令
+
+项目的 Makefile 提供了便捷的 Docker 管理命令：
+
+```bash
+make docker-build         # 构建 Docker 镜像
+make docker-run           # 运行 Docker 容器
+make docker-compose-up    # 启动 Docker Compose 服务
+make docker-compose-down  # 停止 Docker Compose 服务
+make docker-push          # 推送镜像到仓库（需要先登录）
+```
 
 ## 常见使用场景
 

@@ -1,0 +1,235 @@
+# Claude Code Companion Docker配置文件
+# 此配置文件专为Docker环境优化
+
+# 服务器配置
+server:
+  host: "0.0.0.0" # Docker容器内需要监听所有接口
+  port: 8080
+
+# 日志配置
+logging:
+  level: "info"
+  file: "/app/logs/claude-code-companion.log"
+  max_size_mb: 100
+  max_backups: 5
+  max_age_days: 30
+  compress: true
+  json_format: true # Docker环境建议使用JSON格式便于日志收集
+
+# 超时配置
+timeouts:
+  tls_handshake: "10s"
+  response_header: "60s"
+  idle_connection: "90s"
+  health_check_timeout: "30s"
+
+# 安全配置
+security:
+  csrf:
+    enabled: true
+    key: "your-csrf-secret-key-change-this" # 生产环境请更改此密钥
+
+# 端点配置示例
+endpoints:
+  - name: modelscope-anthropic
+    url: https://api-inference.modelscope.cn
+    endpoint_type: anthropic
+    auth_type: auth_token
+    auth_value: "${MODELSCOPE_API_KEY}"
+    enabled: true
+    priority: 1
+    tags: []
+    model_rewrite:
+      enabled: true
+      rules:
+        - source_pattern: "*"
+          target_model: Qwen/Qwen3-Coder-480B-A35B-Instruct
+  - name: glm-anthropic
+    url: https://open.bigmodel.cn/api/anthropic
+    endpoint_type: anthropic
+    auth_type: auth_token
+    auth_value: "${GLM_API_KEY}"
+    enabled: true
+    priority: 2
+    tags: []
+  - name: kimi-anthropic
+    url: https://api.moonshot.cn/anthropic
+    endpoint_type: anthropic
+    auth_type: auth_token
+    auth_value: "${KIMI_API_KEY}"
+    enabled: true
+    priority: 3
+    tags: []
+    model_rewrite:
+      enabled: true
+      rules:
+        - source_pattern: "*"
+          target_model: kimi-k2-0711-preview
+  - name: deepseek-anthropic
+    url: https://api.deepseek.com/anthropic
+    endpoint_type: anthropic
+    auth_type: auth_token
+    auth_value: "${DEEPSEEK_API_KEY}"
+    enabled: true
+    priority: 4
+    tags: []
+    model_rewrite:
+      enabled: true
+      rules:
+        - source_pattern: "*"
+          target_model: deepseek-reasoner
+  - name: dashscope-anthropic
+    url: https://dashscope.aliyuncs.com/api/v2/apps/claude-code-proxy
+    endpoint_type: anthropic
+    auth_type: auth_token
+    auth_value: "${DASHSCOPE_API_KEY}"
+    enabled: true
+    priority: 5
+    tags: []
+    model_rewrite:
+      enabled: true
+      rules:
+        - source_pattern: "*"
+          target_model: qwen3-coder-plus
+  - name: kimi
+    url: https://api.moonshot.cn
+    endpoint_type: openai
+    path_prefix: /v1/chat/completions
+    auth_type: auth_token
+    auth_value: "${KIMI_API_KEY}"
+    enabled: true
+    priority: 6
+    tags: []
+    model_rewrite:
+      enabled: true
+      rules:
+        - source_pattern: "*"
+          target_model: kimi-k2-0905-preview
+  - name: iflow
+    url: https://apis.iflow.cn
+    endpoint_type: openai
+    path_prefix: /v1/chat/completions
+    auth_type: auth_token
+    auth_value: "${IFLOW_API_KEY}"
+    enabled: true
+    priority: 7
+    tags: []
+    model_rewrite:
+      enabled: true
+      rules:
+        - source_pattern: "*"
+          target_model: Qwen3-Coder
+  - name: deepseek
+    url: https://api.deepseek.com
+    endpoint_type: openai
+    path_prefix: /v1/chat/completions
+    auth_type: auth_token
+    auth_value: "${DEEPSEEK_API_KEY}"
+    enabled: true
+    priority: 8
+    tags: []
+    model_rewrite:
+      enabled: true
+      rules:
+        - source_pattern: "*"
+          target_model: deepseek-reasoner
+  - name: dashscope
+    url: https://dashscope.aliyuncs.com/compatible-mode
+    endpoint_type: openai
+    path_prefix: /v1/chat/completions
+    auth_type: auth_token
+    auth_value: "${DASHSCOPE_API_KEY}"
+    enabled: true
+    priority: 9
+    tags: []
+    model_rewrite:
+      enabled: true
+      rules:
+        - source_pattern: "*"
+          target_model: qwen3-coder-plus-2025-07-22
+  - name: modelscope
+    url: https://api-inference.modelscope.cn
+    endpoint_type: openai
+    path_prefix: /v1/chat/completions
+    auth_type: auth_token
+    auth_value: "${MODELSCOPE_API_KEY}"
+    enabled: true
+    priority: 10
+    tags: []
+    model_rewrite:
+      enabled: true
+      rules:
+        - source_pattern: "*"
+          target_model: Qwen/Qwen3-Coder-480B-A35B-Instruct
+  - name: openrouter
+    url: https://openrouter.ai/api
+    endpoint_type: openai
+    path_prefix: /v1/chat/completions
+    auth_type: auth_token
+    auth_value: "${OPENROUTER_API_KEY}"
+    enabled: true
+    priority: 11
+    tags: []
+    model_rewrite:
+      enabled: true
+      rules:
+        - source_pattern: "*"
+          target_model: x-ai/grok-code-fast-1
+
+# 标签路由配置
+tagging:
+  enabled: true
+  default_tags: ["default"]
+
+  # 内置标签器配置
+  builtin:
+    - type: "header"
+      header_name: "X-Model-Tag"
+      enabled: true
+
+    - type: "path"
+      path_patterns:
+        "/v1/chat/completions": ["chat"]
+        "/v1/completions": ["completion"]
+      enabled: true
+
+    - type: "user_agent"
+      patterns:
+        "Claude*": ["claude-client"]
+        "OpenAI*": ["openai-client"]
+      enabled: true
+
+# 模型重写配置
+model_rewrite:
+  enabled: true
+  rules:
+    "claude-3-haiku": "claude-3-haiku-20240307"
+    "claude-3-sonnet": "claude-3-sonnet-20240229"
+    "claude-3-opus": "claude-3-opus-20240229"
+    "gpt-4": "gpt-4-turbo-preview"
+    "gpt-3.5-turbo": "gpt-3.5-turbo-0125"
+
+# 统计监控配置
+statistics:
+  enabled: true
+  retention_hours: 168 # 7天
+  aggregation_interval: "1h"
+
+# 健康检查配置
+health:
+  check_interval: "60s"
+  failure_threshold: 3
+  recovery_threshold: 2
+  timeout: "30s"
+
+# Web管理界面配置
+web:
+  enabled: true
+  admin_path: "/admin"
+  static_cache_max_age: "1h"
+
+# 数据库配置（SQLite）
+database:
+  path: "/app/logs/claude-code-companion.db"
+  max_connections: 10
+  connection_lifetime: "1h"
