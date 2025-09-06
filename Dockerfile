@@ -7,11 +7,17 @@ RUN apk add --no-cache git make
 # 设置工作目录
 WORKDIR /app
 
+# 配置Go代理和超时设置
+ENV GOPROXY=https://goproxy.cn,https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
+ENV GOTIMEOUT=300s
+ENV GO111MODULE=on
+
 # 复制go模块文件
 COPY go.mod go.sum ./
 
-# 下载依赖
-RUN go mod download
+# 下载依赖（增加重试和超时设置）
+RUN go mod download -x
 
 # 复制源代码
 COPY . .

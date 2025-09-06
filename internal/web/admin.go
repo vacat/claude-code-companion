@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"claude-code-companion/internal/config"
 	"claude-code-companion/internal/endpoint"
@@ -22,15 +23,15 @@ type HotUpdateHandler interface {
 }
 
 type AdminServer struct {
-	config            *config.Config
-	endpointManager   *endpoint.Manager
-	taggingManager    *tagging.Manager
-	logger            *logger.Logger
-	configFilePath    string
-	hotUpdateHandler  HotUpdateHandler
-	version           string
-	i18nManager       *i18n.Manager
-	csrfManager       *security.CSRFManager
+	config           *config.Config
+	endpointManager  *endpoint.Manager
+	taggingManager   *tagging.Manager
+	logger           *logger.Logger
+	configFilePath   string
+	hotUpdateHandler HotUpdateHandler
+	version          string
+	i18nManager      *i18n.Manager
+	csrfManager      *security.CSRFManager
 }
 
 func NewAdminServer(cfg *config.Config, endpointManager *endpoint.Manager, taggingManager *tagging.Manager, log *logger.Logger, configFilePath string, version string, i18nManager *i18n.Manager) *AdminServer {
@@ -56,27 +57,27 @@ func (s *AdminServer) renderHTML(c *gin.Context, templateName string, data map[s
 	// Always detect language fresh
 	lang := s.i18nManager.GetDetector().DetectLanguage(c)
 	i18n.SetLanguageToContext(c, lang)
-	
+
 	// If i18n is disabled or language is default, render normally
 	if s.i18nManager == nil || !s.i18nManager.IsEnabled() || lang == s.i18nManager.GetDefaultLanguage() {
 		c.HTML(200, templateName, data)
 		return
 	}
-	
+
 	// For non-default languages, we need to post-process
 	// Create a custom writer that captures the output
 	originalWriter := c.Writer
 	captureWriter := &captureResponseWriter{ResponseWriter: originalWriter}
 	c.Writer = captureWriter
-	
+
 	// Render template
 	c.HTML(200, templateName, data)
-	
+
 	// Process the captured HTML through translator
 	html := captureWriter.GetHTML()
 	translator := s.i18nManager.GetTranslator()
 	translatedHTML := translator.ProcessHTML(html, lang, s.i18nManager.GetTranslation)
-	
+
 	// Write the translated HTML to original writer
 	c.Writer = originalWriter
 	c.Writer.Write([]byte(translatedHTML))
@@ -100,7 +101,7 @@ func (w *captureResponseWriter) GetHTML() string {
 // getBaseTemplateData returns common template data for all pages
 func (s *AdminServer) getBaseTemplateData(c *gin.Context, currentPage string) map[string]interface{} {
 	lang := s.i18nManager.GetDetector().DetectLanguage(c)
-	
+
 	// Build available languages data
 	availableLanguages := make([]map[string]interface{}, 0)
 	for _, availableLang := range s.i18nManager.GetAvailableLanguages() {
@@ -111,7 +112,7 @@ func (s *AdminServer) getBaseTemplateData(c *gin.Context, currentPage string) ma
 			"name": langInfo["name"],
 		})
 	}
-	
+
 	return map[string]interface{}{
 		"Version":            s.version,
 		"CurrentPage":        currentPage,
@@ -174,7 +175,7 @@ func (s *AdminServer) updateConfigWithRollback(updateFunc func() error, rollback
 	if err := updateFunc(); err != nil {
 		return err
 	}
-	
+
 	// 保存配置到文件
 	if err := config.SaveConfig(s.config, s.configFilePath); err != nil {
 		// 保存失败，尝试回滚
@@ -183,7 +184,7 @@ func (s *AdminServer) updateConfigWithRollback(updateFunc func() error, rollback
 		}
 		return fmt.Errorf("failed to save configuration: %v", err)
 	}
-	
+
 	return nil
 }
 
@@ -195,7 +196,7 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 		panic("Failed to load embedded templates: " + err.Error())
 	}
 	router.SetHTMLTemplate(templates)
-	
+
 	// 设置静态文件服务器（使用嵌入的文件系统）
 	staticFS, err := webres.GetStaticFS()
 	if err != nil {
@@ -206,6 +207,10 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 	// 注册根目录帮助页面
 	router.GET("/", s.handleHelpPage)
 
+	// 注册健康检查端点（用于 Docker 和 Prometheus 监控）
+	router.GET("/admin/health", s.handleHealthCheck)
+	router.GET("/admin/metrics", s.handleMetrics)
+
 	// 注册页面路由
 	router.GET("/admin/", s.handleDashboard)
 	router.GET("/admin/endpoints", s.handleEndpointsPage)
@@ -215,12 +220,12 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 
 	// 注册 API 路由，添加UTF-8字符集中间件和CSRF防护
 	api := router.Group("/admin/api")
-	api.Use(s.utf8JsonMiddleware()) // 添加UTF-8中间件
+	api.Use(s.utf8JsonMiddleware())     // 添加UTF-8中间件
 	api.Use(s.csrfManager.Middleware()) // 添加CSRF防护
 	{
 		// CSRF token端点（GET请求，不需要CSRF验证）
 		api.GET("/csrf-token", s.handleGetCSRFToken)
-		
+
 		api.GET("/endpoints", s.handleGetEndpoints)
 		api.PUT("/endpoints", s.handleUpdateEndpoints)
 		api.POST("/endpoints", s.handleCreateEndpoint)
@@ -232,16 +237,16 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 		api.POST("/endpoints/:id/toggle", s.handleToggleEndpoint)
 		api.POST("/endpoints/:id/reset-status", s.handleResetEndpointStatus)
 		api.POST("/endpoints/reorder", s.handleReorderEndpoints)
-		
+
 		// 端点向导路由
 		s.registerEndpointWizardRoutes(api)
-		
+
 		api.GET("/taggers", s.handleGetTaggers)
 		api.POST("/taggers", s.handleCreateTagger)
 		api.PUT("/taggers/:name", s.handleUpdateTagger)
 		api.DELETE("/taggers/:name", s.handleDeleteTagger)
 		api.GET("/tags", s.handleGetTags)
-		
+
 		api.GET("/logs", s.handleGetLogs)
 		api.POST("/logs/cleanup", s.handleCleanupLogs)
 		api.GET("/logs/stats", s.handleGetLogStats)
@@ -249,7 +254,7 @@ func (s *AdminServer) RegisterRoutes(router *gin.Engine) {
 		api.PUT("/config", s.handleHotUpdateConfig)
 		api.GET("/config", s.handleGetConfig)
 		api.PUT("/settings", s.handleUpdateSettings)
-		
+
 		// 翻译API
 		api.GET("/translations", s.handleGetTranslations)
 	}
@@ -260,7 +265,7 @@ func (s *AdminServer) utf8JsonMiddleware() gin.HandlerFunc {
 	return gin.HandlerFunc(func(c *gin.Context) {
 		// 处理请求
 		c.Next()
-		
+
 		// 如果响应是JSON，确保Content-Type包含UTF-8字符集
 		contentType := c.Writer.Header().Get("Content-Type")
 		if contentType == "application/json" {
@@ -282,8 +287,8 @@ func (s *AdminServer) i18nMiddleware() gin.HandlerFunc {
 		i18n.SetLanguageToContext(c, lang)
 
 		// Only apply translation for /admin/ pages
-		if strings.HasPrefix(c.Request.URL.Path, "/admin/") && 
-		   !strings.HasPrefix(c.Request.URL.Path, "/admin/api/") {
+		if strings.HasPrefix(c.Request.URL.Path, "/admin/") &&
+			!strings.HasPrefix(c.Request.URL.Path, "/admin/api/") {
 			// Override HTML response to process translations
 			originalWriter := c.Writer
 			c.Writer = &translatingResponseWriter{
@@ -326,7 +331,7 @@ func (s *AdminServer) handleGetCSRFToken(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"csrf_token": token,
 	})
@@ -338,16 +343,121 @@ func (s *AdminServer) handleGetTranslations(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{})
 		return
 	}
-	
+
 	// Get all translations from the manager
 	allTranslations := s.i18nManager.GetAllTranslations()
-	
+
 	// Format the response for client consumption
 	response := make(map[string]map[string]string)
 	for lang, translations := range allTranslations {
 		response[string(lang)] = translations
 	}
-	
+
 	c.JSON(http.StatusOK, response)
 }
 
+// handleHealthCheck 提供健康检查端点（用于 Docker 健康检查和监控）
+func (s *AdminServer) handleHealthCheck(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"status":    "healthy",
+		"version":   s.version,
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+		"endpoints": func() gin.H {
+			endpoints := s.endpointManager.GetAllEndpoints()
+			totalEndpoints := len(endpoints)
+			activeEndpoints := 0
+			for _, ep := range endpoints {
+				if ep.Status == endpoint.StatusActive && ep.Enabled {
+					activeEndpoints++
+				}
+			}
+			return gin.H{
+				"total":  totalEndpoints,
+				"active": activeEndpoints,
+			}
+		}(),
+	})
+}
+
+// handleMetrics 提供 Prometheus 格式的 metrics 端点
+func (s *AdminServer) handleMetrics(c *gin.Context) {
+	endpoints := s.endpointManager.GetAllEndpoints()
+
+	// 构建 Prometheus 格式的 metrics
+	metricsLines := []string{
+		"# HELP claude_proxy_endpoints_total Total number of configured endpoints",
+		"# TYPE claude_proxy_endpoints_total gauge",
+		fmt.Sprintf("claude_proxy_endpoints_total %d", len(endpoints)),
+		"",
+		"# HELP claude_proxy_endpoints_active Number of active and enabled endpoints",
+		"# TYPE claude_proxy_endpoints_active gauge",
+	}
+
+	activeEndpoints := 0
+	for _, ep := range endpoints {
+		if ep.Status == endpoint.StatusActive && ep.Enabled {
+			activeEndpoints++
+		}
+	}
+	metricsLines = append(metricsLines, fmt.Sprintf("claude_proxy_endpoints_active %d", activeEndpoints))
+	metricsLines = append(metricsLines, "")
+
+	// 端点统计数据
+	metricsLines = append(metricsLines, []string{
+		"# HELP claude_proxy_endpoint_requests_total Total number of requests processed by endpoint",
+		"# TYPE claude_proxy_endpoint_requests_total counter",
+	}...)
+
+	metricsLines = append(metricsLines, []string{
+		"# HELP claude_proxy_endpoint_requests_success Total number of successful requests by endpoint",
+		"# TYPE claude_proxy_endpoint_requests_success counter",
+	}...)
+
+	metricsLines = append(metricsLines, []string{
+		"# HELP claude_proxy_endpoint_status Endpoint status (1=active, 0=inactive)",
+		"# TYPE claude_proxy_endpoint_status gauge",
+	}...)
+
+	for _, ep := range endpoints {
+		// 端点标签
+		labels := fmt.Sprintf(`endpoint="%s",type="%s",url="%s"`,
+			ep.Name, ep.EndpointType, ep.URL)
+
+		// 总请求数
+		metricsLines = append(metricsLines,
+			fmt.Sprintf("claude_proxy_endpoint_requests_total{%s} %d",
+				labels, ep.TotalRequests))
+
+		// 成功请求数
+		metricsLines = append(metricsLines,
+			fmt.Sprintf("claude_proxy_endpoint_requests_success{%s} %d",
+				labels, ep.SuccessRequests))
+
+		// 端点状态
+		status := 0
+		if ep.Status == endpoint.StatusActive && ep.Enabled {
+			status = 1
+		}
+		metricsLines = append(metricsLines,
+			fmt.Sprintf("claude_proxy_endpoint_status{%s} %d",
+				labels, status))
+	}
+
+	metricsLines = append(metricsLines, "")
+
+	// 系统指标
+	metricsLines = append(metricsLines, []string{
+		"# HELP claude_proxy_info Proxy information",
+		"# TYPE claude_proxy_info gauge",
+		fmt.Sprintf(`claude_proxy_info{version="%s"} 1`, s.version),
+		"",
+		"# HELP claude_proxy_uptime_seconds Proxy uptime in seconds",
+		"# TYPE claude_proxy_uptime_seconds gauge",
+		// 注意：这里需要记录启动时间，现在简化为 0
+		"claude_proxy_uptime_seconds 0",
+	}...)
+
+	// 设置 Content-Type 为 Prometheus 格式
+	c.Header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+	c.String(http.StatusOK, strings.Join(metricsLines, "\n"))
+}

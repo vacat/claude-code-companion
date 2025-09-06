@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   claude-code-companion:
@@ -23,10 +23,23 @@ services:
       # 环境变量示例，可以在配置文件中使用 ${ENV_VAR} 语法
       - TZ=Asia/Shanghai
       # API密钥可以通过环境变量传递
-      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MODELSCOPE_API_KEY=${MODELSCOPE_API_KEY}
+      - GLM_API_KEY=${GLM_API_KEY}
+      - KIMI_API_KEY=${KIMI_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - IFLOW_API_KEY=${IFLOW_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/admin/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/admin/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -38,22 +51,51 @@ services:
       resources:
         limits:
           memory: 512M
-          cpus: '1.0'
+          cpus: "1.0"
         reservations:
           memory: 256M
-          cpus: '0.5'
+          cpus: "0.5"
 
-  # 可选：添加一个简单的监控服务
-  # monitoring:
+  # Prometheus 监控服务
+  # prometheus:
   #   image: prom/prometheus:latest
-  #   container_name: claude-monitoring
+  #   container_name: claude-prometheus
   #   restart: unless-stopped
   #   ports:
   #     - "9090:9090"
   #   volumes:
   #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #     - prometheus_data:/prometheus
+  #   command:
+  #     - "--config.file=/etc/prometheus/prometheus.yml"
+  #     - "--storage.tsdb.path=/prometheus"
+  #     - "--web.console.libraries=/etc/prometheus/console_libraries"
+  #     - "--web.console.templates=/etc/prometheus/consoles"
+  #     - "--storage.tsdb.retention.time=15d"
+  #     - "--web.enable-lifecycle"
   #   networks:
   #     - claude-network
+  #   depends_on:
+  #     - claude-code-companion
+
+  # # Grafana 可视化面板
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: claude-grafana
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - grafana_data:/var/lib/grafana
+  #     - ./monitoring/grafana.ini:/etc/grafana/grafana.ini:ro
+  #     - ./monitoring/provisioning:/etc/grafana/provisioning:ro
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=admin
+  #     - GF_USERS_ALLOW_SIGN_UP=false
+  #   networks:
+  #     - claude-network
+  #   depends_on:
+  #     - prometheus
 
 networks:
   claude-network:
@@ -64,3 +106,7 @@ volumes:
     driver: local
   config:
     driver: local
+  # prometheus_data:
+  #   driver: local
+  # grafana_data:
+  #   driver: local
