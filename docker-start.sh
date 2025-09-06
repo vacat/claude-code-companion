@@ -46,35 +46,64 @@ check_docker() {
     fi
 }
 
-# 检查配置文件
+# 确定工作目录
+find_work_dir() {
+    local current_dir="$1"
+    
+    # 检查当前目录是否有 docker-compose.yml
+    if [ -f "$current_dir/docker-compose.yml" ]; then
+        echo "$current_dir"
+        return 0
+    fi
+    
+    # 检查用户目录是否有 docker-compose.yml
+    if [ -f "$HOME/.claude-code-companion/docker-compose.yml" ]; then
+        echo "$HOME/.claude-code-companion"
+        return 0
+    fi
+    
+    # 如果都没有，使用当前目录
+    echo "$current_dir"
+}
+
+# 检查配置文件是否存在
+check_config_files() {
+    local work_dir="$1"
+    
+    # 检查配置文件是否存在
+    if [ ! -f "$work_dir/config.yaml" ] && [ ! -f "$work_dir/config.docker.yaml" ]; then
+        print_warning "工作目录中未找到配置文件 (config.yaml 或 config.docker.yaml)"
+        print_info "将在启动时创建默认配置文件: $work_dir/config.docker.yaml"
+        return 1
+    fi
+    
+    return 0
+}
+
+# 检查配置文件（在工作目录中）
 check_config() {
-    # 检查当前目录的配置文件
-    if [ -f "$CONFIG_FILE" ]; then
-        print_info "使用当前目录配置文件: $CONFIG_FILE"
+    local work_dir="$1"
+    
+    # 检查工作目录的配置文件 - 优先使用 config.docker.yaml
+    if [ -f "$work_dir/config.docker.yaml" ]; then
+        print_info "使用工作目录配置文件: $work_dir/config.docker.yaml"
+        return 0
+    elif [ -f "$work_dir/config.yaml" ]; then
+        print_info "使用工作目录配置文件: $work_dir/config.yaml"
         return 0
     fi
     
-    # 检查 ~/.claude-code-companion 目录的配置文件
-    if [ -f "$HOME/.claude-code-companion/$CONFIG_FILE" ]; then
-        print_info "使用用户目录配置文件: $HOME/.claude-code-companion/$CONFIG_FILE"
-        return 0
-    fi
-    
-    print_warning "$CONFIG_FILE 不存在，将使用默认配置"
+    print_warning "未找到配置文件，将使用默认配置"
     print_info "请在启动后访问 http://localhost:8080/admin/ 配置端点"
 }
 
-# 检查环境变量文件
+# 检查环境变量文件（在工作目录中）
 check_env_file() {
-    # 检查当前目录的环境文件
-    if [ -f "$ENV_FILE" ]; then
-        print_info "使用当前目录环境文件: $ENV_FILE"
-        return 0
-    fi
+    local work_dir="$1"
     
-    # 检查 ~/.claude-code-companion 目录的环境文件
-    if [ -f "$HOME/.claude-code-companion/$ENV_FILE" ]; then
-        print_info "使用用户目录环境文件: $HOME/.claude-code-companion/$ENV_FILE"
+    # 检查工作目录的环境文件
+    if [ -f "$work_dir/$ENV_FILE" ]; then
+        print_info "使用工作目录环境文件: $work_dir/$ENV_FILE"
         return 0
     fi
     
@@ -111,26 +140,45 @@ start_service() {
     print_info "正在启动 Claude Code Companion..."
     
     check_docker
-    check_config
-    check_env_file
     
-    # 创建日志目录
-    mkdir -p logs
+    # 保存原始目录（用于镜像构建）
+    ORIGINAL_DIR="$(pwd)"
     
-    # 确定使用的配置文件路径
-    if [ -f "$CONFIG_FILE" ]; then
-        CONFIG_PATH="$(pwd)/$CONFIG_FILE"
-    elif [ -f "$HOME/.claude-code-companion/$CONFIG_FILE" ]; then
-        CONFIG_PATH="$HOME/.claude-code-companion/$CONFIG_FILE"
+    # 确定工作目录
+    WORK_DIR="$(find_work_dir "$ORIGINAL_DIR")"
+    
+    # 如果工作目录不是当前目录，切换到工作目录
+    if [ "$WORK_DIR" != "$ORIGINAL_DIR" ]; then
+        print_info "切换到工作目录: $WORK_DIR"
+        cd "$WORK_DIR"
+    fi
+    
+    # 检查配置文件是否存在并显示警告
+    check_config_files "$WORK_DIR"
+    
+    # 检查配置文件和环境文件
+    check_config "$WORK_DIR"
+    check_env_file "$WORK_DIR"
+    
+    # 创建日志目录（在工作目录）
+    mkdir -p "$WORK_DIR/logs"
+    
+    # 确定使用的配置文件路径 - 优先使用 config.docker.yaml
+    if [ -f "$WORK_DIR/config.docker.yaml" ]; then
+        CONFIG_PATH="$WORK_DIR/config.docker.yaml"
+    elif [ -f "$WORK_DIR/config.yaml" ]; then
+        CONFIG_PATH="$WORK_DIR/config.yaml"
     else
-        CONFIG_PATH="$(pwd)/$CONFIG_FILE"  # 使用默认路径
+        # 如果没有找到配置文件，创建一个默认配置在工作目录
+        CONFIG_PATH="$WORK_DIR/config.docker.yaml"
+        print_warning "配置文件不存在，将在工作目录创建默认配置: $CONFIG_PATH"
+        echo "# Claude Code Companion 默认配置" > "$CONFIG_PATH"
+        echo "# 请编辑此文件配置您的端点信息" >> "$CONFIG_PATH"
     fi
     
     # 确定使用的环境文件路径
-    if [ -f "$ENV_FILE" ]; then
-        ENV_PATH="$(pwd)/$ENV_FILE"
-    elif [ -f "$HOME/.claude-code-companion/$ENV_FILE" ]; then
-        ENV_PATH="$HOME/.claude-code-companion/$ENV_FILE"
+    if [ -f "$WORK_DIR/$ENV_FILE" ]; then
+        ENV_PATH="$WORK_DIR/$ENV_FILE"
     else
         ENV_PATH=""  # 不使用环境文件
     fi
@@ -149,7 +197,17 @@ start_service() {
         # 构建镜像（如果不存在）
         if ! docker images claude-code-companion:latest --format "table" | grep -q claude-code-companion; then
             print_info "镜像不存在，正在构建..."
+            
+            # 切换回原始目录构建镜像
+            cd "$ORIGINAL_DIR"
+            if [ ! -f "Dockerfile" ]; then
+                print_error "当前目录未找到 Dockerfile，无法构建镜像"
+                exit 1
+            fi
             docker build -t claude-code-companion:latest .
+            
+            # 构建完成后切换回工作目录
+            cd "$WORK_DIR"
         fi
         
         # 停止现有容器
@@ -161,7 +219,7 @@ start_service() {
             "docker" "run" "-d" "--name" "claude-code-companion"
             "-p" "8080:8080"
             "-v" "$CONFIG_PATH:/app/config/config.yaml"
-            "-v" "$(pwd)/logs:/app/logs"
+            "-v" "$WORK_DIR/logs:/app/logs"
             "-e" "TZ=Asia/Shanghai"
             "--restart" "unless-stopped"
         )
@@ -191,6 +249,11 @@ start_service() {
         "${DOCKER_RUN_ARGS[@]}"
     fi
     
+    # 恢复原始目录
+    if [ "$WORK_DIR" != "$ORIGINAL_DIR" ]; then
+        cd "$ORIGINAL_DIR"
+    fi
+    
     print_success "服务启动成功！"
     echo ""
     echo "访问地址:"
@@ -205,11 +268,28 @@ start_service() {
 stop_service() {
     print_info "正在停止 Claude Code Companion..."
     
+    # 保存原始目录
+    ORIGINAL_DIR="$(pwd)"
+    
+    # 确定工作目录
+    WORK_DIR="$(find_work_dir "$ORIGINAL_DIR")"
+    
+    # 如果工作目录不是当前目录，切换到工作目录
+    if [ "$WORK_DIR" != "$ORIGINAL_DIR" ]; then
+        print_info "切换到工作目录: $WORK_DIR"
+        cd "$WORK_DIR"
+    fi
+    
     if command -v docker-compose &> /dev/null && [ -f "docker-compose.yml" ]; then
         docker-compose down
     else
         docker stop claude-code-companion 2>/dev/null || true
         docker rm claude-code-companion 2>/dev/null || true
+    fi
+    
+    # 恢复原始目录
+    if [ "$WORK_DIR" != "$ORIGINAL_DIR" ]; then
+        cd "$ORIGINAL_DIR"
     fi
     
     print_success "服务已停止"
@@ -225,23 +305,58 @@ restart_service() {
 
 # 查看日志
 show_logs() {
+    # 保存原始目录
+    ORIGINAL_DIR="$(pwd)"
+    
+    # 确定工作目录
+    WORK_DIR="$(find_work_dir "$ORIGINAL_DIR")"
+    
+    # 如果工作目录不是当前目录，切换到工作目录
+    if [ "$WORK_DIR" != "$ORIGINAL_DIR" ]; then
+        print_info "切换到工作目录: $WORK_DIR"
+        cd "$WORK_DIR"
+    fi
+    
     if command -v docker-compose &> /dev/null && [ -f "docker-compose.yml" ]; then
         docker-compose logs -f claude-code-companion
     else
         docker logs -f claude-code-companion 2>/dev/null || print_error "容器未运行"
     fi
+    
+    # 注意：日志查看是持续的，不需要恢复目录
 }
 
 # 构建镜像
 build_image() {
     print_info "正在构建 Docker 镜像..."
+    
+    # 始终在当前目录构建镜像，不切换工作目录
+    if [ ! -f "Dockerfile" ]; then
+        print_error "当前目录未找到 Dockerfile，请在包含 Dockerfile 的目录中运行此命令"
+        exit 1
+    fi
+    
+    print_info "使用当前目录的 Dockerfile 构建镜像"
     docker build -t claude-code-companion:latest .
+    
     print_success "镜像构建完成"
 }
 
 # 查看状态
 show_status() {
     print_info "服务状态:"
+    
+    # 保存原始目录
+    ORIGINAL_DIR="$(pwd)"
+    
+    # 确定工作目录
+    WORK_DIR="$(find_work_dir "$ORIGINAL_DIR")"
+    
+    # 如果工作目录不是当前目录，切换到工作目录
+    if [ "$WORK_DIR" != "$ORIGINAL_DIR" ]; then
+        print_info "切换到工作目录: $WORK_DIR"
+        cd "$WORK_DIR"
+    fi
     
     if command -v docker-compose &> /dev/null && [ -f "docker-compose.yml" ]; then
         docker-compose ps
@@ -252,6 +367,11 @@ show_status() {
         else
             print_warning "服务未运行"
         fi
+    fi
+    
+    # 恢复原始目录
+    if [ "$WORK_DIR" != "$ORIGINAL_DIR" ]; then
+        cd "$ORIGINAL_DIR"
     fi
 }
 
