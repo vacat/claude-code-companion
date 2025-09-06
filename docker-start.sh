@@ -5,6 +5,10 @@
 
 set -e  # 出错时退出
 
+# 默认配置文件路径
+CONFIG_FILE="config.docker.yaml"
+ENV_FILE=".env"
+
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -44,21 +48,37 @@ check_docker() {
 
 # 检查配置文件
 check_config() {
-    if [ ! -f "config.docker.yaml" ]; then
-        print_warning "config.docker.yaml 不存在，将使用默认配置"
-        print_info "请在启动后访问 http://localhost:8080/admin/ 配置端点"
+    # 检查当前目录的配置文件
+    if [ -f "$CONFIG_FILE" ]; then
+        print_info "使用当前目录配置文件: $CONFIG_FILE"
+        return 0
     fi
+    
+    # 检查 ~/.claude-code-companion 目录的配置文件
+    if [ -f "$HOME/.claude-code-companion/$CONFIG_FILE" ]; then
+        print_info "使用用户目录配置文件: $HOME/.claude-code-companion/$CONFIG_FILE"
+        return 0
+    fi
+    
+    print_warning "$CONFIG_FILE 不存在，将使用默认配置"
+    print_info "请在启动后访问 http://localhost:8080/admin/ 配置端点"
 }
 
-# 检查环境变量
-check_env() {
-    if [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$OPENAI_API_KEY" ]; then
-        print_warning "未设置 API 密钥环境变量"
-        print_info "你可以通过以下方式设置："
-        echo "  export ANTHROPIC_API_KEY=\"your-key\""
-        echo "  export OPENAI_API_KEY=\"your-key\""
-        echo ""
+# 检查环境变量文件
+check_env_file() {
+    # 检查当前目录的环境文件
+    if [ -f "$ENV_FILE" ]; then
+        print_info "使用当前目录环境文件: $ENV_FILE"
+        return 0
     fi
+    
+    # 检查 ~/.claude-code-companion 目录的环境文件
+    if [ -f "$HOME/.claude-code-companion/$ENV_FILE" ]; then
+        print_info "使用用户目录环境文件: $HOME/.claude-code-companion/$ENV_FILE"
+        return 0
+    fi
+    
+    print_info "未找到环境文件 $ENV_FILE"
 }
 
 # 显示帮助信息
@@ -92,14 +112,36 @@ start_service() {
     
     check_docker
     check_config
-    check_env
+    check_env_file
     
     # 创建日志目录
     mkdir -p logs
     
+    # 确定使用的配置文件路径
+    if [ -f "$CONFIG_FILE" ]; then
+        CONFIG_PATH="$(pwd)/$CONFIG_FILE"
+    elif [ -f "$HOME/.claude-code-companion/$CONFIG_FILE" ]; then
+        CONFIG_PATH="$HOME/.claude-code-companion/$CONFIG_FILE"
+    else
+        CONFIG_PATH="$(pwd)/$CONFIG_FILE"  # 使用默认路径
+    fi
+    
+    # 确定使用的环境文件路径
+    if [ -f "$ENV_FILE" ]; then
+        ENV_PATH="$(pwd)/$ENV_FILE"
+    elif [ -f "$HOME/.claude-code-companion/$ENV_FILE" ]; then
+        ENV_PATH="$HOME/.claude-code-companion/$ENV_FILE"
+    else
+        ENV_PATH=""  # 不使用环境文件
+    fi
+    
     # 启动服务
     if command -v docker-compose &> /dev/null; then
         print_info "使用 Docker Compose 启动服务..."
+        if [ -n "$ENV_PATH" ] && [ -f "$ENV_PATH" ]; then
+            print_info "加载环境文件: $ENV_PATH"
+            export $(grep -v '^#' "$ENV_PATH" | xargs)
+        fi
         docker-compose up -d
     else
         print_info "使用 Docker 启动服务..."
@@ -114,16 +156,39 @@ start_service() {
         docker stop claude-code-companion 2>/dev/null || true
         docker rm claude-code-companion 2>/dev/null || true
         
-        # 启动新容器
-        docker run -d --name claude-code-companion \
-            -p 8080:8080 \
-            -v "$(pwd)/config.docker.yaml:/app/config/config.yaml" \
-            -v "$(pwd)/logs:/app/logs" \
-            -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
-            -e OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
-            -e TZ="Asia/Shanghai" \
-            --restart unless-stopped \
-            claude-code-companion:latest
+        # 构建挂载参数
+        DOCKER_RUN_ARGS=(
+            "docker" "run" "-d" "--name" "claude-code-companion"
+            "-p" "8080:8080"
+            "-v" "$CONFIG_PATH:/app/config/config.yaml"
+            "-v" "$(pwd)/logs:/app/logs"
+            "-e" "TZ=Asia/Shanghai"
+            "--restart" "unless-stopped"
+        )
+        
+        # 添加环境文件中的变量
+        if [ -n "$ENV_PATH" ] && [ -f "$ENV_PATH" ]; then
+            print_info "加载环境文件: $ENV_PATH"
+            while IFS= read -r line; do
+                if [[ ! "$line" =~ ^#.* ]] && [[ "$line" =~ .*=. ]]; then
+                    DOCKER_RUN_ARGS+=("-e" "$line")
+                fi
+            done < "$ENV_PATH"
+        fi
+        
+        # 添加命令行环境变量
+        if [ -n "$ANTHROPIC_API_KEY" ]; then
+            DOCKER_RUN_ARGS+=("-e" "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")
+        fi
+        if [ -n "$OPENAI_API_KEY" ]; then
+            DOCKER_RUN_ARGS+=("-e" "OPENAI_API_KEY=$OPENAI_API_KEY")
+        fi
+        
+        # 添加镜像名称
+        DOCKER_RUN_ARGS+=("claude-code-companion:latest")
+        
+        # 启动容器
+        "${DOCKER_RUN_ARGS[@]}"
     fi
     
     print_success "服务启动成功！"
